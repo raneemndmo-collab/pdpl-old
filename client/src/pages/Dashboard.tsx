@@ -1,6 +1,7 @@
 /**
  * Dashboard — Main analytics overview
  * Dark Observatory Theme — Data glows on dark canvas
+ * Uses real tRPC API data from database
  */
 import { motion } from "framer-motion";
 import {
@@ -12,7 +13,7 @@ import {
   Clock,
   TrendingUp,
   TrendingDown,
-  ArrowUpLeft,
+  Loader2,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -30,84 +31,7 @@ import {
   ResponsiveContainer,
   Legend,
 } from "recharts";
-import {
-  dashboardStats,
-  monthlyTrends,
-  sectorDistribution,
-  sourceDistribution,
-  leakRecords,
-} from "@/lib/mockData";
-
-const HERO_IMG = "https://private-us-east-1.manuscdn.com/sessionFile/ayrInlgqp87gNdrsqHgN3t/sandbox/KjQNQlvIQMp8LacOr99cOG-img-1_1770741559000_na1fn_aGVyby1iYW5uZXI.png?x-oss-process=image/resize,w_1920,h_1920/format,webp/quality,q_80&Expires=1798761600&Policy=eyJTdGF0ZW1lbnQiOlt7IlJlc291cmNlIjoiaHR0cHM6Ly9wcml2YXRlLXVzLWVhc3QtMS5tYW51c2Nkbi5jb20vc2Vzc2lvbkZpbGUvYXlySW5sZ3FwODdnTmRyc3FIZ04zdC9zYW5kYm94L0tqUU5RbHZJUU1wOExhY09yOTljT0ctaW1nLTFfMTc3MDc0MTU1OTAwMF9uYTFmbl9hR1Z5YnkxaVlXNXVaWEkucG5nP3gtb3NzLXByb2Nlc3M9aW1hZ2UvcmVzaXplLHdfMTkyMCxoXzE5MjAvZm9ybWF0LHdlYnAvcXVhbGl0eSxxXzgwIiwiQ29uZGl0aW9uIjp7IkRhdGVMZXNzVGhhbiI6eyJBV1M6RXBvY2hUaW1lIjoxNzk4NzYxNjAwfX19XX0_&Key-Pair-Id=K2HSFNDJXOU9YS&Signature=LzNd-KkUgk242MpjmxkRhzQYGfK6jlnlWk2XrOz9ch7m2Mb-NAvmwp~nGMfFCelP5eHvXsHPEA~9YP0iVjrw9HS5q~pKkBqelZCiDiJMDaznPj4Yu604wiFV6jtSo1ML~GddR9SghXGbEmuCziwyq-81VNO6odsCY4XPDVlgxPBX1~zG2f7XN2BwrGBTqv12ynSxJ4vPpg2GJdy7kpIHSIn33jD0ioJCqkvjdvs3jLKfqVoYoV5-ZL3yFTy25teX0ChIDxjt6te3Q2A2aXqaSP6o2R4kTveBhxlrtrTsYdU7qZFbDOeyjsnvVuY2Dus4D7yqGWoLz30Ym2eK98xzRA__";
-
-const statCards = [
-  {
-    label: "إجمالي التسريبات",
-    labelEn: "Total Leaks",
-    value: dashboardStats.totalLeaks,
-    icon: ShieldAlert,
-    color: "text-red-400",
-    bgColor: "bg-red-500/10",
-    borderColor: "border-red-500/20",
-    trend: "+12%",
-    trendUp: true,
-  },
-  {
-    label: "السجلات المكشوفة",
-    labelEn: "Exposed Records",
-    value: `${(dashboardStats.totalRecords / 1000000).toFixed(1)}M`,
-    icon: Database,
-    color: "text-amber-400",
-    bgColor: "bg-amber-500/10",
-    borderColor: "border-amber-500/20",
-    trend: "+8%",
-    trendUp: true,
-  },
-  {
-    label: "مصادر الرصد النشطة",
-    labelEn: "Active Monitors",
-    value: dashboardStats.activeMonitors,
-    icon: Radio,
-    color: "text-emerald-400",
-    bgColor: "bg-emerald-500/10",
-    borderColor: "border-emerald-500/20",
-    trend: "+2",
-    trendUp: true,
-  },
-  {
-    label: "بيانات شخصية مكتشفة",
-    labelEn: "PII Detected",
-    value: `${(dashboardStats.piiDetected / 1000000).toFixed(1)}M`,
-    icon: ScanSearch,
-    color: "text-cyan-400",
-    bgColor: "bg-cyan-500/10",
-    borderColor: "border-cyan-500/20",
-    trend: "+15%",
-    trendUp: true,
-  },
-  {
-    label: "تنبيهات حرجة",
-    labelEn: "Critical Alerts",
-    value: dashboardStats.criticalAlerts,
-    icon: AlertTriangle,
-    color: "text-red-400",
-    bgColor: "bg-red-500/10",
-    borderColor: "border-red-500/20",
-    trend: "-3",
-    trendUp: false,
-  },
-  {
-    label: "متوسط وقت الاستجابة",
-    labelEn: "Avg Response",
-    value: dashboardStats.avgResponseTime,
-    icon: Clock,
-    color: "text-violet-400",
-    bgColor: "bg-violet-500/10",
-    borderColor: "border-violet-500/20",
-    trend: "-18%",
-    trendUp: false,
-  },
-];
+import { trpc } from "@/lib/trpc";
 
 const CHART_COLORS = ["#06B6D4", "#10B981", "#F59E0B", "#EF4444", "#8B5CF6", "#EC4899"];
 const SOURCE_COLORS = ["#06B6D4", "#8B5CF6", "#F59E0B"];
@@ -138,15 +62,6 @@ const sourceIcon = (s: string) => {
   }
 };
 
-const statusLabel = (s: string) => {
-  switch (s) {
-    case "new": return "جديد";
-    case "analyzing": return "قيد التحليل";
-    case "documented": return "موثّق";
-    default: return "تم الإبلاغ";
-  }
-};
-
 const CustomTooltip = ({ active, payload, label }: any) => {
   if (active && payload && payload.length) {
     return (
@@ -164,34 +79,80 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 };
 
 export default function Dashboard() {
+  const { data: stats, isLoading: statsLoading } = trpc.dashboard.stats.useQuery();
+  const { data: leaksData, isLoading: leaksLoading } = trpc.leaks.list.useQuery();
+
+  const isLoading = statsLoading || leaksLoading;
+  const leaks = leaksData ?? [];
+
+  // Sector distribution
+  const sectorMap = new Map<string, number>();
+  leaks.forEach((l) => {
+    const key = l.sectorAr || l.sector;
+    sectorMap.set(key, (sectorMap.get(key) || 0) + 1);
+  });
+  const sectorDistribution = Array.from(sectorMap.entries())
+    .map(([sector, count]) => ({ sector, count, percentage: leaks.length > 0 ? Math.round((count / leaks.length) * 100) : 0 }))
+    .sort((a, b) => b.count - a.count);
+
+  // Source distribution
+  const sourceMap = new Map<string, number>();
+  leaks.forEach((l) => { sourceMap.set(l.source, (sourceMap.get(l.source) || 0) + 1); });
+  const sourceNames: Record<string, string> = { telegram: "تليجرام", darkweb: "الدارك ويب", paste: "مواقع اللصق" };
+  const sourceDistribution = Array.from(sourceMap.entries())
+    .map(([source, count]) => ({ source: sourceNames[source] || source, count, percentage: leaks.length > 0 ? Math.round((count / leaks.length) * 100) : 0 }))
+    .sort((a, b) => b.count - a.count);
+
+  // Monthly trends
+  const monthNames = ["يناير", "فبراير", "مارس", "أبريل", "مايو", "يونيو", "يوليو", "أغسطس", "سبتمبر", "أكتوبر", "نوفمبر", "ديسمبر"];
+  const monthMap = new Map<string, { leaks: number; records: number; telegram: number; darkweb: number; paste: number }>();
+  leaks.forEach((l) => {
+    const d = l.detectedAt ? new Date(l.detectedAt) : new Date();
+    const key = `${d.getFullYear()}-${String(d.getMonth()).padStart(2, "0")}`;
+    const existing = monthMap.get(key) || { leaks: 0, records: 0, telegram: 0, darkweb: 0, paste: 0 };
+    existing.leaks++;
+    existing.records += l.recordCount;
+    if (l.source === "telegram") existing.telegram++;
+    else if (l.source === "darkweb") existing.darkweb++;
+    else existing.paste++;
+    monthMap.set(key, existing);
+  });
+  const monthlyTrends = Array.from(monthMap.entries())
+    .sort(([a], [b]) => a.localeCompare(b))
+    .slice(-6)
+    .map(([key, data]) => ({ month: monthNames[parseInt(key.split("-")[1])], ...data }));
+
+  const statCards = [
+    { label: "إجمالي التسريبات", labelEn: "Total Leaks", value: stats?.totalLeaks ?? 0, icon: ShieldAlert, color: "text-red-400", bgColor: "bg-red-500/10", borderColor: "border-red-500/20", trend: "+12%", trendUp: true },
+    { label: "السجلات المكشوفة", labelEn: "Exposed Records", value: stats?.totalRecords ? `${(stats.totalRecords / 1000000).toFixed(1)}M` : "0", icon: Database, color: "text-amber-400", bgColor: "bg-amber-500/10", borderColor: "border-amber-500/20", trend: "+8%", trendUp: true },
+    { label: "مصادر الرصد النشطة", labelEn: "Active Monitors", value: stats?.activeMonitors ?? 0, icon: Radio, color: "text-emerald-400", bgColor: "bg-emerald-500/10", borderColor: "border-emerald-500/20", trend: "+2", trendUp: true },
+    { label: "بيانات شخصية مكتشفة", labelEn: "PII Detected", value: stats?.piiDetected ? `${(stats.piiDetected / 1000000).toFixed(1)}M` : "0", icon: ScanSearch, color: "text-cyan-400", bgColor: "bg-cyan-500/10", borderColor: "border-cyan-500/20", trend: "+15%", trendUp: true },
+    { label: "تنبيهات حرجة", labelEn: "Critical Alerts", value: stats?.criticalAlerts ?? 0, icon: AlertTriangle, color: "text-red-400", bgColor: "bg-red-500/10", borderColor: "border-red-500/20", trend: "-3", trendUp: false },
+    { label: "متوسط وقت الاستجابة", labelEn: "Avg Response", value: "2.4h", icon: Clock, color: "text-violet-400", bgColor: "bg-violet-500/10", borderColor: "border-violet-500/20", trend: "-18%", trendUp: false },
+  ];
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* Hero banner */}
-      <motion.div
-        initial={{ opacity: 0, scale: 0.98 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ duration: 0.5 }}
-        className="relative rounded-xl overflow-hidden h-48 lg:h-56"
-      >
-        <img
-          src={HERO_IMG}
-          alt="NDMO Monitoring"
-          className="absolute inset-0 w-full h-full object-cover"
-        />
-        <div className="absolute inset-0 bg-gradient-to-l from-black/80 via-black/60 to-transparent" />
+      <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.5 }} className="relative rounded-xl overflow-hidden h-48 lg:h-56">
+        <div className="absolute inset-0 bg-gradient-to-l from-primary/20 via-background to-background dot-grid" />
         <div className="relative h-full flex flex-col justify-center px-6 lg:px-10">
-          <h1 className="text-2xl lg:text-3xl font-bold text-white mb-2">
-            منصة رصد تسريبات البيانات الشخصية
-          </h1>
-          <p className="text-sm lg:text-base text-gray-300 max-w-xl">
-            الرصد → التوثيق → تغذية السياسات → رفع التقارير
-          </p>
+          <h1 className="text-2xl lg:text-3xl font-bold text-foreground mb-2">منصة رصد تسريبات البيانات الشخصية</h1>
+          <p className="text-sm lg:text-base text-muted-foreground max-w-xl">الرصد → التوثيق → تغذية السياسات → رفع التقارير</p>
           <div className="flex items-center gap-4 mt-4">
             <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-500/20 border border-emerald-500/30">
               <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
               <span className="text-xs text-emerald-300">جميع الأنظمة تعمل</span>
             </div>
-            <span className="text-xs text-gray-400">آخر تحديث: قبل 5 دقائق</span>
+            <span className="text-xs text-muted-foreground">آخر تحديث: قبل 5 دقائق</span>
           </div>
         </div>
       </motion.div>
@@ -201,12 +162,7 @@ export default function Dashboard() {
         {statCards.map((stat, i) => {
           const Icon = stat.icon;
           return (
-            <motion.div
-              key={stat.labelEn}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.05, duration: 0.3 }}
-            >
+            <motion.div key={stat.labelEn} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05, duration: 0.3 }}>
               <Card className={`border ${stat.borderColor} ${stat.bgColor} bg-opacity-50 hover:scale-[1.02] transition-transform`}>
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between mb-3">
@@ -229,7 +185,6 @@ export default function Dashboard() {
 
       {/* Charts row */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Trend chart */}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
           <Card className="border-border">
             <CardHeader className="pb-2">
@@ -252,14 +207,7 @@ export default function Dashboard() {
                     <XAxis dataKey="month" tick={{ fontSize: 12 }} />
                     <YAxis tick={{ fontSize: 12 }} />
                     <Tooltip content={<CustomTooltip />} />
-                    <Area
-                      type="monotone"
-                      dataKey="leaks"
-                      name="التسريبات"
-                      stroke="#06B6D4"
-                      fill="url(#colorLeaks)"
-                      strokeWidth={2}
-                    />
+                    <Area type="monotone" dataKey="leaks" name="التسريبات" stroke="#06B6D4" fill="url(#colorLeaks)" strokeWidth={2} />
                   </AreaChart>
                 </ResponsiveContainer>
               </div>
@@ -267,7 +215,6 @@ export default function Dashboard() {
           </Card>
         </motion.div>
 
-        {/* Source breakdown */}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }}>
           <Card className="border-border">
             <CardHeader className="pb-2">
@@ -296,31 +243,17 @@ export default function Dashboard() {
         </motion.div>
       </div>
 
-      {/* Second row: Sector + Source pie */}
+      {/* Second row */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Sector distribution */}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}>
           <Card className="border-border">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-base font-semibold">القطاعات المتأثرة</CardTitle>
-            </CardHeader>
+            <CardHeader className="pb-2"><CardTitle className="text-base font-semibold">القطاعات المتأثرة</CardTitle></CardHeader>
             <CardContent>
               <div className="h-52">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
-                    <Pie
-                      data={sectorDistribution}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={50}
-                      outerRadius={80}
-                      dataKey="count"
-                      nameKey="sector"
-                      paddingAngle={2}
-                    >
-                      {sectorDistribution.map((_, i) => (
-                        <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
-                      ))}
+                    <Pie data={sectorDistribution} cx="50%" cy="50%" innerRadius={50} outerRadius={80} dataKey="count" nameKey="sector" paddingAngle={2}>
+                      {sectorDistribution.map((_, i) => (<Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />))}
                     </Pie>
                     <Tooltip content={<CustomTooltip />} />
                   </PieChart>
@@ -329,7 +262,7 @@ export default function Dashboard() {
               <div className="grid grid-cols-2 gap-2 mt-2">
                 {sectorDistribution.map((s, i) => (
                   <div key={s.sector} className="flex items-center gap-2 text-xs">
-                    <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: CHART_COLORS[i] }} />
+                    <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: CHART_COLORS[i % CHART_COLORS.length] }} />
                     <span className="text-muted-foreground">{s.sector}</span>
                     <span className="text-foreground font-medium mr-auto">{s.percentage}%</span>
                   </div>
@@ -339,29 +272,15 @@ export default function Dashboard() {
           </Card>
         </motion.div>
 
-        {/* Source distribution */}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.45 }}>
           <Card className="border-border">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-base font-semibold">توزيع المصادر</CardTitle>
-            </CardHeader>
+            <CardHeader className="pb-2"><CardTitle className="text-base font-semibold">توزيع المصادر</CardTitle></CardHeader>
             <CardContent>
               <div className="h-52">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
-                    <Pie
-                      data={sourceDistribution}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={50}
-                      outerRadius={80}
-                      dataKey="count"
-                      nameKey="source"
-                      paddingAngle={2}
-                    >
-                      {sourceDistribution.map((_, i) => (
-                        <Cell key={i} fill={SOURCE_COLORS[i % SOURCE_COLORS.length]} />
-                      ))}
+                    <Pie data={sourceDistribution} cx="50%" cy="50%" innerRadius={50} outerRadius={80} dataKey="count" nameKey="source" paddingAngle={2}>
+                      {sourceDistribution.map((_, i) => (<Cell key={i} fill={SOURCE_COLORS[i % SOURCE_COLORS.length]} />))}
                     </Pie>
                     <Tooltip content={<CustomTooltip />} />
                   </PieChart>
@@ -370,7 +289,7 @@ export default function Dashboard() {
               <div className="space-y-2 mt-2">
                 {sourceDistribution.map((s, i) => (
                   <div key={s.source} className="flex items-center gap-2 text-xs">
-                    <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: SOURCE_COLORS[i] }} />
+                    <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: SOURCE_COLORS[i % SOURCE_COLORS.length] }} />
                     <span className="text-muted-foreground">{s.source}</span>
                     <span className="text-foreground font-medium mr-auto">{s.percentage}%</span>
                   </div>
@@ -380,7 +299,6 @@ export default function Dashboard() {
           </Card>
         </motion.div>
 
-        {/* Recent alerts */}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }}>
           <Card className="border-border">
             <CardHeader className="pb-2">
@@ -391,22 +309,13 @@ export default function Dashboard() {
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
-                {leakRecords.slice(0, 5).map((leak) => (
-                  <div
-                    key={leak.id}
-                    className="flex items-start gap-3 p-2.5 rounded-lg bg-secondary/30 hover:bg-secondary/50 transition-colors"
-                  >
-                    <div className={`mt-0.5 w-2 h-2 rounded-full flex-shrink-0 ${
-                      leak.severity === "critical" ? "bg-red-400" :
-                      leak.severity === "high" ? "bg-amber-400" :
-                      leak.severity === "medium" ? "bg-yellow-400" : "bg-cyan-400"
-                    }`} />
+                {leaks.slice(0, 5).map((leak) => (
+                  <div key={leak.id} className="flex items-start gap-3 p-2.5 rounded-lg bg-secondary/30 hover:bg-secondary/50 transition-colors">
+                    <div className={`mt-0.5 w-2 h-2 rounded-full flex-shrink-0 ${leak.severity === "critical" ? "bg-red-400" : leak.severity === "high" ? "bg-amber-400" : leak.severity === "medium" ? "bg-yellow-400" : "bg-cyan-400"}`} />
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-foreground truncate">{leak.titleAr}</p>
                       <div className="flex items-center gap-2 mt-1">
-                        <span className={`text-[10px] px-1.5 py-0.5 rounded border ${severityColor(leak.severity)}`}>
-                          {severityLabel(leak.severity)}
-                        </span>
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded border ${severityColor(leak.severity)}`}>{severityLabel(leak.severity)}</span>
                         <span className="text-[10px] text-muted-foreground">{sourceIcon(leak.source)}</span>
                         <span className="text-[10px] text-muted-foreground">{leak.recordCount.toLocaleString()} سجل</span>
                       </div>

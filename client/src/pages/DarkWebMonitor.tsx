@@ -1,75 +1,58 @@
 /**
  * DarkWebMonitor — Dark web forum/marketplace monitoring
- * Dark Observatory Theme
+ * Dark Observatory Theme — Uses tRPC API
  */
-import { useState } from "react";
 import { motion } from "framer-motion";
 import {
   Globe,
   Shield,
   AlertTriangle,
-  Eye,
   Search,
   RefreshCw,
-  ExternalLink,
   Clock,
   TrendingUp,
+  Loader2,
+  DollarSign,
+  Database,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { darkWebSources, leakRecords } from "@/lib/mockData";
+import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 
-const DARKWEB_IMG = "https://private-us-east-1.manuscdn.com/sessionFile/ayrInlgqp87gNdrsqHgN3t/sandbox/KjQNQlvIQMp8LacOr99cOG-img-4_1770741557000_na1fn_ZGFyay13ZWItbW9uaXRvcg.png?x-oss-process=image/resize,w_1920,h_1920/format,webp/quality,q_80&Expires=1798761600&Policy=eyJTdGF0ZW1lbnQiOlt7IlJlc291cmNlIjoiaHR0cHM6Ly9wcml2YXRlLXVzLWVhc3QtMS5tYW51c2Nkbi5jb20vc2Vzc2lvbkZpbGUvYXlySW5sZ3FwODdnTmRyc3FIZ04zdC9zYW5kYm94L0tqUU5RbHZJUU1wOExhY09yOTljT0ctaW1nLTRfMTc3MDc0MTU1NzAwMF9uYTFmbl9aR0Z5YXkxM1pXSXRiVzl1YVhSdmNnLnBuZz94LW9zcy1wcm9jZXNzPWltYWdlL3Jlc2l6ZSx3XzE5MjAsaF8xOTIwL2Zvcm1hdCx3ZWJwL3F1YWxpdHkscV84MCIsIkNvbmRpdGlvbiI6eyJEYXRlTGVzc1RoYW4iOnsiQVdTOkVwb2NoVGltZSI6MTc5ODc2MTYwMH19fV19&Key-Pair-Id=K2HSFNDJXOU9YS&Signature=jWbIISSHH6Q5thdIvfg0Px8jvFYzYDYb0vpwUhgWF847rQuFDWRa4zwuVPKF5qxDkgUWcnhQVJFGy-Tl0n2qk6Y87S1L7NpLBZcTIVf2ARhUM551GM02kqClHLamjvewMxLnhzcLN-~u8tDY3SEGreqT~fhb~wN77y-Uto6gLF4FsIIqKkC28CfWIuFaHvOC9x8mWrKLvrpSeJHaytglE8JuGv1gci~omQIbNT4tqfJZZ2y4aQkpGRpsUJ4rS57qDSYCYkTBSxFi6WP6JwRfcKEaAsLqL~JPE7DYrQJY5DlVmJu3UWIRwKArV6M9AoDiuccGfPqAwo~BvU1OILPwGQ__";
+const severityColor = (s: string) => {
+  switch (s) {
+    case "critical": return "text-red-400 bg-red-500/10 border-red-500/30";
+    case "high": return "text-amber-400 bg-amber-500/10 border-amber-500/30";
+    case "medium": return "text-yellow-400 bg-yellow-500/10 border-yellow-500/30";
+    default: return "text-cyan-400 bg-cyan-500/10 border-cyan-500/30";
+  }
+};
 
-const darkwebLeaks = leakRecords.filter((l) => l.source === "darkweb");
-
-const threatIntel = [
-  {
-    id: "TI-001",
-    title: "عرض بيع قاعدة بيانات صحية سعودية",
-    titleEn: "Saudi Healthcare DB for sale",
-    forum: "BreachForums Mirror",
-    price: "$5,000",
-    date: "2026-02-08",
-    severity: "critical",
-    records: "89,000",
-  },
-  {
-    id: "TI-002",
-    title: "تفريغ بيانات إقامات حديث",
-    titleEn: "Fresh Iqama data dump",
-    forum: "Exploit.in Market",
-    price: "$3,500",
-    date: "2026-02-07",
-    severity: "critical",
-    records: "178,000",
-  },
-  {
-    id: "TI-003",
-    title: "دليل موظفين حكوميين سعوديين",
-    titleEn: "Saudi Gov Employee Directory",
-    forum: "XSS.is Forum",
-    price: "$2,000",
-    date: "2026-02-05",
-    severity: "high",
-    records: "31,000",
-  },
-  {
-    id: "TI-004",
-    title: "بيانات عملاء تأمين مسربة",
-    titleEn: "Leaked insurance customer data",
-    forum: "RaidForums Archive",
-    price: "$1,200",
-    date: "2026-02-03",
-    severity: "high",
-    records: "43,000",
-  },
-];
+const severityLabel = (s: string) => {
+  switch (s) {
+    case "critical": return "حرج";
+    case "high": return "عالي";
+    case "medium": return "متوسط";
+    default: return "منخفض";
+  }
+};
 
 export default function DarkWebMonitor() {
-  const [searchQuery, setSearchQuery] = useState("");
+  const { data: listings, isLoading: listingsLoading } = trpc.darkweb.listings.useQuery();
+  const { data: channels, isLoading: channelsLoading } = trpc.channels.list.useQuery({ platform: "darkweb" });
+
+  const darkWebListings = listings ?? [];
+  const darkWebChannels = channels ?? [];
+  const isLoading = listingsLoading || channelsLoading;
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -79,19 +62,18 @@ export default function DarkWebMonitor() {
         animate={{ opacity: 1, scale: 1 }}
         className="relative rounded-xl overflow-hidden h-40"
       >
-        <img src={DARKWEB_IMG} alt="Dark Web Monitoring" className="absolute inset-0 w-full h-full object-cover" />
-        <div className="absolute inset-0 bg-gradient-to-l from-black/80 via-black/60 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-l from-violet-500/10 via-background to-background dot-grid" />
         <div className="relative h-full flex flex-col justify-center px-6 lg:px-10">
           <div className="flex items-center gap-3 mb-2">
             <div className="w-10 h-10 rounded-lg bg-violet-500/20 flex items-center justify-center">
               <Globe className="w-5 h-5 text-violet-400" />
             </div>
             <div>
-              <h1 className="text-xl font-bold text-white">رصد الدارك ويب</h1>
-              <p className="text-xs text-gray-400">Dark Web Monitoring</p>
+              <h1 className="text-xl font-bold text-foreground">رصد الدارك ويب</h1>
+              <p className="text-xs text-muted-foreground">Dark Web Monitoring</p>
             </div>
           </div>
-          <p className="text-sm text-gray-300 max-w-lg">
+          <p className="text-sm text-muted-foreground max-w-lg">
             مراقبة منتديات بيع البيانات وأسواق البيانات المسربة عبر شبكة Tor
           </p>
         </div>
@@ -100,10 +82,10 @@ export default function DarkWebMonitor() {
       {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          { label: "مصادر مراقبة", value: darkWebSources.length, color: "text-violet-400" },
-          { label: "تسريبات مكتشفة", value: darkWebSources.reduce((a, c) => a + c.leaksDetected, 0), color: "text-amber-400" },
-          { label: "عروض بيع نشطة", value: threatIntel.length, color: "text-red-400" },
-          { label: "سجلات مكشوفة", value: "341K", color: "text-cyan-400" },
+          { label: "مصادر مراقبة", value: darkWebChannels.length, color: "text-violet-400" },
+          { label: "تسريبات مكتشفة", value: darkWebChannels.reduce((a, c) => a + (c.leaksDetected ?? 0), 0), color: "text-amber-400" },
+          { label: "عروض بيع نشطة", value: darkWebListings.length, color: "text-red-400" },
+          { label: "سجلات مكشوفة", value: darkWebListings.reduce((s, l) => s + (l.recordCount ?? 0), 0).toLocaleString(), color: "text-cyan-400" },
         ].map((stat, i) => (
           <motion.div key={stat.label} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
             <Card className="border-border">
@@ -130,7 +112,7 @@ export default function DarkWebMonitor() {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {darkWebSources.map((source, i) => (
+            {darkWebChannels.map((source, i) => (
               <motion.div
                 key={source.id}
                 initial={{ opacity: 0, x: 20 }}
@@ -145,7 +127,7 @@ export default function DarkWebMonitor() {
                     </div>
                     <div>
                       <h3 className="text-sm font-semibold text-foreground">{source.name}</h3>
-                      <p className="text-[10px] text-muted-foreground">{source.id}</p>
+                      <p className="text-[10px] text-muted-foreground">{source.channelId}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-1.5">
@@ -161,13 +143,14 @@ export default function DarkWebMonitor() {
                 <div className="flex items-center justify-between text-xs">
                   <span className="text-muted-foreground flex items-center gap-1">
                     <AlertTriangle className="w-3 h-3" />
-                    {source.leaksDetected} تسريب
+                    {source.leaksDetected ?? 0} تسريب
                   </span>
                   <span className={`px-2 py-0.5 rounded border text-[10px] ${
                     source.riskLevel === "high" ? "text-red-400 bg-red-500/10 border-red-500/30" :
-                    "text-amber-400 bg-amber-500/10 border-amber-500/30"
+                    source.riskLevel === "medium" ? "text-amber-400 bg-amber-500/10 border-amber-500/30" :
+                    "text-cyan-400 bg-cyan-500/10 border-cyan-500/30"
                   }`}>
-                    {source.riskLevel === "high" ? "خطورة عالية" : "خطورة متوسطة"}
+                    {source.riskLevel === "high" ? "خطورة عالية" : source.riskLevel === "medium" ? "خطورة متوسطة" : "خطورة منخفضة"}
                   </span>
                 </div>
               </motion.div>
@@ -186,43 +169,51 @@ export default function DarkWebMonitor() {
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
-            {threatIntel.map((intel, i) => (
+            {darkWebListings.map((listing, i) => (
               <motion.div
-                key={intel.id}
+                key={listing.id}
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.1 }}
+                transition={{ delay: i * 0.05 }}
                 className="p-4 rounded-lg bg-secondary/20 border border-border hover:border-red-500/20 transition-colors"
               >
                 <div className="flex items-start justify-between mb-2">
                   <div>
-                    <h3 className="text-sm font-semibold text-foreground">{intel.title}</h3>
-                    <p className="text-xs text-muted-foreground">{intel.titleEn}</p>
+                    <h3 className="text-sm font-semibold text-foreground">{listing.titleAr || listing.title}</h3>
+                    <p className="text-xs text-muted-foreground">{listing.title}</p>
                   </div>
-                  <span className={`text-[10px] px-2 py-1 rounded border ${
-                    intel.severity === "critical" ? "text-red-400 bg-red-500/10 border-red-500/30" :
-                    "text-amber-400 bg-amber-500/10 border-amber-500/30"
-                  }`}>
-                    {intel.severity === "critical" ? "حرج" : "عالي"}
+                  <span className={`text-[10px] px-2 py-1 rounded border ${severityColor(listing.severity)}`}>
+                    {severityLabel(listing.severity)}
                   </span>
                 </div>
                 <div className="flex items-center gap-4 text-xs text-muted-foreground">
                   <span className="flex items-center gap-1">
                     <Globe className="w-3 h-3" />
-                    {intel.forum}
+                    {listing.sourceName || "مصدر غير معروف"}
                   </span>
                   <span className="flex items-center gap-1">
                     <Clock className="w-3 h-3" />
-                    {intel.date}
+                    {listing.detectedAt ? new Date(listing.detectedAt).toLocaleDateString("ar-SA") : "—"}
                   </span>
-                  <span className="text-red-400 font-medium">{intel.price}</span>
+                  {listing.price && (
+                    <span className="text-red-400 font-medium flex items-center gap-1">
+                      <DollarSign className="w-3 h-3" />
+                      {listing.price}
+                    </span>
+                  )}
                   <span className="flex items-center gap-1">
-                    <TrendingUp className="w-3 h-3" />
-                    {intel.records} سجل
+                    <Database className="w-3 h-3" />
+                    {(listing.recordCount ?? 0).toLocaleString()} سجل
                   </span>
                 </div>
               </motion.div>
             ))}
+            {darkWebListings.length === 0 && (
+              <div className="text-center py-12 text-muted-foreground">
+                <Globe className="w-12 h-12 mx-auto mb-3 opacity-30" />
+                <p>لا توجد عروض مكتشفة حالياً</p>
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>

@@ -1,7 +1,6 @@
 /**
  * PIIClassifier — PII detection and classification tool
- * Dark Observatory Theme
- * Interactive regex-based Saudi PII detector
+ * Dark Observatory Theme — Uses tRPC API
  */
 import { useState, useMemo } from "react";
 import { motion } from "framer-motion";
@@ -19,15 +18,15 @@ import {
   Mail,
   CreditCard,
   User,
+  History,
+  Loader2,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { piiPatterns } from "@/lib/mockData";
+import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
-
-const PII_IMG = "https://private-us-east-1.manuscdn.com/sessionFile/ayrInlgqp87gNdrsqHgN3t/sandbox/KjQNQlvIQMp8LacOr99cOG-img-3_1770741557000_na1fn_cGlpLWNsYXNzaWZpZXItYmc.png?x-oss-process=image/resize,w_1920,h_1920/format,webp/quality,q_80&Expires=1798761600&Policy=eyJTdGF0ZW1lbnQiOlt7IlJlc291cmNlIjoiaHR0cHM6Ly9wcml2YXRlLXVzLWVhc3QtMS5tYW51c2Nkbi5jb20vc2Vzc2lvbkZpbGUvYXlySW5sZ3FwODdnTmRyc3FIZ04zdC9zYW5kYm94L0tqUU5RbHZJUU1wOExhY09yOTljT0ctaW1nLTNfMTc3MDc0MTU1NzAwMF9uYTFmbl9jR2xwTFdOc1lYTnphV1pwWlhJdFltYy5wbmc~eC1vc3MtcHJvY2Vzcz1pbWFnZS9yZXNpemUsd18xOTIwLGhfMTkyMC9mb3JtYXQsd2VicC9xdWFsaXR5LHFfODAiLCJDb25kaXRpb24iOnsiRGF0ZUxlc3NUaGFuIjp7IkFXUzpFcG9jaFRpbWUiOjE3OTg3NjE2MDB9fX1dfQ__&Key-Pair-Id=K2HSFNDJXOU9YS&Signature=t9fF2MwWkldH-4VaEIb5V23uoI7jfdvAbAbkJjCkpk1dDrfVESd11c9jcLhxx4op1MqQIETv5A8IlyaBLwCYR4WDCJRrSs0PK6RnR03hdgySgMKeo7HDoSte2pW~K~AIkP1ZxAYt4CRdO0iEa~VBDS6c-w2MtApslDXsQJTZqTe5VpubwKx6H1ge~3jBAX5MegJMdiqVxEuhID9Tnab5uxo8KH1OVOSTRYF9H9szPcFlN3Kp62dQI2QQHqeBRKweRGs2VDYZ7RmZDzFc2g88yBSPcBJaecu3KTxznlmeJaXIfUTahoXP~nvWj0oeYH4EOySeQ1y1DINCP17ikANXWQ__";
 
 const sampleData = `محمد بن عبدالله الشمري
 رقم الهوية: 1098765432
@@ -51,6 +50,8 @@ interface DetectedPII {
   line: number;
   icon: React.ElementType;
   color: string;
+  confidence: number;
+  position: [number, number];
 }
 
 const piiRegexPatterns = [
@@ -61,19 +62,30 @@ const piiRegexPatterns = [
   { type: "IBAN", typeAr: "رقم الحساب البنكي", regex: /\bSA\d{22}\b/g, icon: CreditCard, color: "text-emerald-400" },
 ];
 
-const categoryIcon = (cat: string) => {
-  switch (cat) {
-    case "Identity": return Hash;
-    case "Contact": return Phone;
-    case "Financial": return CreditCard;
-    default: return User;
-  }
+const piiTypeColors: Record<string, string> = {
+  "National ID": "text-red-400 bg-red-500/10 border-red-500/30",
+  "Iqama Number": "text-amber-400 bg-amber-500/10 border-amber-500/30",
+  "Phone Number": "text-cyan-400 bg-cyan-500/10 border-cyan-500/30",
+  "Saudi Phone": "text-cyan-400 bg-cyan-500/10 border-cyan-500/30",
+  "Email": "text-violet-400 bg-violet-500/10 border-violet-500/30",
+  "Saudi Email": "text-violet-400 bg-violet-500/10 border-violet-500/30",
+  "IBAN": "text-emerald-400 bg-emerald-500/10 border-emerald-500/30",
+  "Full Name": "text-blue-400 bg-blue-500/10 border-blue-500/30",
 };
 
 export default function PIIClassifier() {
   const [inputText, setInputText] = useState(sampleData);
   const [hasScanned, setHasScanned] = useState(false);
+  const [isScanning, setIsScanning] = useState(false);
+  const [apiResults, setApiResults] = useState<{
+    results: Array<{ type: string; typeAr: string; value: string; line: number }>;
+    totalMatches: number;
+  } | null>(null);
 
+  const { data: history, isLoading: historyLoading } = trpc.pii.history.useQuery();
+  const scanMutation = trpc.pii.scan.useMutation();
+
+  // Local regex scan
   const detectedPII = useMemo(() => {
     if (!hasScanned) return [];
     const results: DetectedPII[] = [];
@@ -91,6 +103,8 @@ export default function PIIClassifier() {
             line: lineIdx + 1,
             icon: pattern.icon,
             color: pattern.color,
+            confidence: 0.95,
+            position: [match.index, match.index + match[0].length],
           });
         }
       });
@@ -107,17 +121,37 @@ export default function PIIClassifier() {
     return summary;
   }, [detectedPII]);
 
-  const handleScan = () => {
+  const handleScan = async () => {
+    if (!inputText.trim()) {
+      toast.error("الرجاء إدخال نص للفحص");
+      return;
+    }
+    setIsScanning(true);
     setHasScanned(true);
-    toast.success(`تم اكتشاف ${detectedPII.length || "عدة"} بيانات شخصية`, {
-      description: "PII detection complete",
-    });
+    try {
+      const result = await scanMutation.mutateAsync({ text: inputText });
+      setApiResults(result);
+      toast.success(`تم اكتشاف ${result.totalMatches} بيانات شخصية`, {
+        description: "PII detection complete",
+      });
+    } catch {
+      // Fall back to local scan
+      toast.success(`تم اكتشاف ${detectedPII.length} بيانات شخصية (محلي)`, {
+        description: "PII detection complete (local)",
+      });
+    } finally {
+      setIsScanning(false);
+    }
   };
 
   const handleReset = () => {
     setInputText(sampleData);
     setHasScanned(false);
+    setApiResults(null);
   };
+
+  const matchCount = apiResults?.totalMatches ?? detectedPII.length;
+  const riskScore = matchCount > 5 ? 85 : matchCount > 2 ? 60 : 30;
 
   return (
     <div className="space-y-6">
@@ -127,19 +161,18 @@ export default function PIIClassifier() {
         animate={{ opacity: 1, scale: 1 }}
         className="relative rounded-xl overflow-hidden h-40"
       >
-        <img src={PII_IMG} alt="PII Classifier" className="absolute inset-0 w-full h-full object-cover" />
-        <div className="absolute inset-0 bg-gradient-to-l from-black/80 via-black/60 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-l from-emerald-500/10 via-background to-background dot-grid" />
         <div className="relative h-full flex flex-col justify-center px-6 lg:px-10">
           <div className="flex items-center gap-3 mb-2">
             <div className="w-10 h-10 rounded-lg bg-cyan-500/20 flex items-center justify-center">
               <ScanSearch className="w-5 h-5 text-cyan-400" />
             </div>
             <div>
-              <h1 className="text-xl font-bold text-white">مصنّف البيانات الشخصية</h1>
-              <p className="text-xs text-gray-400">PII Classifier & Detector</p>
+              <h1 className="text-xl font-bold text-foreground">مصنّف البيانات الشخصية</h1>
+              <p className="text-xs text-muted-foreground">PII Classifier & Detector</p>
             </div>
           </div>
-          <p className="text-sm text-gray-300 max-w-lg">
+          <p className="text-sm text-muted-foreground max-w-lg">
             هل يحتوي على بيانات شخصية لأفراد في المملكة؟ — محرك التصنيف التلقائي
           </p>
         </div>
@@ -149,7 +182,7 @@ export default function PIIClassifier() {
         <TabsList className="bg-secondary/50">
           <TabsTrigger value="scanner">الماسح التفاعلي</TabsTrigger>
           <TabsTrigger value="patterns">أنماط الكشف</TabsTrigger>
-          <TabsTrigger value="stats">إحصائيات الكشف</TabsTrigger>
+          <TabsTrigger value="history">سجل الفحوصات</TabsTrigger>
         </TabsList>
 
         {/* Scanner tab */}
@@ -168,8 +201,8 @@ export default function PIIClassifier() {
                       <RotateCcw className="w-3 h-3" />
                       إعادة تعيين
                     </Button>
-                    <Button size="sm" onClick={handleScan} className="gap-1.5 h-7 text-xs bg-primary text-primary-foreground">
-                      <Play className="w-3 h-3" />
+                    <Button size="sm" onClick={handleScan} disabled={isScanning} className="gap-1.5 h-7 text-xs bg-primary text-primary-foreground">
+                      {isScanning ? <Loader2 className="w-3 h-3 animate-spin" /> : <Play className="w-3 h-3" />}
                       فحص
                     </Button>
                   </div>
@@ -178,7 +211,7 @@ export default function PIIClassifier() {
               <CardContent>
                 <textarea
                   value={inputText}
-                  onChange={(e) => { setInputText(e.target.value); setHasScanned(false); }}
+                  onChange={(e) => { setInputText(e.target.value); setHasScanned(false); setApiResults(null); }}
                   className="w-full h-80 p-4 rounded-lg bg-black/30 border border-border text-sm font-mono text-foreground resize-none focus:outline-none focus:ring-1 focus:ring-primary"
                   placeholder="الصق النص هنا لفحص البيانات الشخصية..."
                   dir="auto"
@@ -207,6 +240,10 @@ export default function PIIClassifier() {
                       <p className="text-sm">اضغط "فحص" لبدء الكشف عن البيانات الشخصية</p>
                     </div>
                   </div>
+                ) : isScanning ? (
+                  <div className="h-80 flex items-center justify-center">
+                    <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                  </div>
                 ) : detectedPII.length === 0 ? (
                   <div className="h-80 flex items-center justify-center text-muted-foreground">
                     <div className="text-center">
@@ -216,6 +253,24 @@ export default function PIIClassifier() {
                   </div>
                 ) : (
                   <div className="space-y-4">
+                    {/* Risk score */}
+                    <div className="flex items-center justify-between p-3 rounded-lg bg-secondary/20 border border-border">
+                      <span className="text-sm text-foreground">درجة الخطورة</span>
+                      <div className="flex items-center gap-3">
+                        <div className="w-24 h-2 rounded-full bg-secondary/50 overflow-hidden">
+                          <motion.div
+                            initial={{ width: 0 }}
+                            animate={{ width: `${riskScore}%` }}
+                            transition={{ duration: 0.8 }}
+                            className={`h-full rounded-full ${riskScore >= 80 ? "bg-red-500" : riskScore >= 50 ? "bg-amber-500" : "bg-emerald-500"}`}
+                          />
+                        </div>
+                        <span className={`text-sm font-bold ${riskScore >= 80 ? "text-red-400" : riskScore >= 50 ? "text-amber-400" : "text-emerald-400"}`}>
+                          {riskScore}%
+                        </span>
+                      </div>
+                    </div>
+
                     {/* Summary */}
                     <div className="flex flex-wrap gap-2">
                       {Object.entries(piiSummary).map(([type, count]) => (
@@ -226,7 +281,7 @@ export default function PIIClassifier() {
                     </div>
 
                     {/* Detailed results */}
-                    <div className="h-64 overflow-y-auto space-y-2">
+                    <div className="h-52 overflow-y-auto space-y-2">
                       {detectedPII.map((pii, i) => {
                         const Icon = pii.icon;
                         return (
@@ -273,16 +328,11 @@ export default function PIIClassifier() {
             {piiRegexPatterns.map((pattern, i) => {
               const Icon = pattern.icon;
               return (
-                <motion.div
-                  key={pattern.type}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: i * 0.05 }}
-                >
+                <motion.div key={pattern.type} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
                   <Card className="border-border hover:border-primary/30 transition-colors">
                     <CardContent className="p-4">
                       <div className="flex items-center gap-3 mb-3">
-                        <div className={`w-9 h-9 rounded-lg bg-secondary flex items-center justify-center`}>
+                        <div className="w-9 h-9 rounded-lg bg-secondary flex items-center justify-center">
                           <Icon className={`w-4.5 h-4.5 ${pattern.color}`} />
                         </div>
                         <div>
@@ -331,47 +381,63 @@ export default function PIIClassifier() {
           </Card>
         </TabsContent>
 
-        {/* Stats tab */}
-        <TabsContent value="stats" className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {piiPatterns.map((pattern, i) => {
-              const Icon = categoryIcon(pattern.category);
-              return (
-                <motion.div
-                  key={pattern.type}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: i * 0.05 }}
-                >
-                  <Card className="border-border">
-                    <CardContent className="p-4">
-                      <div className="flex items-center justify-between mb-3">
-                        <div className="flex items-center gap-2">
-                          <Icon className="w-4 h-4 text-primary" />
-                          <h3 className="text-sm font-semibold text-foreground">{pattern.typeAr}</h3>
-                        </div>
-                        <Badge variant="outline" className="text-[10px] bg-secondary border-border">
-                          {pattern.category}
-                        </Badge>
-                      </div>
-                      <p className="text-2xl font-bold text-primary mb-1">{pattern.count.toLocaleString()}</p>
-                      <p className="text-xs text-muted-foreground">إجمالي الحالات المكتشفة</p>
-                      <div className="mt-3 p-2 rounded bg-black/30 border border-border">
-                        <div className="flex items-center justify-between text-xs">
-                          <span className="text-muted-foreground">النمط:</span>
-                          <code className="font-mono text-primary" dir="ltr">{pattern.pattern}</code>
-                        </div>
-                        <div className="flex items-center justify-between text-xs mt-1">
-                          <span className="text-muted-foreground">مثال:</span>
-                          <code className="font-mono text-foreground" dir="ltr">{pattern.sample}</code>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </motion.div>
-              );
-            })}
-          </div>
+        {/* History tab */}
+        <TabsContent value="history" className="space-y-4">
+          <Card className="border-border">
+            <CardHeader>
+              <CardTitle className="text-base font-semibold flex items-center gap-2">
+                <History className="w-4 h-4 text-primary" />
+                سجل الفحوصات السابقة
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {historyLoading ? (
+                <div className="flex justify-center py-8"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>
+              ) : (history && history.length > 0) ? (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-border">
+                        <th className="text-right py-3 px-4 text-xs font-medium text-muted-foreground">التاريخ</th>
+                        <th className="text-right py-3 px-4 text-xs font-medium text-muted-foreground">حجم النص</th>
+                        <th className="text-right py-3 px-4 text-xs font-medium text-muted-foreground">النتائج</th>
+                        <th className="text-right py-3 px-4 text-xs font-medium text-muted-foreground">الخطورة</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {history.map((scan) => {
+                        const matchCount = scan.totalMatches ?? (scan.results?.length ?? 0);
+                        const risk = matchCount > 5 ? 85 : matchCount > 2 ? 60 : 30;
+                        return (
+                          <tr key={scan.id} className="border-b border-border/50 hover:bg-secondary/30 transition-colors">
+                            <td className="py-3 px-4 text-xs text-muted-foreground">
+                              {scan.createdAt ? new Date(scan.createdAt).toLocaleDateString("ar-SA") : "—"}
+                            </td>
+                            <td className="py-3 px-4 text-xs text-foreground">{scan.inputText.length} حرف</td>
+                            <td className="py-3 px-4 text-xs text-foreground font-medium">{matchCount} نتيجة</td>
+                            <td className="py-3 px-4">
+                              <span className={`text-[10px] px-2 py-1 rounded border ${
+                                risk >= 80 ? "text-red-400 bg-red-500/10 border-red-500/30" :
+                                risk >= 50 ? "text-amber-400 bg-amber-500/10 border-amber-500/30" :
+                                "text-emerald-400 bg-emerald-500/10 border-emerald-500/30"
+                              }`}>
+                                {risk}%
+                              </span>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div className="text-center py-12 text-muted-foreground">
+                  <History className="w-10 h-10 mx-auto mb-2 opacity-30" />
+                  <p className="text-sm">لا توجد فحوصات سابقة</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
     </div>

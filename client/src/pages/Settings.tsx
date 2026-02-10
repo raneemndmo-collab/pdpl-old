@@ -1,6 +1,6 @@
 /**
- * Settings — Platform configuration
- * Dark Observatory Theme
+ * Settings — Platform configuration & user management
+ * Dark Observatory Theme — Uses tRPC API
  */
 import { useState } from "react";
 import { motion } from "framer-motion";
@@ -12,20 +12,75 @@ import {
   Key,
   Users,
   Database,
-  Mail,
   Clock,
   Save,
-  RefreshCw,
+  Loader2,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { useAuth } from "@/_core/hooks/useAuth";
+import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 
+const roleLabel = (r: string) => {
+  switch (r) {
+    case "executive": return "تنفيذي";
+    case "manager": return "مدير";
+    case "analyst": return "محلل";
+    case "viewer": return "مشاهد";
+    case "admin": return "مسؤول";
+    default: return r;
+  }
+};
+
+const roleColor = (r: string) => {
+  switch (r) {
+    case "executive": return "text-violet-400 bg-violet-500/10 border-violet-500/30";
+    case "manager": return "text-cyan-400 bg-cyan-500/10 border-cyan-500/30";
+    case "analyst": return "text-emerald-400 bg-emerald-500/10 border-emerald-500/30";
+    case "admin": return "text-red-400 bg-red-500/10 border-red-500/30";
+    default: return "text-muted-foreground bg-secondary/50 border-border";
+  }
+};
+
 export default function Settings() {
+  const { user } = useAuth();
+  const isAdmin = user?.role === "admin";
+
+  const { data: usersList, isLoading: usersLoading, refetch: refetchUsers } = trpc.users.list.useQuery(
+    undefined,
+    { enabled: isAdmin }
+  );
+
+  const updateRoleMutation = trpc.users.updateRole.useMutation({
+    onSuccess: () => {
+      toast.success("تم تحديث الدور بنجاح");
+      refetchUsers();
+    },
+    onError: () => {
+      toast.error("فشل تحديث الدور");
+    },
+  });
+
+  const handleRoleChange = (userId: number, ndmoRole: string) => {
+    updateRoleMutation.mutate({
+      userId,
+      ndmoRole: ndmoRole as "executive" | "manager" | "analyst" | "viewer",
+    });
+  };
+
   const [notifications, setNotifications] = useState({
     criticalAlerts: true,
     highAlerts: true,
@@ -55,13 +110,75 @@ export default function Settings() {
         </p>
       </div>
 
-      <Tabs defaultValue="monitoring" className="space-y-6">
+      <Tabs defaultValue="general" className="space-y-6">
         <TabsList className="bg-secondary/50">
+          <TabsTrigger value="general">عام</TabsTrigger>
           <TabsTrigger value="monitoring">مصادر الرصد</TabsTrigger>
           <TabsTrigger value="notifications">التنبيهات</TabsTrigger>
           <TabsTrigger value="api">مفاتيح API</TabsTrigger>
-          <TabsTrigger value="team">الفريق</TabsTrigger>
+          {isAdmin && <TabsTrigger value="users">المستخدمون</TabsTrigger>}
         </TabsList>
+
+        {/* General */}
+        <TabsContent value="general" className="space-y-4">
+          <Card className="border-border">
+            <CardHeader>
+              <CardTitle className="text-base font-semibold flex items-center gap-2">
+                <Shield className="w-4 h-4 text-primary" />
+                معلومات الحساب
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="p-4 rounded-lg bg-secondary/20 border border-border">
+                  <p className="text-xs text-muted-foreground mb-1">الاسم</p>
+                  <p className="text-sm text-foreground font-medium">{user?.name || "—"}</p>
+                </div>
+                <div className="p-4 rounded-lg bg-secondary/20 border border-border">
+                  <p className="text-xs text-muted-foreground mb-1">البريد الإلكتروني</p>
+                  <p className="text-sm text-foreground font-medium">{user?.email || "—"}</p>
+                </div>
+                <div className="p-4 rounded-lg bg-secondary/20 border border-border">
+                  <p className="text-xs text-muted-foreground mb-1">الدور</p>
+                  <Badge variant="outline" className={`${roleColor(user?.role || "user")}`}>
+                    {roleLabel(user?.role || "user")}
+                  </Badge>
+                </div>
+                <div className="p-4 rounded-lg bg-secondary/20 border border-border">
+                  <p className="text-xs text-muted-foreground mb-1">آخر تسجيل دخول</p>
+                  <p className="text-sm text-foreground font-medium">
+                    {user?.lastSignedIn ? new Date(user.lastSignedIn).toLocaleString("ar-SA") : "—"}
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-border">
+            <CardHeader>
+              <CardTitle className="text-base font-semibold flex items-center gap-2">
+                <Database className="w-4 h-4 text-primary" />
+                معلومات النظام
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="p-4 rounded-lg bg-secondary/20 border border-border text-center">
+                  <p className="text-lg font-bold text-primary">v2.0</p>
+                  <p className="text-xs text-muted-foreground">إصدار النظام</p>
+                </div>
+                <div className="p-4 rounded-lg bg-secondary/20 border border-border text-center">
+                  <p className="text-lg font-bold text-emerald-400">نشط</p>
+                  <p className="text-xs text-muted-foreground">حالة الخادم</p>
+                </div>
+                <div className="p-4 rounded-lg bg-secondary/20 border border-border text-center">
+                  <p className="text-lg font-bold text-cyan-400">TiDB</p>
+                  <p className="text-xs text-muted-foreground">قاعدة البيانات</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
 
         {/* Monitoring settings */}
         <TabsContent value="monitoring" className="space-y-4">
@@ -155,16 +272,6 @@ export default function Settings() {
                 </div>
               ))}
 
-              <div className="p-4 rounded-lg bg-secondary/20 border border-border">
-                <Label className="text-sm font-medium text-foreground mb-2 block">البريد الإلكتروني للتنبيهات</Label>
-                <Input
-                  type="email"
-                  placeholder="alerts@ndmo.gov.sa"
-                  className="bg-secondary/50 border-border"
-                  dir="ltr"
-                />
-              </div>
-
               <Button className="gap-2 bg-primary text-primary-foreground" onClick={() => toast.success("تم حفظ إعدادات التنبيهات")}>
                 <Save className="w-4 h-4" />
                 حفظ الإعدادات
@@ -188,7 +295,6 @@ export default function Settings() {
                 { label: "Telethon API Hash", placeholder: "api_hash", desc: "مفتاح تطبيق Telegram API" },
                 { label: "Tor Proxy", placeholder: "socks5://127.0.0.1:9050", desc: "عنوان بروكسي Tor للدارك ويب" },
                 { label: "IntelligenceX API Key", placeholder: "ix_api_key", desc: "مفتاح IntelligenceX للبحث" },
-                { label: "SpyCloud API Key", placeholder: "spycloud_key", desc: "مفتاح SpyCloud لرصد التسريبات" },
               ].map((item) => (
                 <div key={item.label} className="p-4 rounded-lg bg-secondary/20 border border-border">
                   <Label className="text-sm font-medium text-foreground mb-1 block">{item.label}</Label>
@@ -210,41 +316,93 @@ export default function Settings() {
           </Card>
         </TabsContent>
 
-        {/* Team */}
-        <TabsContent value="team" className="space-y-4">
-          <Card className="border-border">
-            <CardHeader>
-              <CardTitle className="text-base font-semibold flex items-center gap-2">
-                <Users className="w-4 h-4 text-primary" />
-                فريق العمل
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {[
-                  { name: "أحمد محمد الشمري", role: "مدير المنصة", email: "ahmed@ndmo.gov.sa", status: "active" },
-                  { name: "سارة عبدالله العتيبي", role: "محلل بيانات", email: "sara@ndmo.gov.sa", status: "active" },
-                  { name: "خالد سعد القحطاني", role: "مهندس أمن", email: "khalid@ndmo.gov.sa", status: "active" },
-                  { name: "نورة فهد الدوسري", role: "باحث سياسات", email: "noura@ndmo.gov.sa", status: "away" },
-                ].map((member) => (
-                  <div key={member.email} className="flex items-center gap-4 p-4 rounded-lg bg-secondary/20 border border-border">
-                    <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold text-sm">
-                      {member.name.charAt(0)}
-                    </div>
-                    <div className="flex-1">
-                      <p className="text-sm font-medium text-foreground">{member.name}</p>
-                      <p className="text-xs text-muted-foreground">{member.role} — {member.email}</p>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <span className={`w-2 h-2 rounded-full ${member.status === "active" ? "bg-emerald-500" : "bg-amber-500"}`} />
-                      <span className="text-xs text-muted-foreground">{member.status === "active" ? "متصل" : "بعيد"}</span>
-                    </div>
+        {/* Users (admin only) */}
+        {isAdmin && (
+          <TabsContent value="users" className="space-y-4">
+            <Card className="border-border">
+              <CardHeader>
+                <CardTitle className="text-base font-semibold flex items-center gap-2">
+                  <Users className="w-4 h-4 text-primary" />
+                  إدارة المستخدمين
+                  {usersList && (
+                    <Badge variant="outline" className="mr-2 text-xs bg-primary/10 border-primary/30 text-primary">
+                      {usersList.length} مستخدم
+                    </Badge>
+                  )}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {usersLoading ? (
+                  <div className="flex justify-center py-8"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>
+                ) : !usersList || usersList.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Users className="w-10 h-10 mx-auto mb-2 opacity-30" />
+                    <p className="text-sm">لا يوجد مستخدمون مسجلون بعد</p>
                   </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-border">
+                          <th className="text-right py-3 px-4 text-xs font-medium text-muted-foreground">المستخدم</th>
+                          <th className="text-right py-3 px-4 text-xs font-medium text-muted-foreground">البريد</th>
+                          <th className="text-right py-3 px-4 text-xs font-medium text-muted-foreground">دور النظام</th>
+                          <th className="text-right py-3 px-4 text-xs font-medium text-muted-foreground">دور NDMO</th>
+                          <th className="text-right py-3 px-4 text-xs font-medium text-muted-foreground">آخر دخول</th>
+                          <th className="text-right py-3 px-4 text-xs font-medium text-muted-foreground">تغيير الدور</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {usersList.map((u) => (
+                          <tr key={u.id} className="border-b border-border/50 hover:bg-secondary/30 transition-colors">
+                            <td className="py-3 px-4">
+                              <div className="flex items-center gap-2">
+                                <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-xs font-bold text-primary">
+                                  {(u.name || "U")[0]}
+                                </div>
+                                <span className="text-foreground text-xs font-medium">{u.name || "—"}</span>
+                              </div>
+                            </td>
+                            <td className="py-3 px-4 text-xs text-muted-foreground">{u.email || "—"}</td>
+                            <td className="py-3 px-4">
+                              <Badge variant="outline" className={`text-[10px] ${roleColor(u.role)}`}>
+                                {roleLabel(u.role)}
+                              </Badge>
+                            </td>
+                            <td className="py-3 px-4">
+                              <Badge variant="outline" className={`text-[10px] ${roleColor(u.ndmoRole || "viewer")}`}>
+                                {roleLabel(u.ndmoRole || "viewer")}
+                              </Badge>
+                            </td>
+                            <td className="py-3 px-4 text-xs text-muted-foreground">
+                              {u.lastSignedIn ? new Date(u.lastSignedIn).toLocaleDateString("ar-SA") : "—"}
+                            </td>
+                            <td className="py-3 px-4">
+                              <Select
+                                value={u.ndmoRole || "viewer"}
+                                onValueChange={(val) => handleRoleChange(u.id, val)}
+                              >
+                                <SelectTrigger className="w-28 h-7 text-xs bg-secondary/50 border-border">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="executive">تنفيذي</SelectItem>
+                                  <SelectItem value="manager">مدير</SelectItem>
+                                  <SelectItem value="analyst">محلل</SelectItem>
+                                  <SelectItem value="viewer">مشاهد</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+        )}
       </Tabs>
     </div>
   );

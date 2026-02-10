@@ -1,21 +1,20 @@
 /**
- * Leaks — All leak records view with filtering
- * Dark Observatory Theme
+ * Leaks — All leak records view with filtering and CSV export
+ * Dark Observatory Theme — Uses tRPC API
  */
 import { useState, useMemo } from "react";
 import { motion } from "framer-motion";
 import {
   ShieldAlert,
   Search,
-  Filter,
   Download,
   Eye,
-  ChevronDown,
   Send,
   Globe,
   FileText,
+  Loader2,
 } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -26,7 +25,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { leakRecords } from "@/lib/mockData";
+import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 
 const severityColor = (s: string) => {
@@ -95,28 +94,70 @@ export default function Leaks() {
   const [sourceFilter, setSourceFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
 
+  const { data: leaks, isLoading } = trpc.leaks.list.useQuery({
+    source: sourceFilter !== "all" ? sourceFilter : undefined,
+    severity: severityFilter !== "all" ? severityFilter : undefined,
+    status: statusFilter !== "all" ? statusFilter : undefined,
+    search: searchQuery || undefined,
+  });
+
+  const { refetch: fetchExport } = trpc.leaks.exportCsv.useQuery(
+    {
+      source: sourceFilter !== "all" ? sourceFilter : undefined,
+      severity: severityFilter !== "all" ? severityFilter : undefined,
+      status: statusFilter !== "all" ? statusFilter : undefined,
+    },
+    { enabled: false }
+  );
+
+  const allLeaks = leaks ?? [];
+
   const filteredLeaks = useMemo(() => {
-    return leakRecords.filter((leak) => {
-      const matchesSearch =
-        leak.titleAr.includes(searchQuery) ||
-        leak.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        leak.id.toLowerCase().includes(searchQuery.toLowerCase());
-      const matchesSeverity = severityFilter === "all" || leak.severity === severityFilter;
-      const matchesSource = sourceFilter === "all" || leak.source === sourceFilter;
-      const matchesStatus = statusFilter === "all" || leak.status === statusFilter;
-      return matchesSearch && matchesSeverity && matchesSource && matchesStatus;
-    });
-  }, [searchQuery, severityFilter, sourceFilter, statusFilter]);
+    if (!searchQuery) return allLeaks;
+    const q = searchQuery.toLowerCase();
+    return allLeaks.filter(
+      (leak) =>
+        leak.titleAr.includes(q) ||
+        leak.title.toLowerCase().includes(q) ||
+        leak.leakId.toLowerCase().includes(q)
+    );
+  }, [allLeaks, searchQuery]);
+
+  const handleExportCsv = async () => {
+    try {
+      const { data } = await fetchExport();
+      if (data?.csv) {
+        const blob = new Blob(["\uFEFF" + data.csv], { type: "text/csv;charset=utf-8;" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = data.filename;
+        a.click();
+        URL.revokeObjectURL(url);
+        toast.success("تم تصدير البيانات بنجاح");
+      }
+    } catch {
+      toast.error("فشل تصدير البيانات");
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
       {/* Header stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          { label: "إجمالي التسريبات", value: leakRecords.length, color: "text-red-400" },
-          { label: "حرجة", value: leakRecords.filter((l) => l.severity === "critical").length, color: "text-red-400" },
-          { label: "قيد التحليل", value: leakRecords.filter((l) => l.status === "analyzing").length, color: "text-amber-400" },
-          { label: "تم الإبلاغ", value: leakRecords.filter((l) => l.status === "reported").length, color: "text-emerald-400" },
+          { label: "إجمالي التسريبات", value: allLeaks.length, color: "text-red-400" },
+          { label: "حرجة", value: allLeaks.filter((l) => l.severity === "critical").length, color: "text-red-400" },
+          { label: "قيد التحليل", value: allLeaks.filter((l) => l.status === "analyzing").length, color: "text-amber-400" },
+          { label: "تم الإبلاغ", value: allLeaks.filter((l) => l.status === "reported").length, color: "text-emerald-400" },
         ].map((stat, i) => (
           <motion.div key={stat.label} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
             <Card className="border-border">
@@ -177,9 +218,9 @@ export default function Leaks() {
                 <SelectItem value="reported">تم الإبلاغ</SelectItem>
               </SelectContent>
             </Select>
-            <Button variant="outline" className="gap-2" onClick={() => toast("تصدير البيانات قريباً", { description: "Export coming soon" })}>
+            <Button variant="outline" className="gap-2" onClick={handleExportCsv}>
               <Download className="w-4 h-4" />
-              تصدير
+              تصدير CSV
             </Button>
           </div>
         </CardContent>
@@ -199,56 +240,47 @@ export default function Leaks() {
               <Card className="border-border hover:border-primary/20 transition-colors">
                 <CardContent className="p-4">
                   <div className="flex flex-col lg:flex-row lg:items-center gap-4">
-                    {/* ID & severity */}
                     <div className="flex items-center gap-3 lg:w-32">
                       <span className={`text-[10px] px-2 py-1 rounded border ${severityColor(leak.severity)}`}>
                         {severityLabel(leak.severity)}
                       </span>
-                      <span className="text-xs font-mono text-primary">{leak.id}</span>
+                      <span className="text-xs font-mono text-primary">{leak.leakId}</span>
                     </div>
 
-                    {/* Title & description */}
                     <div className="flex-1 min-w-0">
                       <h3 className="text-sm font-semibold text-foreground">{leak.titleAr}</h3>
-                      <p className="text-xs text-muted-foreground mt-0.5 truncate">{leak.descriptionAr}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5 truncate">{leak.descriptionAr || leak.title}</p>
                     </div>
 
-                    {/* Source */}
                     <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full ${sourceColor(leak.source)} lg:w-28`}>
                       <SourceIcon className="w-3.5 h-3.5" />
                       <span className="text-xs">{sourceLabel(leak.source)}</span>
                     </div>
 
-                    {/* Sector */}
                     <div className="lg:w-20">
                       <span className="text-xs text-muted-foreground">{leak.sectorAr}</span>
                     </div>
 
-                    {/* Records */}
                     <div className="lg:w-24 text-left">
                       <span className="text-sm font-semibold text-foreground">{leak.recordCount.toLocaleString()}</span>
                       <span className="text-[10px] text-muted-foreground mr-1">سجل</span>
                     </div>
 
-                    {/* Status */}
                     <span className={`text-[10px] px-2 py-1 rounded border ${statusColor(leak.status)} lg:w-24 text-center`}>
                       {statusLabel(leak.status)}
                     </span>
 
-                    {/* Date */}
                     <span className="text-xs text-muted-foreground lg:w-24">
-                      {new Date(leak.detectedAt).toLocaleDateString("ar-SA")}
+                      {leak.detectedAt ? new Date(leak.detectedAt).toLocaleDateString("ar-SA") : "—"}
                     </span>
 
-                    {/* Actions */}
                     <Button size="sm" variant="ghost" className="h-8 w-8 p-0" onClick={() => toast("تفاصيل التسريب قريباً")}>
                       <Eye className="w-4 h-4" />
                     </Button>
                   </div>
 
-                  {/* PII types */}
                   <div className="flex flex-wrap gap-1.5 mt-3 pt-3 border-t border-border/50">
-                    {leak.piiTypes.map((type) => (
+                    {((leak.piiTypes as string[]) || []).map((type) => (
                       <Badge key={type} variant="outline" className="text-[10px] bg-primary/5 border-primary/20 text-primary">
                         {type}
                       </Badge>

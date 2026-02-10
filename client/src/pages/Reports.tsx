@@ -1,6 +1,6 @@
 /**
  * Reports — Legislative reporting and policy insights
- * Dark Observatory Theme
+ * Dark Observatory Theme — Uses tRPC API + export
  */
 import { motion } from "framer-motion";
 import {
@@ -15,6 +15,7 @@ import {
   CheckCircle2,
   Clock,
   ArrowUpLeft,
+  Loader2,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -34,7 +35,7 @@ import {
   PolarAngleAxis,
   PolarRadiusAxis,
 } from "recharts";
-import { sectorDistribution, monthlyTrends } from "@/lib/mockData";
+import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 
 const CHART_COLORS = ["#06B6D4", "#10B981", "#F59E0B", "#EF4444", "#8B5CF6", "#EC4899"];
@@ -46,6 +47,15 @@ const radarData = [
   { subject: "حكومة", A: 58, fullMark: 100 },
   { subject: "تعليم", A: 42, fullMark: 100 },
   { subject: "تجزئة", A: 35, fullMark: 100 },
+];
+
+const monthlyTrends = [
+  { month: "سبتمبر", leaks: 8, records: 45000 },
+  { month: "أكتوبر", leaks: 12, records: 78000 },
+  { month: "نوفمبر", leaks: 15, records: 92000 },
+  { month: "ديسمبر", leaks: 10, records: 65000 },
+  { month: "يناير", leaks: 18, records: 120000 },
+  { month: "فبراير", leaks: 7, records: 35000 },
 ];
 
 const policyGaps = [
@@ -91,40 +101,23 @@ const policyGaps = [
   },
 ];
 
-const generatedReports = [
-  {
-    id: "RPT-2026-Q1",
-    title: "التقرير الربعي لتسريبات البيانات الشخصية — الربع الأول 2026",
-    date: "2026-01-31",
-    type: "ربعي",
-    status: "published",
-    pages: 45,
-  },
-  {
-    id: "RPT-2026-01",
-    title: "التقرير الشهري — يناير 2026",
-    date: "2026-01-31",
-    type: "شهري",
-    status: "published",
-    pages: 18,
-  },
-  {
-    id: "RPT-2026-02",
-    title: "التقرير الشهري — فبراير 2026 (مسودة)",
-    date: "2026-02-10",
-    type: "شهري",
-    status: "draft",
-    pages: 12,
-  },
-  {
-    id: "RPT-SPECIAL-001",
-    title: "تقرير خاص: تسريبات القطاع الصحي",
-    date: "2026-02-05",
-    type: "خاص",
-    status: "published",
-    pages: 28,
-  },
-];
+const typeLabel = (t: string) => {
+  switch (t) {
+    case "monthly": return "شهري";
+    case "quarterly": return "ربع سنوي";
+    case "special": return "خاص";
+    default: return t;
+  }
+};
+
+const typeColor = (t: string) => {
+  switch (t) {
+    case "monthly": return "text-cyan-400 bg-cyan-500/10 border-cyan-500/30";
+    case "quarterly": return "text-violet-400 bg-violet-500/10 border-violet-500/30";
+    case "special": return "text-amber-400 bg-amber-500/10 border-amber-500/30";
+    default: return "text-muted-foreground bg-secondary/50 border-border";
+  }
+};
 
 const CustomTooltip = ({ active, payload, label }: any) => {
   if (active && payload && payload.length) {
@@ -143,6 +136,49 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 };
 
 export default function Reports() {
+  const { data: dbReports, isLoading } = trpc.reports.list.useQuery();
+  const { refetch: fetchPdfData } = trpc.reports.exportPdf.useQuery({}, { enabled: false });
+
+  const handleExportReport = async () => {
+    try {
+      const { data } = await fetchPdfData();
+      if (!data) return;
+
+      const lines = [
+        data.title,
+        `Generated: ${new Date(data.generatedAt).toLocaleString("ar-SA")}`,
+        "",
+        "=== إحصائيات عامة ===",
+        `إجمالي التسريبات: ${data.stats.totalLeaks}`,
+        `تنبيهات حرجة: ${data.stats.criticalAlerts}`,
+        `إجمالي السجلات المكشوفة: ${data.stats.totalRecords}`,
+        `أجهزة الرصد النشطة: ${data.stats.activeMonitors}`,
+        `بيانات شخصية مكتشفة: ${data.stats.piiDetected}`,
+        "",
+        "=== ملخص التسريبات ===",
+        ...data.leaksSummary.map(
+          (l) =>
+            `[${l.severity.toUpperCase()}] ${l.title} | المصدر: ${l.source} | القطاع: ${l.sector} | السجلات: ${l.records} | الحالة: ${l.status}`
+        ),
+        "",
+        `إجمالي التقارير المنشأة: ${data.totalReports}`,
+      ];
+
+      const blob = new Blob(["\uFEFF" + lines.join("\n")], { type: "text/plain;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `ndmo-report-${Date.now()}.txt`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success("تم تصدير التقرير بنجاح");
+    } catch {
+      toast.error("فشل تصدير التقرير");
+    }
+  };
+
+  const allReports = dbReports ?? [];
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -156,16 +192,16 @@ export default function Reports() {
             تقارير دورية لصناع القرار وتوصيات تحديث السياسات
           </p>
         </div>
-        <Button className="gap-2 bg-primary text-primary-foreground" onClick={() => toast("إنشاء تقرير جديد قريباً")}>
-          <FileText className="w-4 h-4" />
-          إنشاء تقرير
+        <Button className="gap-2 bg-primary text-primary-foreground" onClick={handleExportReport}>
+          <Download className="w-4 h-4" />
+          تصدير تقرير شامل
         </Button>
       </div>
 
       {/* Key metrics */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          { label: "تقارير منشورة", value: 4, icon: CheckCircle2, color: "text-emerald-400" },
+          { label: "تقارير منشورة", value: allReports.length || 4, icon: CheckCircle2, color: "text-emerald-400" },
           { label: "فجوات سياسات", value: policyGaps.length, icon: AlertTriangle, color: "text-amber-400" },
           { label: "توصيات نشطة", value: 12, icon: TrendingUp, color: "text-cyan-400" },
           { label: "قطاعات مراقبة", value: 6, icon: Building2, color: "text-violet-400" },
@@ -220,7 +256,7 @@ export default function Reports() {
           </Card>
         </motion.div>
 
-        {/* Records exposed by sector */}
+        {/* Records exposed monthly */}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }}>
           <Card className="border-border">
             <CardHeader className="pb-2">
@@ -297,7 +333,7 @@ export default function Reports() {
         </CardContent>
       </Card>
 
-      {/* Generated reports */}
+      {/* Generated reports from DB */}
       <Card className="border-border">
         <CardHeader>
           <CardTitle className="text-base font-semibold flex items-center gap-2">
@@ -306,42 +342,44 @@ export default function Reports() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="space-y-3">
-            {generatedReports.map((report, i) => (
-              <motion.div
-                key={report.id}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.05 }}
-                className="flex items-center gap-4 p-3 rounded-lg bg-secondary/20 border border-border hover:border-primary/20 transition-colors"
-              >
-                <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
-                  <FileText className="w-5 h-5 text-primary" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <h3 className="text-sm font-medium text-foreground truncate">{report.title}</h3>
-                  <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
-                    <span className="flex items-center gap-1">
-                      <Calendar className="w-3 h-3" />
-                      {report.date}
-                    </span>
-                    <Badge variant="outline" className="text-[10px]">{report.type}</Badge>
-                    <span>{report.pages} صفحة</span>
+          {isLoading ? (
+            <div className="flex justify-center py-8"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>
+          ) : allReports.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              <FileText className="w-10 h-10 mx-auto mb-2 opacity-30" />
+              <p className="text-sm">لا توجد تقارير بعد</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {allReports.map((report, i) => (
+                <motion.div
+                  key={report.id}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: i * 0.05 }}
+                  className="flex items-center gap-4 p-3 rounded-lg bg-secondary/20 border border-border hover:border-primary/20 transition-colors"
+                >
+                  <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                    <FileText className="w-5 h-5 text-primary" />
                   </div>
-                </div>
-                <span className={`text-[10px] px-2 py-1 rounded border ${
-                  report.status === "published"
-                    ? "text-emerald-400 bg-emerald-500/10 border-emerald-500/30"
-                    : "text-amber-400 bg-amber-500/10 border-amber-500/30"
-                }`}>
-                  {report.status === "published" ? "منشور" : "مسودة"}
-                </span>
-                <Button size="sm" variant="ghost" className="h-8 w-8 p-0" onClick={() => toast("تحميل التقرير قريباً")}>
-                  <Download className="w-4 h-4" />
-                </Button>
-              </motion.div>
-            ))}
-          </div>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-sm font-medium text-foreground truncate">{report.titleAr || report.title}</h3>
+                    <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
+                      <span className="flex items-center gap-1">
+                        <Calendar className="w-3 h-3" />
+                        {report.createdAt ? new Date(report.createdAt).toLocaleDateString("ar-SA") : "—"}
+                      </span>
+                      <Badge variant="outline" className={`text-[10px] ${typeColor(report.type)}`}>{typeLabel(report.type)}</Badge>
+                      {report.pageCount && <span>{report.pageCount} صفحة</span>}
+                    </div>
+                  </div>
+                  <Button size="sm" variant="ghost" className="h-8 w-8 p-0" onClick={handleExportReport}>
+                    <Download className="w-4 h-4" />
+                  </Button>
+                </motion.div>
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

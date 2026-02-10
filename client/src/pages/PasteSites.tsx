@@ -1,90 +1,56 @@
 /**
  * PasteSites — Paste site monitoring view
- * Dark Observatory Theme
+ * Dark Observatory Theme — Uses tRPC API
  */
-import { useState } from "react";
 import { motion } from "framer-motion";
 import {
   FileText,
   AlertTriangle,
   Clock,
-  Search,
   RefreshCw,
   ExternalLink,
   Eye,
-  Copy,
+  Loader2,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { pasteSources, leakRecords } from "@/lib/mockData";
+import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 
-const MONITORING_IMG = "https://private-us-east-1.manuscdn.com/sessionFile/ayrInlgqp87gNdrsqHgN3t/sandbox/KjQNQlvIQMp8LacOr99cOG-img-2_1770741552000_na1fn_bW9uaXRvcmluZy1iZw.png?x-oss-process=image/resize,w_1920,h_1920/format,webp/quality,q_80&Expires=1798761600&Policy=eyJTdGF0ZW1lbnQiOlt7IlJlc291cmNlIjoiaHR0cHM6Ly9wcml2YXRlLXVzLWVhc3QtMS5tYW51c2Nkbi5jb20vc2Vzc2lvbkZpbGUvYXlySW5sZ3FwODdnTmRyc3FIZ04zdC9zYW5kYm94L0tqUU5RbHZJUU1wOExhY09yOTljT0ctaW1nLTJfMTc3MDc0MTU1MjAwMF9uYTFmbl9iVzl1YVhSdmNtbHVaeTFpWncucG5nP3gtb3NzLXByb2Nlc3M9aW1hZ2UvcmVzaXplLHdfMTkyMCxoXzE5MjAvZm9ybWF0LHdlYnAvcXVhbGl0eSxxXzgwIiwiQ29uZGl0aW9uIjp7IkRhdGVMZXNzVGhhbiI6eyJBV1M6RXBvY2hUaW1lIjoxNzk4NzYxNjAwfX19XX0_&Key-Pair-Id=K2HSFNDJXOU9YS&Signature=frhqqizSMeYNto8O8xA3vNJs0ReDy-rGcZbRrsU66rxRYE1Jbxo5hvau5-rWhDKAoojw991zbAdbJ-Wfkwo2YmsBip7BJ4Bl-22rvHH3NVdDBDbyNf5PNxCvMaFg-SQ8mvnZfIgWB-4XnGeJ3BrxwkCa9gkYKBhCIQTipfx5f1ZnYaNWxK7rWTNGyHyUx~vr-JWWfoDt-IYZ~JZyktzhBhf~quiyWfDRgTLUvBOVbUlUMw7uWIRdzlxyGJCJvO3KZp4K7u5-G9pYVR1p-jIk7CfxvO9FLlWfV7iV11fXkRog7dCTPy8RHoHXINeY5Y81FW8wdvZNM5d7ydS5lTTRMw__";
+const statusStyle = (s: string) => {
+  switch (s) {
+    case "flagged": return "text-red-400 bg-red-500/10 border-red-500/30";
+    case "analyzing": return "text-amber-400 bg-amber-500/10 border-amber-500/30";
+    case "documented": return "text-cyan-400 bg-cyan-500/10 border-cyan-500/30";
+    default: return "text-emerald-400 bg-emerald-500/10 border-emerald-500/30";
+  }
+};
 
-const pasteLeaks = leakRecords.filter((l) => l.source === "paste");
-
-const recentPastes = [
-  {
-    id: "PST-001",
-    title: "Saudi_Student_DB_2026.txt",
-    site: "Pastebin.com",
-    size: "2.4 MB",
-    date: "2026-02-09T23:15:00",
-    piiFound: true,
-    piiTypes: ["National ID", "Email", "Full Names"],
-    preview: "1XXXXXXXXX | محمد أحمد | mohammed@university.sa | ...",
-    status: "flagged",
-  },
-  {
-    id: "PST-002",
-    title: "ksa_insurance_dump.csv",
-    site: "Ghostbin",
-    size: "5.1 MB",
-    date: "2026-02-08T14:30:00",
-    piiFound: true,
-    piiTypes: ["National ID", "Full Names", "Policy Details"],
-    preview: "1XXXXXXXXX | عبدالله محمد | POL-XXXXXX | ...",
-    status: "flagged",
-  },
-  {
-    id: "PST-003",
-    title: "combo_list_sa_2026.txt",
-    site: "PrivateBin",
-    size: "890 KB",
-    date: "2026-02-07T09:45:00",
-    piiFound: true,
-    piiTypes: ["Email", "Passwords"],
-    preview: "user@domain.sa:p@ssw0rd | ...",
-    status: "analyzing",
-  },
-  {
-    id: "PST-004",
-    title: "medical_records_leak.json",
-    site: "Pastebin.com",
-    size: "12.3 MB",
-    date: "2026-02-06T16:20:00",
-    piiFound: true,
-    piiTypes: ["National ID", "Medical Records", "Full Names"],
-    preview: '{"id": "1XXXXXXXXX", "name": "فاطمة علي", "diagnosis": "..."}',
-    status: "documented",
-  },
-  {
-    id: "PST-005",
-    title: "saudi_phones_2026.txt",
-    site: "Ghostbin",
-    size: "1.7 MB",
-    date: "2026-02-05T11:00:00",
-    piiFound: true,
-    piiTypes: ["Phone Numbers", "Full Names"],
-    preview: "05XXXXXXXX | سارة محمد | ...",
-    status: "reported",
-  },
-];
+const statusText = (s: string) => {
+  switch (s) {
+    case "flagged": return "مُعلَّم";
+    case "analyzing": return "قيد التحليل";
+    case "documented": return "موثّق";
+    default: return "تم الإبلاغ";
+  }
+};
 
 export default function PasteSites() {
-  const [searchQuery, setSearchQuery] = useState("");
+  const { data: pastes, isLoading: pastesLoading } = trpc.pastes.list.useQuery();
+  const { data: channels, isLoading: channelsLoading } = trpc.channels.list.useQuery({ platform: "paste" });
+
+  const pasteEntries = pastes ?? [];
+  const pasteChannels = channels ?? [];
+  const isLoading = pastesLoading || channelsLoading;
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -94,19 +60,18 @@ export default function PasteSites() {
         animate={{ opacity: 1, scale: 1 }}
         className="relative rounded-xl overflow-hidden h-40"
       >
-        <img src={MONITORING_IMG} alt="Paste Sites Monitoring" className="absolute inset-0 w-full h-full object-cover" />
-        <div className="absolute inset-0 bg-gradient-to-l from-black/80 via-black/60 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-l from-amber-500/10 via-background to-background dot-grid" />
         <div className="relative h-full flex flex-col justify-center px-6 lg:px-10">
           <div className="flex items-center gap-3 mb-2">
             <div className="w-10 h-10 rounded-lg bg-amber-500/20 flex items-center justify-center">
               <FileText className="w-5 h-5 text-amber-400" />
             </div>
             <div>
-              <h1 className="text-xl font-bold text-white">رصد مواقع اللصق</h1>
-              <p className="text-xs text-gray-400">Paste Sites Monitoring</p>
+              <h1 className="text-xl font-bold text-foreground">رصد مواقع اللصق</h1>
+              <p className="text-xs text-muted-foreground">Paste Sites Monitoring</p>
             </div>
           </div>
-          <p className="text-sm text-gray-300 max-w-lg">
+          <p className="text-sm text-muted-foreground max-w-lg">
             مراقبة Pastebin وبدائله حيث تُنشر كثير من التسريبات الأولية
           </p>
         </div>
@@ -115,10 +80,10 @@ export default function PasteSites() {
       {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          { label: "مواقع مراقبة", value: pasteSources.length, color: "text-amber-400" },
-          { label: "لصقات مرصودة", value: recentPastes.length, color: "text-cyan-400" },
-          { label: "تحتوي PII", value: recentPastes.filter((p) => p.piiFound).length, color: "text-red-400" },
-          { label: "تم التوثيق", value: recentPastes.filter((p) => p.status === "documented" || p.status === "reported").length, color: "text-emerald-400" },
+          { label: "مواقع مراقبة", value: pasteChannels.length, color: "text-amber-400" },
+          { label: "لصقات مرصودة", value: pasteEntries.length, color: "text-cyan-400" },
+          { label: "قيد التحليل", value: pasteEntries.filter((p) => p.status === "analyzing").length, color: "text-violet-400" },
+          { label: "مُبلَّغة", value: pasteEntries.filter((p) => p.status === "flagged").length, color: "text-red-400" },
         ].map((stat, i) => (
           <motion.div key={stat.label} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
             <Card className="border-border">
@@ -133,13 +98,8 @@ export default function PasteSites() {
 
       {/* Monitored sites */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {pasteSources.map((source, i) => (
-          <motion.div
-            key={source.id}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: i * 0.1 }}
-          >
+        {pasteChannels.map((source, i) => (
+          <motion.div key={source.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.1 }}>
             <Card className="border-border hover:border-amber-500/30 transition-colors">
               <CardContent className="p-4">
                 <div className="flex items-center justify-between mb-3">
@@ -148,17 +108,18 @@ export default function PasteSites() {
                     <h3 className="text-sm font-semibold text-foreground">{source.name}</h3>
                   </div>
                   <div className="flex items-center gap-1.5">
-                    <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                    <span className="text-[10px] text-muted-foreground">نشط</span>
+                    <span className={`w-2 h-2 rounded-full ${source.status === "active" ? "bg-emerald-500" : "bg-amber-500"}`} />
+                    <span className="text-[10px] text-muted-foreground">{source.status === "active" ? "نشط" : "متوقف"}</span>
                   </div>
                 </div>
                 <div className="flex items-center justify-between text-xs text-muted-foreground">
-                  <span>{source.leaksDetected} تسريب مكتشف</span>
+                  <span>{source.leaksDetected ?? 0} تسريب مكتشف</span>
                   <span className={`px-2 py-0.5 rounded border text-[10px] ${
+                    source.riskLevel === "high" ? "text-red-400 bg-red-500/10 border-red-500/30" :
                     source.riskLevel === "medium" ? "text-amber-400 bg-amber-500/10 border-amber-500/30" :
                     "text-emerald-400 bg-emerald-500/10 border-emerald-500/30"
                   }`}>
-                    {source.riskLevel === "medium" ? "متوسط" : "منخفض"}
+                    {source.riskLevel === "high" ? "عالي" : source.riskLevel === "medium" ? "متوسط" : "منخفض"}
                   </span>
                 </div>
               </CardContent>
@@ -181,7 +142,7 @@ export default function PasteSites() {
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
-            {recentPastes.map((paste, i) => (
+            {pasteEntries.map((paste, i) => (
               <motion.div
                 key={paste.id}
                 initial={{ opacity: 0, y: 10 }}
@@ -191,46 +152,49 @@ export default function PasteSites() {
               >
                 <div className="flex items-start justify-between mb-2">
                   <div>
-                    <h3 className="text-sm font-mono font-semibold text-foreground">{paste.title}</h3>
+                    <h3 className="text-sm font-mono font-semibold text-foreground">{paste.filename}</h3>
                     <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
                       <span className="flex items-center gap-1">
                         <ExternalLink className="w-3 h-3" />
-                        {paste.site}
+                        {paste.sourceName}
                       </span>
-                      <span>{paste.size}</span>
+                      {paste.fileSize && <span>{paste.fileSize}</span>}
                       <span className="flex items-center gap-1">
                         <Clock className="w-3 h-3" />
-                        {new Date(paste.date).toLocaleDateString("ar-SA")}
+                        {paste.detectedAt ? new Date(paste.detectedAt).toLocaleDateString("ar-SA") : "—"}
                       </span>
                     </div>
                   </div>
-                  <span className={`text-[10px] px-2 py-1 rounded border ${
-                    paste.status === "flagged" ? "text-red-400 bg-red-500/10 border-red-500/30" :
-                    paste.status === "analyzing" ? "text-amber-400 bg-amber-500/10 border-amber-500/30" :
-                    paste.status === "documented" ? "text-cyan-400 bg-cyan-500/10 border-cyan-500/30" :
-                    "text-emerald-400 bg-emerald-500/10 border-emerald-500/30"
-                  }`}>
-                    {paste.status === "flagged" ? "مُعلَّم" :
-                     paste.status === "analyzing" ? "قيد التحليل" :
-                     paste.status === "documented" ? "موثّق" : "تم الإبلاغ"}
+                  <span className={`text-[10px] px-2 py-1 rounded border ${statusStyle(paste.status)}`}>
+                    {statusText(paste.status)}
                   </span>
                 </div>
 
                 {/* PII types found */}
-                <div className="flex flex-wrap gap-1.5 mb-2">
-                  {paste.piiTypes.map((type) => (
-                    <Badge key={type} variant="outline" className="text-[10px] bg-red-500/5 border-red-500/20 text-red-400">
-                      {type}
-                    </Badge>
-                  ))}
-                </div>
+                {paste.piiTypes && (paste.piiTypes as string[]).length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 mb-2">
+                    {(paste.piiTypes as string[]).map((type) => (
+                      <Badge key={type} variant="outline" className="text-[10px] bg-red-500/5 border-red-500/20 text-red-400">
+                        {type}
+                      </Badge>
+                    ))}
+                  </div>
+                )}
 
                 {/* Preview */}
-                <div className="p-2 rounded bg-black/30 border border-border">
-                  <code className="text-[11px] text-muted-foreground font-mono break-all">{paste.preview}</code>
-                </div>
+                {paste.preview && (
+                  <div className="p-2 rounded bg-black/30 border border-border">
+                    <code className="text-[11px] text-muted-foreground font-mono break-all">{paste.preview}</code>
+                  </div>
+                )}
               </motion.div>
             ))}
+            {pasteEntries.length === 0 && (
+              <div className="text-center py-12 text-muted-foreground">
+                <FileText className="w-12 h-12 mx-auto mb-3 opacity-30" />
+                <p>لا توجد لصقات مكتشفة حالياً</p>
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>

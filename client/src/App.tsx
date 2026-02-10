@@ -13,8 +13,8 @@ import PIIClassifier from "./pages/PIIClassifier";
 import Leaks from "./pages/Leaks";
 import Reports from "./pages/Reports";
 import Settings from "./pages/Settings";
-
 function Router() {
+  // make sure to consider if you need authentication for certain routes
   return (
     <DashboardLayout>
       <Switch>

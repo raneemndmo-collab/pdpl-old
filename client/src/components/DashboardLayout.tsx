@@ -2,6 +2,7 @@
  * DashboardLayout — Dark Observatory Theme
  * RTL-first sidebar layout with NDMO branding
  * Collapsible sidebar with icon+label navigation
+ * Integrated auth, role-based nav, user profile
  */
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
@@ -22,15 +23,23 @@ import {
   Bell,
   Search,
   Shield,
+  LogIn,
+  LogOut,
+  Users,
+  Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { useNdmoAuth } from "@/hooks/useNdmoAuth";
+import { getLoginUrl } from "@/const";
 
 interface NavItem {
   label: string;
   labelEn: string;
   icon: React.ElementType;
   path: string;
+  requiresAuth?: boolean;
+  minRole?: string;
 }
 
 const navItems: NavItem[] = [
@@ -41,15 +50,32 @@ const navItems: NavItem[] = [
   { label: "مصنّف PII", labelEn: "PII Classifier", icon: ScanSearch, path: "/pii-classifier" },
   { label: "التسريبات", labelEn: "Leaks", icon: ShieldAlert, path: "/leaks" },
   { label: "التقارير", labelEn: "Reports", icon: BarChart3, path: "/reports" },
+  { label: "إدارة المستخدمين", labelEn: "Users", icon: Users, path: "/admin/users", requiresAuth: true, minRole: "admin" },
   { label: "الإعدادات", labelEn: "Settings", icon: Settings, path: "/settings" },
 ];
+
+const roleLabels: Record<string, string> = {
+  executive: "تنفيذي",
+  manager: "مدير",
+  analyst: "محلل",
+  viewer: "مشاهد",
+};
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const { user, isAuthenticated, loading, logout, isAdmin, ndmoRole } = useNdmoAuth();
 
   const currentPage = navItems.find((item) => item.path === location);
+
+  // Filter nav items based on role
+  const visibleNavItems = navItems.filter((item) => {
+    if (!item.requiresAuth) return true;
+    if (!isAuthenticated) return false;
+    if (item.minRole === "admin" && !isAdmin) return false;
+    return true;
+  });
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">
@@ -98,7 +124,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
         {/* Navigation */}
         <nav className="flex-1 overflow-y-auto py-4 px-2 space-y-1">
-          {navItems.map((item) => {
+          {visibleNavItems.map((item) => {
             const isActive = location === item.path;
             const Icon = item.icon;
             return (
@@ -135,6 +161,56 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             );
           })}
         </nav>
+
+        {/* User profile / login at bottom */}
+        <div className="p-3 border-t border-sidebar-border">
+          {loading ? (
+            <div className="flex items-center justify-center py-2">
+              <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+            </div>
+          ) : isAuthenticated && user ? (
+            <div className={`flex items-center gap-3 ${collapsed ? "justify-center" : ""}`}>
+              <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
+                <span className="text-xs font-bold text-primary">
+                  {user.name?.charAt(0) || "U"}
+                </span>
+              </div>
+              {!collapsed && (
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-medium text-foreground truncate">{user.name || "مستخدم"}</p>
+                  <p className="text-[10px] text-muted-foreground truncate">
+                    {roleLabels[ndmoRole] || ndmoRole}
+                    {isAdmin && " (مشرف)"}
+                  </p>
+                </div>
+              )}
+              {!collapsed && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
+                  onClick={() => {
+                    logout();
+                    toast("تم تسجيل الخروج");
+                  }}
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                </Button>
+              )}
+            </div>
+          ) : (
+            <a href={getLoginUrl()}>
+              <Button
+                variant="outline"
+                size="sm"
+                className={`gap-2 text-xs w-full ${collapsed ? "px-0 justify-center" : ""}`}
+              >
+                <LogIn className="w-3.5 h-3.5" />
+                {!collapsed && "تسجيل الدخول"}
+              </Button>
+            </a>
+          )}
+        </div>
 
         {/* Collapse toggle */}
         <div className="p-2 border-t border-sidebar-border hidden lg:block">
