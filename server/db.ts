@@ -21,6 +21,9 @@ import {
   type InsertNotification,
   type InsertMonitoringJob,
   type InsertAuditLogEntry,
+  platformUsers,
+  type InsertPlatformUser,
+  type PlatformUser,
 } from "../drizzle/schema";
 import { ENV } from "./_core/env";
 
@@ -244,7 +247,7 @@ export async function logAudit(
   userId: number | null,
   action: string,
   details?: string,
-  category?: "auth" | "leak" | "export" | "pii" | "user" | "report" | "system" | "monitoring",
+  category?: "auth" | "leak" | "export" | "pii" | "user" | "report" | "system" | "monitoring" | "user_management",
   userName?: string,
   ipAddress?: string,
 ) {
@@ -780,4 +783,48 @@ export async function getKnowledgeGraphData() {
   const nodes = await db.select().from(knowledgeGraphNodes);
   const edges = await db.select().from(knowledgeGraphEdges);
   return { nodes, edges };
+}
+
+
+// ─── Platform Users (Custom Auth) ──────────────────────────────
+
+export async function getPlatformUserByUserId(userId: string): Promise<PlatformUser | undefined> {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(platformUsers).where(eq(platformUsers.userId, userId)).limit(1);
+  return result.length > 0 ? result[0] : undefined;
+}
+
+export async function getPlatformUserById(id: number): Promise<PlatformUser | undefined> {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(platformUsers).where(eq(platformUsers.id, id)).limit(1);
+  return result.length > 0 ? result[0] : undefined;
+}
+
+export async function getAllPlatformUsers(): Promise<PlatformUser[]> {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(platformUsers).orderBy(desc(platformUsers.createdAt));
+}
+
+export async function createPlatformUser(user: InsertPlatformUser): Promise<void> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.insert(platformUsers).values(user);
+}
+
+export async function updatePlatformUser(
+  id: number,
+  updates: Partial<Pick<PlatformUser, "name" | "email" | "mobile" | "displayName" | "platformRole" | "status" | "passwordHash" | "lastLoginAt">>
+): Promise<void> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(platformUsers).set(updates).where(eq(platformUsers.id, id));
+}
+
+export async function deletePlatformUser(id: number): Promise<void> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.delete(platformUsers).where(eq(platformUsers.id, id));
 }

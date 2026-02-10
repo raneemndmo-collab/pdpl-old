@@ -16,6 +16,10 @@ import {
   Clock,
   ArrowUpLeft,
   Loader2,
+  Send,
+  FileWarning,
+  Scale,
+  Timer,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -329,6 +333,71 @@ export default function Reports() {
                 </div>
               </motion.div>
             ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* NCA Reporting Integration */}
+      <Card className="border-blue-500/20 bg-blue-500/5">
+        <CardHeader>
+          <CardTitle className="text-base font-semibold flex items-center gap-2">
+            <Shield className="w-4 h-4 text-blue-400" />
+            إبلاغ الهيئة الوطنية للأمن السيبراني (NCA)
+            <Badge variant="outline" className="text-[10px] text-blue-400 bg-blue-500/10 border-blue-500/30 mr-auto">PDPL المادة 20</Badge>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+              <div className="p-3 rounded-lg bg-blue-500/10 border border-blue-500/20 text-center">
+                <Timer className="w-5 h-5 text-blue-400 mx-auto mb-1" />
+                <p className="text-lg font-bold text-blue-400">72</p>
+                <p className="text-[9px] text-muted-foreground">ساعة مهلة الإبلاغ</p>
+              </div>
+              <div className="p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-center">
+                <Send className="w-5 h-5 text-emerald-400 mx-auto mb-1" />
+                <p className="text-lg font-bold text-emerald-400">8</p>
+                <p className="text-[9px] text-muted-foreground">تقارير مرسلة لـ NCA</p>
+              </div>
+              <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 text-center">
+                <FileWarning className="w-5 h-5 text-amber-400 mx-auto mb-1" />
+                <p className="text-lg font-bold text-amber-400">3</p>
+                <p className="text-[9px] text-muted-foreground">بانتظار الإرسال</p>
+              </div>
+              <div className="p-3 rounded-lg bg-violet-500/10 border border-violet-500/20 text-center">
+                <Scale className="w-5 h-5 text-violet-400 mx-auto mb-1" />
+                <p className="text-lg font-bold text-violet-400">73%</p>
+                <p className="text-[9px] text-muted-foreground">نسبة الامتثال</p>
+              </div>
+            </div>
+            <div className="space-y-2">
+              {[
+                { id: "NCA-2026-001", title: "تسريب بيانات القطاع الصحي", status: "sent", date: "2026-02-10", severity: "critical" },
+                { id: "NCA-2026-002", title: "تسريب بيانات اتصالات", status: "sent", date: "2026-02-08", severity: "high" },
+                { id: "NCA-2026-003", title: "تسريب بيانات مالية مصرفية", status: "pending", date: "2026-02-11", severity: "critical" },
+                { id: "NCA-2026-004", title: "تسريب بيانات حكومية", status: "sent", date: "2026-02-05", severity: "high" },
+                { id: "NCA-2026-005", title: "تسريب بيانات تعليمية", status: "pending", date: "2026-02-11", severity: "medium" },
+              ].map((report) => (
+                <div key={report.id} className="flex items-center gap-3 p-3 rounded-lg bg-secondary/20 border border-border">
+                  <div className={`w-2 h-2 rounded-full flex-shrink-0 ${report.severity === 'critical' ? 'bg-red-400' : report.severity === 'high' ? 'bg-amber-400' : 'bg-yellow-400'}`} />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-medium text-foreground">{report.title}</p>
+                    <p className="text-[10px] text-muted-foreground">{report.id} • {report.date}</p>
+                  </div>
+                  <span className={`text-[10px] px-2 py-1 rounded border ${
+                    report.status === 'sent' ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30' : 'text-amber-400 bg-amber-500/10 border-amber-500/30'
+                  }`}>
+                    {report.status === 'sent' ? 'تم الإرسال' : 'بانتظار الإرسال'}
+                  </span>
+                </div>
+              ))}
+            </div>
+            <div className="p-3 rounded-lg bg-blue-500/5 border border-blue-500/10">
+              <p className="text-[10px] text-muted-foreground flex items-center gap-2">
+                <Shield className="w-3.5 h-3.5 text-blue-400" />
+                وفقاً للمادة 20 من نظام حماية البيانات الشخصية (PDPL)، يجب إبلاغ الهيئة الوطنية للأمن السيبراني خلال 72 ساعة من اكتشاف أي تسريب للبيانات الشخصية
+              </p>
+            </div>
           </div>
         </CardContent>
       </Card>

@@ -3,6 +3,9 @@ import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, protectedProcedure, adminProcedure, router } from "./_core/trpc";
 import { z } from "zod";
+import bcrypt from "bcryptjs";
+import { SignJWT } from "jose";
+import { ENV } from "./_core/env";
 import {
   getLeaks,
   getLeakById,
@@ -77,21 +80,238 @@ import {
   createFeedbackEntry,
   getFeedbackStats,
   getKnowledgeGraphData,
+  getPlatformUserByUserId,
+  getAllPlatformUsers,
+  createPlatformUser,
+  updatePlatformUser,
+  deletePlatformUser,
+  getPlatformUserById,
 } from "./db";
+
+// Helper to get current user info from either auth source
+function getAuthUser(ctx: { user: any; platformUser: any }) {
+  if (ctx.platformUser) {
+    return {
+      id: ctx.platformUser.id as number,
+      name: (ctx.platformUser.displayName ?? ctx.platformUser.name) as string,
+    };
+  }
+  return {
+    id: (ctx.user?.id ?? 0) as number,
+    name: (ctx.user?.name ?? "System") as string,
+  };
+}
 
 export const appRouter = router({
   system: systemRouter,
 
   auth: router({
-    me: publicProcedure.query((opts) => opts.ctx.user),
+    me: publicProcedure.query((opts) => {
+      // Return platform user if available, otherwise OAuth user
+      if (opts.ctx.platformUser) {
+        return {
+          id: opts.ctx.platformUser.id,
+          openId: `platform_${opts.ctx.platformUser.userId}`,
+          name: opts.ctx.platformUser.name,
+          email: opts.ctx.platformUser.email,
+          loginMethod: "platform",
+          role: opts.ctx.platformUser.platformRole === "root_admin" ? "admin" as const : "admin" as const,
+          ndmoRole: opts.ctx.platformUser.platformRole === "root_admin" ? "executive" as const
+            : opts.ctx.platformUser.platformRole === "director" ? "executive" as const
+            : opts.ctx.platformUser.platformRole === "vice_president" ? "manager" as const
+            : opts.ctx.platformUser.platformRole === "manager" ? "manager" as const
+            : "analyst" as const,
+          createdAt: opts.ctx.platformUser.createdAt,
+          updatedAt: opts.ctx.platformUser.updatedAt,
+          lastSignedIn: opts.ctx.platformUser.lastLoginAt ?? opts.ctx.platformUser.createdAt,
+          displayName: opts.ctx.platformUser.displayName,
+          platformRole: opts.ctx.platformUser.platformRole,
+          userId: opts.ctx.platformUser.userId,
+          mobile: opts.ctx.platformUser.mobile,
+          status: opts.ctx.platformUser.status,
+        };
+      }
+      return opts.ctx.user;
+    }),
     logout: publicProcedure.mutation(({ ctx }) => {
       const cookieOptions = getSessionCookieOptions(ctx.req);
       ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });
-      if (ctx.user) {
-        logAudit(ctx.user.id, "auth.logout", `User ${ctx.user.name} logged out`, "auth", ctx.user.name ?? undefined);
+      ctx.res.clearCookie("platform_session", { ...cookieOptions, maxAge: -1 });
+      if (ctx.platformUser) {
+        logAudit(ctx.platformUser.id, "auth.logout", `Platform user ${ctx.platformUser.displayName} logged out`, "auth", ctx.platformUser.displayName);
+      } else if (ctx.user) {
+        logAudit(getAuthUser(ctx).id, "auth.logout", `User ${ctx.user.name} logged out`, "auth", getAuthUser(ctx).name);
       }
       return { success: true } as const;
     }),
+  }),
+
+  // ─── Platform Auth (Custom Login) ──────────────────────────────
+  platformAuth: router({
+    login: publicProcedure
+      .input(z.object({
+        userId: z.string().min(1),
+        password: z.string().min(1),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const user = await getPlatformUserByUserId(input.userId.toUpperCase());
+        if (!user) {
+          // Also try lowercase
+          const userLower = await getPlatformUserByUserId(input.userId);
+          if (!userLower) {
+            throw new Error("اسم المستخدم أو كلمة المرور غير صحيحة");
+          }
+          const valid = await bcrypt.compare(input.password, userLower.passwordHash);
+          if (!valid) throw new Error("اسم المستخدم أو كلمة المرور غير صحيحة");
+          if (userLower.status !== "active") throw new Error("الحساب معطل. تواصل مع المسؤول.");
+
+          // Create JWT
+          const secret = new TextEncoder().encode(ENV.cookieSecret);
+          const token = await new SignJWT({ platformUserId: userLower.id, userId: userLower.userId })
+            .setProtectedHeader({ alg: "HS256", typ: "JWT" })
+            .setExpirationTime(Math.floor((Date.now() + 365 * 24 * 60 * 60 * 1000) / 1000))
+            .sign(secret);
+
+          const cookieOptions = getSessionCookieOptions(ctx.req);
+          ctx.res.cookie("platform_session", token, { ...cookieOptions, maxAge: 365 * 24 * 60 * 60 * 1000 });
+
+          await updatePlatformUser(userLower.id, { lastLoginAt: new Date() });
+          await logAudit(userLower.id, "auth.platform_login", `Platform user ${userLower.displayName} logged in`, "auth", userLower.displayName);
+
+          return { success: true, displayName: userLower.displayName, role: userLower.platformRole };
+        }
+
+        const valid = await bcrypt.compare(input.password, user.passwordHash);
+        if (!valid) throw new Error("اسم المستخدم أو كلمة المرور غير صحيحة");
+        if (user.status !== "active") throw new Error("الحساب معطل. تواصل مع المسؤول.");
+
+        // Create JWT
+        const secret = new TextEncoder().encode(ENV.cookieSecret);
+        const token = await new SignJWT({ platformUserId: user.id, userId: user.userId })
+          .setProtectedHeader({ alg: "HS256", typ: "JWT" })
+          .setExpirationTime(Math.floor((Date.now() + 365 * 24 * 60 * 60 * 1000) / 1000))
+          .sign(secret);
+
+        const cookieOptions = getSessionCookieOptions(ctx.req);
+        ctx.res.cookie("platform_session", token, { ...cookieOptions, maxAge: 365 * 24 * 60 * 60 * 1000 });
+
+        await updatePlatformUser(user.id, { lastLoginAt: new Date() });
+        await logAudit(user.id, "auth.platform_login", `Platform user ${user.displayName} logged in`, "auth", user.displayName);
+
+        return { success: true, displayName: user.displayName, role: user.platformRole };
+      }),
+  }),
+
+  // ─── User Management (Admin Only) ──────────────────────────────
+  userManagement: router({
+    list: protectedProcedure.query(async () => {
+      const users = await getAllPlatformUsers();
+      // Return without password hashes
+      return users.map(u => ({
+        id: u.id,
+        userId: u.userId,
+        name: u.name,
+        email: u.email,
+        mobile: u.mobile,
+        displayName: u.displayName,
+        platformRole: u.platformRole,
+        status: u.status,
+        lastLoginAt: u.lastLoginAt,
+        createdAt: u.createdAt,
+        updatedAt: u.updatedAt,
+      }));
+    }),
+    getById: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .query(async ({ input }) => {
+        const user = await getPlatformUserById(input.id);
+        if (!user) throw new Error("المستخدم غير موجود");
+        return {
+          id: user.id,
+          userId: user.userId,
+          name: user.name,
+          email: user.email,
+          mobile: user.mobile,
+          displayName: user.displayName,
+          platformRole: user.platformRole,
+          status: user.status,
+          lastLoginAt: user.lastLoginAt,
+          createdAt: user.createdAt,
+          updatedAt: user.updatedAt,
+        };
+      }),
+    create: adminProcedure
+      .input(z.object({
+        userId: z.string().min(1),
+        password: z.string().min(6),
+        name: z.string().min(1),
+        email: z.string().email().optional(),
+        mobile: z.string().optional(),
+        displayName: z.string().min(1),
+        platformRole: z.enum(["root_admin", "director", "vice_president", "manager", "analyst", "viewer"]),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const existing = await getPlatformUserByUserId(input.userId);
+        if (existing) throw new Error("اسم المستخدم مستخدم بالفعل");
+        const hash = await bcrypt.hash(input.password, 12);
+        await createPlatformUser({
+          userId: input.userId,
+          passwordHash: hash,
+          name: input.name,
+          email: input.email ?? null,
+          mobile: input.mobile ?? null,
+          displayName: input.displayName,
+          platformRole: input.platformRole,
+        });
+        const who = ctx.platformUser?.displayName ?? ctx.user?.name ?? "System";
+        await logAudit(ctx.platformUser?.id ?? ctx.user?.id ?? 0, "user.create", `Created platform user ${input.userId}`, "user_management", who);
+        return { success: true };
+      }),
+    update: adminProcedure
+      .input(z.object({
+        id: z.number(),
+        name: z.string().optional(),
+        email: z.string().optional(),
+        mobile: z.string().optional(),
+        displayName: z.string().optional(),
+        platformRole: z.enum(["root_admin", "director", "vice_president", "manager", "analyst", "viewer"]).optional(),
+        status: z.enum(["active", "inactive", "suspended"]).optional(),
+        password: z.string().min(6).optional(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const updates: Record<string, unknown> = {};
+        if (input.name) updates.name = input.name;
+        if (input.email !== undefined) updates.email = input.email;
+        if (input.mobile !== undefined) updates.mobile = input.mobile;
+        if (input.displayName) updates.displayName = input.displayName;
+        if (input.platformRole) updates.platformRole = input.platformRole;
+        if (input.status) updates.status = input.status;
+        if (input.password) updates.passwordHash = await bcrypt.hash(input.password, 12);
+        await updatePlatformUser(input.id, updates as any);
+        const who = ctx.platformUser?.displayName ?? ctx.user?.name ?? "System";
+        await logAudit(ctx.platformUser?.id ?? ctx.user?.id ?? 0, "user.update", `Updated platform user #${input.id}`, "user_management", who);
+        return { success: true };
+      }),
+    delete: adminProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input, ctx }) => {
+        await deletePlatformUser(input.id);
+        const who = ctx.platformUser?.displayName ?? ctx.user?.name ?? "System";
+        await logAudit(ctx.platformUser?.id ?? ctx.user?.id ?? 0, "user.delete", `Deleted platform user #${input.id}`, "user_management", who);
+        return { success: true };
+      }),
+    resetPassword: adminProcedure
+      .input(z.object({
+        id: z.number(),
+        newPassword: z.string().min(6),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const hash = await bcrypt.hash(input.newPassword, 12);
+        await updatePlatformUser(input.id, { passwordHash: hash });
+        const who = ctx.platformUser?.displayName ?? ctx.user?.name ?? "System";
+        await logAudit(ctx.platformUser?.id ?? ctx.user?.id ?? 0, "user.reset_password", `Reset password for platform user #${input.id}`, "user_management", who);
+        return { success: true };
+      }),
   }),
 
   // ─── Dashboard ──────────────────────────────────────────────
@@ -152,7 +372,7 @@ export const appRouter = router({
       )
       .mutation(async ({ input, ctx }) => {
         await createLeak(input);
-        await logAudit(ctx.user.id, "leak.create", `Created leak ${input.leakId}`, "leak", ctx.user.name ?? undefined);
+        await logAudit(getAuthUser(ctx).id, "leak.create", `Created leak ${input.leakId}`, "leak", getAuthUser(ctx).name);
         return { success: true };
       }),
 
@@ -165,7 +385,7 @@ export const appRouter = router({
       )
       .mutation(async ({ input, ctx }) => {
         await updateLeakStatus(input.leakId, input.status);
-        await logAudit(ctx.user.id, "leak.updateStatus", `Updated ${input.leakId} to ${input.status}`, "leak", ctx.user.name ?? undefined);
+        await logAudit(getAuthUser(ctx).id, "leak.updateStatus", `Updated ${input.leakId} to ${input.status}`, "leak", getAuthUser(ctx).name);
 
         // Broadcast status change notification
         broadcastNotification({
@@ -218,7 +438,7 @@ export const appRouter = router({
         ]);
         const csv = [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
         if (ctx.user) {
-          await logAudit(ctx.user.id, "leak.export", `Exported ${data.length} leaks as CSV`, "export", ctx.user.name ?? undefined);
+          await logAudit(getAuthUser(ctx).id, "leak.export", `Exported ${data.length} leaks as CSV`, "export", getAuthUser(ctx).name);
         }
         return { csv, filename: `ndmo-leaks-export-${Date.now()}.csv` };
       }),
@@ -239,11 +459,31 @@ export const appRouter = router({
       .input(z.object({ text: z.string().min(1).max(50000) }))
       .mutation(async ({ input, ctx }) => {
         const patterns = [
+          // Identity Data
           { type: "National ID", typeAr: "رقم الهوية الوطنية", regex: /\b1\d{9}\b/g },
           { type: "Iqama Number", typeAr: "رقم الإقامة", regex: /\b2\d{9}\b/g },
+          { type: "Passport", typeAr: "رقم جواز السفر", regex: /\b[A-Z]\d{8}\b/g },
+          { type: "Driving License", typeAr: "رقم رخصة القيادة", regex: /\bDL[-]?\d{10}\b/gi },
+          // Contact Data
           { type: "Saudi Phone", typeAr: "رقم جوال سعودي", regex: /\b05\d{8}\b/g },
           { type: "Saudi Email", typeAr: "بريد إلكتروني سعودي", regex: /\b[\w.-]+@[\w.-]+\.sa\b/gi },
+          { type: "National Address", typeAr: "العنوان الوطني", regex: /\b[A-Z]{4}\d{4}\b/g },
+          // Financial Data
           { type: "IBAN", typeAr: "رقم الحساب البنكي", regex: /\bSA\d{22}\b/g },
+          { type: "Credit Card", typeAr: "بطاقة ائتمان", regex: /\b\d{4}[-\s]?\d{4}[-\s]?\d{4}[-\s]?\d{4}\b/g },
+          { type: "Tax Number", typeAr: "الرقم الضريبي", regex: /\b3\d{14}\b/g },
+          { type: "Salary", typeAr: "الراتب", regex: /(?:راتب|salary|أجر)[:\s]*[\d,]+(?:\s*(?:ريال|SAR|SR))?/gi },
+          // Sensitive Data
+          { type: "Date of Birth", typeAr: "تاريخ الميلاد", regex: /\b(?:19|20)\d{2}[\/\-]\d{2}[\/\-]\d{2}\b/g },
+          { type: "Medical Record", typeAr: "السجل الطبي", regex: /\bMRN[-]?\d{4}[-]?\d{5}\b/gi },
+          { type: "IP Address", typeAr: "عنوان IP", regex: /\b(?:(?:25[0-5]|2[0-4]\d|[01]?\d\d?)\.){3}(?:25[0-5]|2[0-4]\d|[01]?\d\d?)\b/g },
+          // InfoStealer Detection
+          { type: "Credentials", typeAr: "بيانات تسجيل الدخول", regex: /(?:password|passwd|pass|كلمة.?(?:المرور|السر))[:\s]+\S+/gi },
+          { type: "InfoStealer URL", typeAr: "رابط InfoStealer", regex: /(?:URL|Host)[:\s]+https?:\/\/[^\s]+(?:login|auth|bank|pay)/gi },
+          // Smart Detection
+          { type: "SQL Pattern", typeAr: "نمط SQL", regex: /\b(?:SELECT|INSERT|UPDATE|DELETE|DROP)\b.*(?:national_id|phone|email|iqama|salary|password)/gi },
+          { type: "Masked Data", typeAr: "بيانات مقنّعة", regex: /\b(?:05|10|20)\d*X{3,}\d*\b/g },
+          { type: "Base64 Encoded", typeAr: "بيانات مشفرة Base64", regex: /\b[A-Za-z0-9+/]{20,}={1,2}\b/g },
         ];
 
         const lines = input.text.split("\n");
@@ -267,17 +507,17 @@ export const appRouter = router({
         // Save scan if user is authenticated
         if (ctx.user) {
           await savePiiScan({
-            userId: ctx.user.id,
+            userId: getAuthUser(ctx).id,
             inputText: input.text.substring(0, 5000),
             results,
             totalMatches: results.length,
           });
-          await logAudit(ctx.user.id, "pii.scan", `PII scan: ${results.length} matches found`, "pii", ctx.user.name ?? undefined);
+          await logAudit(getAuthUser(ctx).id, "pii.scan", `PII scan: ${results.length} matches found`, "pii", getAuthUser(ctx).name);
 
           // Send notification if matches found
           if (results.length > 0) {
             const notifId = await createNotification({
-              userId: ctx.user.id,
+              userId: getAuthUser(ctx).id,
               type: "scan_complete",
               title: `PII Scan Complete: ${results.length} matches`,
               titleAr: `اكتمل فحص PII: ${results.length} تطابق`,
@@ -301,7 +541,7 @@ export const appRouter = router({
       }),
 
     history: protectedProcedure.query(async ({ ctx }) => {
-      return getPiiScans(ctx.user.id);
+      return getPiiScans(getAuthUser(ctx).id);
     }),
   }),
 
@@ -335,8 +575,8 @@ export const appRouter = router({
         })
       )
       .mutation(async ({ input, ctx }) => {
-        const id = await createReport({ ...input, generatedBy: ctx.user.id });
-        await logAudit(ctx.user.id, "report.create", `Created report: ${input.title}`, "report", ctx.user.name ?? undefined);
+        const id = await createReport({ ...input, generatedBy: getAuthUser(ctx).id });
+        await logAudit(getAuthUser(ctx).id, "report.create", `Created report: ${input.title}`, "report", getAuthUser(ctx).name);
         return { id, success: true };
       }),
 
@@ -348,7 +588,7 @@ export const appRouter = router({
         const reportsList = await getReports();
 
         if (ctx.user) {
-          await logAudit(ctx.user.id, "report.export", `Exported PDF report`, "export", ctx.user.name ?? undefined);
+          await logAudit(getAuthUser(ctx).id, "report.export", `Exported PDF report`, "export", getAuthUser(ctx).name);
         }
 
         const summary = {
@@ -387,7 +627,7 @@ export const appRouter = router({
       )
       .mutation(async ({ input, ctx }) => {
         await updateUserRole(input.userId, input.ndmoRole);
-        await logAudit(ctx.user.id, "user.updateRole", `Updated user ${input.userId} to ${input.ndmoRole}`, "user", ctx.user.name ?? undefined);
+        await logAudit(getAuthUser(ctx).id, "user.updateRole", `Updated user ${input.userId} to ${input.ndmoRole}`, "user", getAuthUser(ctx).name);
         return { success: true };
       }),
   }),
@@ -414,7 +654,7 @@ export const appRouter = router({
       }),
 
     markAllRead: protectedProcedure.mutation(async ({ ctx }) => {
-      await markAllNotificationsRead(ctx.user.id);
+      await markAllNotificationsRead(getAuthUser(ctx).id);
       return { success: true };
     }),
   }),
@@ -438,7 +678,7 @@ export const appRouter = router({
       .input(z.object({ category: z.string().optional() }).optional())
       .query(async ({ input, ctx }) => {
         const csv = await exportAuditLogsCsv(input);
-        await logAudit(ctx.user.id, "audit.export", "Exported audit logs as CSV", "export", ctx.user.name ?? undefined);
+        await logAudit(getAuthUser(ctx).id, "audit.export", "Exported audit logs as CSV", "export", getAuthUser(ctx).name);
         return { csv, filename: `ndmo-audit-log-${Date.now()}.csv` };
       }),
   }),
@@ -454,13 +694,13 @@ export const appRouter = router({
           ...leak,
           piiTypes: (leak.piiTypes as string[]) || [],
         });
-        await logAudit(ctx.user.id, "enrichment.run", `AI enriched leak ${input.leakId} (confidence: ${result.aiConfidence}%)`, "system", ctx.user.name ?? undefined);
+        await logAudit(getAuthUser(ctx).id, "enrichment.run", `AI enriched leak ${input.leakId} (confidence: ${result.aiConfidence}%)`, "system", getAuthUser(ctx).name);
         return result;
       }),
 
     enrichAll: adminProcedure.mutation(async ({ ctx }) => {
       const count = await enrichAllPending();
-      await logAudit(ctx.user.id, "enrichment.batch", `Batch enriched ${count} leaks`, "system", ctx.user.name ?? undefined);
+      await logAudit(getAuthUser(ctx).id, "enrichment.batch", `Batch enriched ${count} leaks`, "system", getAuthUser(ctx).name);
       return { enriched: count };
     }),
   }),
@@ -481,7 +721,7 @@ export const appRouter = router({
         }))
         .mutation(async ({ input, ctx }) => {
           const id = await createAlertContact(input);
-          await logAudit(ctx.user.id, "alert.contact.create", `Created alert contact: ${input.name}`, "system", ctx.user.name ?? undefined);
+          await logAudit(getAuthUser(ctx).id, "alert.contact.create", `Created alert contact: ${input.name}`, "system", getAuthUser(ctx).name);
           return { id, success: true };
         }),
       update: adminProcedure
@@ -497,14 +737,14 @@ export const appRouter = router({
         .mutation(async ({ input, ctx }) => {
           const { id, ...data } = input;
           await updateAlertContact(id, data);
-          await logAudit(ctx.user.id, "alert.contact.update", `Updated alert contact #${id}`, "system", ctx.user.name ?? undefined);
+          await logAudit(getAuthUser(ctx).id, "alert.contact.update", `Updated alert contact #${id}`, "system", getAuthUser(ctx).name);
           return { success: true };
         }),
       delete: adminProcedure
         .input(z.object({ id: z.number() }))
         .mutation(async ({ input, ctx }) => {
           await deleteAlertContact(input.id);
-          await logAudit(ctx.user.id, "alert.contact.delete", `Deleted alert contact #${input.id}`, "system", ctx.user.name ?? undefined);
+          await logAudit(getAuthUser(ctx).id, "alert.contact.delete", `Deleted alert contact #${input.id}`, "system", getAuthUser(ctx).name);
           return { success: true };
         }),
     }),
@@ -520,7 +760,7 @@ export const appRouter = router({
         }))
         .mutation(async ({ input, ctx }) => {
           const id = await createAlertRule(input);
-          await logAudit(ctx.user.id, "alert.rule.create", `Created alert rule: ${input.name}`, "system", ctx.user.name ?? undefined);
+          await logAudit(getAuthUser(ctx).id, "alert.rule.create", `Created alert rule: ${input.name}`, "system", getAuthUser(ctx).name);
           return { id, success: true };
         }),
       update: adminProcedure
@@ -536,14 +776,14 @@ export const appRouter = router({
         .mutation(async ({ input, ctx }) => {
           const { id, ...data } = input;
           await updateAlertRule(id, data);
-          await logAudit(ctx.user.id, "alert.rule.update", `Updated alert rule #${id}`, "system", ctx.user.name ?? undefined);
+          await logAudit(getAuthUser(ctx).id, "alert.rule.update", `Updated alert rule #${id}`, "system", getAuthUser(ctx).name);
           return { success: true };
         }),
       delete: adminProcedure
         .input(z.object({ id: z.number() }))
         .mutation(async ({ input, ctx }) => {
           await deleteAlertRule(input.id);
-          await logAudit(ctx.user.id, "alert.rule.delete", `Deleted alert rule #${input.id}`, "system", ctx.user.name ?? undefined);
+          await logAudit(getAuthUser(ctx).id, "alert.rule.delete", `Deleted alert rule #${input.id}`, "system", getAuthUser(ctx).name);
           return { success: true };
         }),
     }),
@@ -566,12 +806,12 @@ export const appRouter = router({
       .mutation(async ({ input, ctx }) => {
         const { id, ...data } = input;
         await updateRetentionPolicy(id, data);
-        await logAudit(ctx.user.id, "retention.update", `Updated retention policy #${id}`, "system", ctx.user.name ?? undefined);
+        await logAudit(getAuthUser(ctx).id, "retention.update", `Updated retention policy #${id}`, "system", getAuthUser(ctx).name);
         return { success: true };
       }),
     execute: adminProcedure.mutation(async ({ ctx }) => {
       const results = await executeRetentionPolicies();
-      await logAudit(ctx.user.id, "retention.execute", `Executed retention policies: ${results.length} processed`, "system", ctx.user.name ?? undefined);
+      await logAudit(getAuthUser(ctx).id, "retention.execute", `Executed retention policies: ${results.length} processed`, "system", getAuthUser(ctx).name);
       return results;
     }),
     preview: adminProcedure.query(async () => previewRetention()),
@@ -605,9 +845,9 @@ export const appRouter = router({
           permissions: input.permissions,
           rateLimit: input.rateLimit,
           expiresAt: input.expiresAt ? new Date(input.expiresAt) : null,
-          createdBy: ctx.user.id,
+          createdBy: getAuthUser(ctx).id,
         });
-        await logAudit(ctx.user.id, "apikey.create", `Created API key: ${input.name} (${result.keyPrefix}...)`, "system", ctx.user.name ?? undefined);
+        await logAudit(getAuthUser(ctx).id, "apikey.create", `Created API key: ${input.name} (${result.keyPrefix}...)`, "system", getAuthUser(ctx).name);
         return result;
       }),
     update: adminProcedure
@@ -621,14 +861,14 @@ export const appRouter = router({
       .mutation(async ({ input, ctx }) => {
         const { id, ...data } = input;
         await updateApiKey(id, data);
-        await logAudit(ctx.user.id, "apikey.update", `Updated API key #${id}`, "system", ctx.user.name ?? undefined);
+        await logAudit(getAuthUser(ctx).id, "apikey.update", `Updated API key #${id}`, "system", getAuthUser(ctx).name);
         return { success: true };
       }),
     delete: adminProcedure
       .input(z.object({ id: z.number() }))
       .mutation(async ({ input, ctx }) => {
         await deleteApiKey(input.id);
-        await logAudit(ctx.user.id, "apikey.delete", `Deleted API key #${input.id}`, "system", ctx.user.name ?? undefined);
+        await logAudit(getAuthUser(ctx).id, "apikey.delete", `Deleted API key #${input.id}`, "system", getAuthUser(ctx).name);
         return { success: true };
       }),
   }),
@@ -659,9 +899,9 @@ export const appRouter = router({
           template: input.template,
           recipientIds: input.recipientIds,
           nextRunAt,
-          createdBy: ctx.user.id,
+          createdBy: getAuthUser(ctx).id,
         });
-        await logAudit(ctx.user.id, "scheduledReport.create", `Created scheduled report: ${input.name}`, "report", ctx.user.name ?? undefined);
+        await logAudit(getAuthUser(ctx).id, "scheduledReport.create", `Created scheduled report: ${input.name}`, "report", getAuthUser(ctx).name);
         return { id, success: true };
       }),
     update: adminProcedure
@@ -676,19 +916,19 @@ export const appRouter = router({
       .mutation(async ({ input, ctx }) => {
         const { id, ...data } = input;
         await updateScheduledReport(id, data);
-        await logAudit(ctx.user.id, "scheduledReport.update", `Updated scheduled report #${id}`, "report", ctx.user.name ?? undefined);
+        await logAudit(getAuthUser(ctx).id, "scheduledReport.update", `Updated scheduled report #${id}`, "report", getAuthUser(ctx).name);
         return { success: true };
       }),
     delete: adminProcedure
       .input(z.object({ id: z.number() }))
       .mutation(async ({ input, ctx }) => {
         await deleteScheduledReport(input.id);
-        await logAudit(ctx.user.id, "scheduledReport.delete", `Deleted scheduled report #${input.id}`, "report", ctx.user.name ?? undefined);
+        await logAudit(getAuthUser(ctx).id, "scheduledReport.delete", `Deleted scheduled report #${input.id}`, "report", getAuthUser(ctx).name);
         return { success: true };
       }),
     runNow: adminProcedure.mutation(async ({ ctx }) => {
       const count = await checkAndRunScheduledReports();
-      await logAudit(ctx.user.id, "scheduledReport.runNow", `Manually triggered scheduled reports: ${count} generated`, "report", ctx.user.name ?? undefined);
+      await logAudit(getAuthUser(ctx).id, "scheduledReport.runNow", `Manually triggered scheduled reports: ${count} generated`, "report", getAuthUser(ctx).name);
       return { generated: count };
     }),
   }),
@@ -708,7 +948,7 @@ export const appRouter = router({
     trigger: protectedProcedure
       .input(z.object({ jobId: z.string() }))
       .mutation(async ({ input, ctx }) => {
-        await logAudit(ctx.user.id, "monitoring.trigger", `Manually triggered job ${input.jobId}`, "monitoring", ctx.user.name ?? undefined);
+        await logAudit(getAuthUser(ctx).id, "monitoring.trigger", `Manually triggered job ${input.jobId}`, "monitoring", getAuthUser(ctx).name);
         // Run asynchronously so we don't block the response
         triggerJob(input.jobId).catch((err) => {
           console.error(`[Jobs] Failed to trigger ${input.jobId}:`, err);
@@ -726,11 +966,11 @@ export const appRouter = router({
       .mutation(async ({ input, ctx }) => {
         await toggleJobStatus(input.jobId, input.status);
         await logAudit(
-          ctx.user.id,
+          getAuthUser(ctx).id,
           `monitoring.${input.status === "active" ? "resume" : "pause"}`,
           `${input.status === "active" ? "Resumed" : "Paused"} job ${input.jobId}`,
           "monitoring",
-          ctx.user.name ?? undefined,
+          getAuthUser(ctx).name,
         );
         return { success: true };
       }),
@@ -762,7 +1002,7 @@ export const appRouter = router({
       }))
       .mutation(async ({ input, ctx }) => {
         const id = await createThreatRule(input);
-        await logAudit(ctx.user.id, "threatRule.create", `Created threat rule ${input.ruleId}`, "system", ctx.user.name ?? undefined);
+        await logAudit(getAuthUser(ctx).id, "threatRule.create", `Created threat rule ${input.ruleId}`, "system", getAuthUser(ctx).name);
         return { id };
       }),
 
@@ -770,7 +1010,7 @@ export const appRouter = router({
       .input(z.object({ id: z.number(), isEnabled: z.boolean() }))
       .mutation(async ({ input, ctx }) => {
         await toggleThreatRule(input.id, input.isEnabled);
-        await logAudit(ctx.user.id, "threatRule.toggle", `${input.isEnabled ? "Enabled" : "Disabled"} threat rule #${input.id}`, "system", ctx.user.name ?? undefined);
+        await logAudit(getAuthUser(ctx).id, "threatRule.toggle", `${input.isEnabled ? "Enabled" : "Disabled"} threat rule #${input.id}`, "system", getAuthUser(ctx).name);
         return { success: true };
       }),
   }),
@@ -800,7 +1040,7 @@ export const appRouter = router({
       }))
       .mutation(async ({ input, ctx }) => {
         const id = await createEvidenceEntry(input);
-        await logAudit(ctx.user.id, "evidence.create", `Added evidence ${input.evidenceId} for leak ${input.leakId}`, "leak", ctx.user.name ?? undefined);
+        await logAudit(getAuthUser(ctx).id, "evidence.create", `Added evidence ${input.evidenceId} for leak ${input.leakId}`, "leak", getAuthUser(ctx).name);
         return { id };
       }),
   }),
@@ -834,7 +1074,7 @@ export const appRouter = router({
       }))
       .mutation(async ({ input, ctx }) => {
         const id = await createSellerProfile(input);
-        await logAudit(ctx.user.id, "seller.create", `Created seller profile ${input.sellerId}`, "system", ctx.user.name ?? undefined);
+        await logAudit(getAuthUser(ctx).id, "seller.create", `Created seller profile ${input.sellerId}`, "system", getAuthUser(ctx).name);
         return { id };
       }),
 
@@ -852,7 +1092,7 @@ export const appRouter = router({
       }))
       .mutation(async ({ input, ctx }) => {
         await updateSellerProfile(input.id, input.data);
-        await logAudit(ctx.user.id, "seller.update", `Updated seller profile #${input.id}`, "system", ctx.user.name ?? undefined);
+        await logAudit(getAuthUser(ctx).id, "seller.update", `Updated seller profile #${input.id}`, "system", getAuthUser(ctx).name);
         return { success: true };
       }),
   }),
@@ -879,7 +1119,7 @@ export const appRouter = router({
       }))
       .mutation(async ({ input, ctx }) => {
         const id = await createOsintQuery(input);
-        await logAudit(ctx.user.id, "osint.create", `Created OSINT query ${input.queryId}`, "system", ctx.user.name ?? undefined);
+        await logAudit(getAuthUser(ctx).id, "osint.create", `Created OSINT query ${input.queryId}`, "system", getAuthUser(ctx).name);
         return { id };
       }),
   }),
@@ -905,10 +1145,10 @@ export const appRouter = router({
       .mutation(async ({ input, ctx }) => {
         const id = await createFeedbackEntry({
           ...input,
-          userId: ctx.user.id,
-          userName: ctx.user.name ?? undefined,
+          userId: getAuthUser(ctx).id,
+          userName: getAuthUser(ctx).name,
         });
-        await logAudit(ctx.user.id, "feedback.create", `Submitted feedback for leak ${input.leakId}`, "system", ctx.user.name ?? undefined);
+        await logAudit(getAuthUser(ctx).id, "feedback.create", `Submitted feedback for leak ${input.leakId}`, "system", getAuthUser(ctx).name);
         return { id };
       }),
   }),

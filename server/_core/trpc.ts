@@ -13,7 +13,8 @@ export const publicProcedure = t.procedure;
 const requireUser = t.middleware(async opts => {
   const { ctx, next } = opts;
 
-  if (!ctx.user) {
+  // Accept either OAuth user or platform user
+  if (!ctx.user && !ctx.platformUser) {
     throw new TRPCError({ code: "UNAUTHORIZED", message: UNAUTHED_ERR_MSG });
   }
 
@@ -21,6 +22,7 @@ const requireUser = t.middleware(async opts => {
     ctx: {
       ...ctx,
       user: ctx.user,
+      platformUser: ctx.platformUser,
     },
   });
 });
@@ -31,15 +33,24 @@ export const adminProcedure = t.procedure.use(
   t.middleware(async opts => {
     const { ctx, next } = opts;
 
-    if (!ctx.user || ctx.user.role !== 'admin') {
-      throw new TRPCError({ code: "FORBIDDEN", message: NOT_ADMIN_ERR_MSG });
+    // Check platform user admin roles
+    if (ctx.platformUser) {
+      const adminRoles = ["root_admin", "director", "vice_president", "manager"];
+      if (adminRoles.includes(ctx.platformUser.platformRole)) {
+        return next({ ctx });
+      }
     }
 
-    return next({
-      ctx: {
-        ...ctx,
-        user: ctx.user,
-      },
-    });
+    // Check OAuth user admin role
+    if (ctx.user && ctx.user.role === 'admin') {
+      return next({ ctx });
+    }
+
+    // Neither is admin
+    if (!ctx.user && !ctx.platformUser) {
+      throw new TRPCError({ code: "UNAUTHORIZED", message: UNAUTHED_ERR_MSG });
+    }
+
+    throw new TRPCError({ code: "FORBIDDEN", message: NOT_ADMIN_ERR_MSG });
   }),
 );

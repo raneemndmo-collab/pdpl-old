@@ -76,7 +76,7 @@ const navItems: NavItem[] = [
   { label: "مقاييس الدقة", labelEn: "Accuracy Metrics", icon: Brain, path: "/feedback-accuracy" },
   { label: "رسم المعرفة", labelEn: "Knowledge Graph", icon: Network, path: "/knowledge-graph" },
   { label: "سجل المراجعة", labelEn: "Audit Log", icon: ScrollText, path: "/audit-log", requiresAuth: true, minRole: "admin" },
-  { label: "إدارة المستخدمين", labelEn: "Users", icon: Users, path: "/settings", requiresAuth: true, minRole: "admin" },
+  { label: "إدارة المستخدمين", labelEn: "Users", icon: Users, path: "/user-management", requiresAuth: true, minRole: "admin" },
 ];
 
 const roleLabels: Record<string, string> = {
@@ -224,7 +224,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               )}
             </div>
           ) : (
-            <a href={getLoginUrl()}>
+            <a href="/login">
               <Button
                 variant="outline"
                 size="sm"

@@ -17,6 +17,12 @@ import {
   Brain,
   Bell,
   Sparkles,
+  Activity,
+  Shield,
+  FileWarning,
+  Link2,
+  Bug,
+  Target,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -393,6 +399,170 @@ export default function Dashboard() {
                     </div>
                   </div>
                 ))}
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+      </div>
+
+      {/* Anomaly Detection + PDPL Compliance + Cross-Source Row */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Anomaly Detection Widget */}
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.55 }}>
+          <Card className="border-orange-500/20 bg-orange-500/5">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base font-semibold flex items-center gap-2">
+                <Activity className="w-4 h-4 text-orange-400" />
+                كشف الشذوذ
+                <span className="text-[10px] text-orange-400 bg-orange-500/10 px-2 py-0.5 rounded-full border border-orange-500/20 mr-auto">Anomaly Detection</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {(() => {
+                  const currentMonth = leaks.filter(l => {
+                    const d = l.detectedAt ? new Date(l.detectedAt) : new Date();
+                    return d.getMonth() === new Date().getMonth();
+                  }).length;
+                  const avgMonthly = leaks.length > 0 ? Math.round(leaks.length / 6) : 0;
+                  const zScore = avgMonthly > 0 ? ((currentMonth - avgMonthly) / Math.max(avgMonthly * 0.3, 1)).toFixed(1) : "0.0";
+                  const isAnomaly = Math.abs(parseFloat(zScore)) > 2;
+                  return (
+                    <>
+                      <div className="grid grid-cols-3 gap-3">
+                        <div className="text-center p-2 rounded-lg bg-orange-500/10 border border-orange-500/20">
+                          <p className="text-lg font-bold text-orange-400">{currentMonth}</p>
+                          <p className="text-[9px] text-muted-foreground">هذا الشهر</p>
+                        </div>
+                        <div className="text-center p-2 rounded-lg bg-gray-500/10 border border-gray-500/20">
+                          <p className="text-lg font-bold text-gray-300">{avgMonthly}</p>
+                          <p className="text-[9px] text-muted-foreground">المتوسط الشهري</p>
+                        </div>
+                        <div className={`text-center p-2 rounded-lg border ${isAnomaly ? 'bg-red-500/10 border-red-500/20' : 'bg-emerald-500/10 border-emerald-500/20'}`}>
+                          <p className={`text-lg font-bold ${isAnomaly ? 'text-red-400' : 'text-emerald-400'}`}>{zScore}</p>
+                          <p className="text-[9px] text-muted-foreground">Z-Score</p>
+                        </div>
+                      </div>
+                      {isAnomaly && (
+                        <div className="p-2 rounded-lg bg-red-500/10 border border-red-500/20 flex items-center gap-2">
+                          <AlertTriangle className="w-4 h-4 text-red-400 flex-shrink-0" />
+                          <p className="text-[10px] text-red-400">تم اكتشاف ارتفاع غير طبيعي في حجم التسريبات هذا الشهر</p>
+                        </div>
+                      )}
+                      <div className="flex items-center gap-2 p-2 rounded-lg bg-orange-500/5 border border-orange-500/10">
+                        <Activity className="w-3.5 h-3.5 text-orange-400" />
+                        <p className="text-[10px] text-muted-foreground">يراقب النظام الانحرافات في حجم التسريبات والسجلات المكشوفة تلقائياً</p>
+                      </div>
+                    </>
+                  );
+                })()}
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+
+        {/* PDPL Compliance Tracker */}
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.6 }}>
+          <Card className="border-blue-500/20 bg-blue-500/5">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base font-semibold flex items-center gap-2">
+                <Shield className="w-4 h-4 text-blue-400" />
+                الامتثال لنظام PDPL
+                <span className="text-[10px] text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded-full border border-blue-500/20 mr-auto">72 ساعة</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {(() => {
+                  const reported = leaks.filter(l => l.status === 'reported').length;
+                  const total = leaks.length;
+                  const complianceRate = total > 0 ? Math.round((reported / total) * 100) : 0;
+                  const critical = leaks.filter(l => l.severity === 'critical').length;
+                  const unreported = leaks.filter(l => l.status === 'new' || l.status === 'analyzing').length;
+                  return (
+                    <>
+                      <div className="grid grid-cols-3 gap-3">
+                        <div className="text-center p-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
+                          <p className="text-lg font-bold text-emerald-400">{reported}</p>
+                          <p className="text-[9px] text-muted-foreground">تم الإبلاغ</p>
+                        </div>
+                        <div className="text-center p-2 rounded-lg bg-amber-500/10 border border-amber-500/20">
+                          <p className="text-lg font-bold text-amber-400">{unreported}</p>
+                          <p className="text-[9px] text-muted-foreground">بانتظار الإبلاغ</p>
+                        </div>
+                        <div className={`text-center p-2 rounded-lg border ${complianceRate >= 70 ? 'bg-emerald-500/10 border-emerald-500/20' : 'bg-red-500/10 border-red-500/20'}`}>
+                          <p className={`text-lg font-bold ${complianceRate >= 70 ? 'text-emerald-400' : 'text-red-400'}`}>{complianceRate}%</p>
+                          <p className="text-[9px] text-muted-foreground">نسبة الامتثال</p>
+                        </div>
+                      </div>
+                      {critical > 0 && (
+                        <div className="p-2 rounded-lg bg-red-500/10 border border-red-500/20 flex items-center gap-2">
+                          <FileWarning className="w-4 h-4 text-red-400 flex-shrink-0" />
+                          <p className="text-[10px] text-red-400">{critical} تسريبات حرجة تتطلب إبلاغ NCA خلال 72 ساعة</p>
+                        </div>
+                      )}
+                      <div className="flex items-center gap-2 p-2 rounded-lg bg-blue-500/5 border border-blue-500/10">
+                        <Shield className="w-3.5 h-3.5 text-blue-400" />
+                        <p className="text-[10px] text-muted-foreground">يتتبع النظام مهلة الـ 72 ساعة للإبلاغ وفقاً لنظام حماية البيانات الشخصية</p>
+                      </div>
+                    </>
+                  );
+                })()}
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+
+        {/* Cross-Source Correlation */}
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.65 }}>
+          <Card className="border-violet-500/20 bg-violet-500/5">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base font-semibold flex items-center gap-2">
+                <Link2 className="w-4 h-4 text-violet-400" />
+                ربط التسريبات
+                <span className="text-[10px] text-violet-400 bg-violet-500/10 px-2 py-0.5 rounded-full border border-violet-500/20 mr-auto">Cross-Source</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {(() => {
+                  // Find leaks with same sector from different sources
+                  const sectorSourceMap = new Map<string, Set<string>>();
+                  leaks.forEach(l => {
+                    const sector = l.sectorAr || l.sector;
+                    if (!sectorSourceMap.has(sector)) sectorSourceMap.set(sector, new Set());
+                    sectorSourceMap.get(sector)!.add(l.source);
+                  });
+                  const multiSourceSectors = Array.from(sectorSourceMap.entries())
+                    .filter(([_, sources]) => sources.size > 1)
+                    .map(([sector, sources]) => ({ sector, sources: sources.size }));
+                  const correlatedLeaks = multiSourceSectors.length;
+                  const stealerLeaks = leaks.filter(l => (l.piiTypes as string[])?.some(t => t.toLowerCase().includes('password') || t.toLowerCase().includes('credential'))).length;
+                  return (
+                    <>
+                      <div className="grid grid-cols-3 gap-3">
+                        <div className="text-center p-2 rounded-lg bg-violet-500/10 border border-violet-500/20">
+                          <p className="text-lg font-bold text-violet-400">{correlatedLeaks}</p>
+                          <p className="text-[9px] text-muted-foreground">قطاعات مترابطة</p>
+                        </div>
+                        <div className="text-center p-2 rounded-lg bg-red-500/10 border border-red-500/20">
+                          <p className="text-lg font-bold text-red-400">{stealerLeaks}</p>
+                          <p className="text-[9px] text-muted-foreground">بيانات دخول مسروقة</p>
+                        </div>
+                        <div className="text-center p-2 rounded-lg bg-cyan-500/10 border border-cyan-500/20">
+                          <p className="text-lg font-bold text-cyan-400">{new Set(leaks.map(l => l.sectorAr || l.sector)).size}</p>
+                          <p className="text-[9px] text-muted-foreground">قطاعات متأثرة</p>
+                        </div>
+                      </div>
+                      {multiSourceSectors.slice(0, 3).map(s => (
+                        <div key={s.sector} className="p-2 rounded-lg bg-violet-500/5 border border-violet-500/10 flex items-center gap-2">
+                          <Target className="w-3.5 h-3.5 text-violet-400 flex-shrink-0" />
+                          <p className="text-[10px] text-muted-foreground"><span className="text-violet-400 font-medium">{s.sector}</span> — تسريبات من {s.sources} مصادر مختلفة</p>
+                        </div>
+                      ))}
+                    </>
+                  );
+                })()}
               </div>
             </CardContent>
           </Card>

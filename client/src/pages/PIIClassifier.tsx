@@ -1,9 +1,10 @@
 /**
- * PIIClassifier — PII detection and classification tool
+ * PIIClassifier — Enhanced PII detection and classification tool
+ * 18 Saudi-specific PII patterns + InfoStealer + Smart Detection
  * Dark Observatory Theme — Uses tRPC API
  */
 import { useState, useMemo } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   ScanSearch,
   Shield,
@@ -20,6 +21,24 @@ import {
   User,
   History,
   Loader2,
+  Bug,
+  Database,
+  Key,
+  MapPin,
+  Calendar,
+  Stethoscope,
+  Receipt,
+  Car,
+  BookOpen,
+  Binary,
+  Lock,
+  Eye,
+  DollarSign,
+  Fingerprint,
+  Globe,
+  Zap,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -28,20 +47,44 @@ import { Badge } from "@/components/ui/badge";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 
-const sampleData = `محمد بن عبدالله الشمري
+const sampleData = `=== عينة بيانات شخصية سعودية شاملة ===
+
+محمد بن عبدالله الشمري
 رقم الهوية: 1098765432
 رقم الجوال: 0512345678
 البريد: mohammed@company.sa
+IBAN: SA0380000000608010167519
+رقم جواز السفر: A12345678
+رقم الرخصة: DL-2345678901
+العنوان الوطني: RKAH8765 - الرياض 12345
+تاريخ الميلاد: 1990/03/15
+الراتب: 15,500 ريال
+الرقم الضريبي: 300012345600003
+رقم دفتر العائلة: 1234567890
 
 فاطمة أحمد العتيبي
 رقم الإقامة: 2087654321
 رقم الجوال: 0598765432
 البريد: fatima@hospital.sa
+رقم السجل الطبي: MRN-2024-00456
+IP: 192.168.1.100
+بطاقة ائتمان: 4111-2222-3333-4444
 
-عبدالرحمن سعد القحطاني
-رقم الهوية: 1076543210
-IBAN: SA0380000000608010167519
-رقم الجوال: 0551234567`;
+=== بيانات InfoStealer (RedLine) ===
+URL: https://banking.sa/login
+Username: user@bank.sa
+Password: P@ssw0rd123!
+
+=== SQL Database Dump ===
+SELECT national_id, phone, email FROM customers WHERE region='riyadh';
+INSERT INTO users (iqama_no, salary) VALUES ('2098765432', 12000);
+
+=== بيانات مقنّعة ===
+هاتف: 05XX-XXX-1234
+هوية: 10XXXXXXX2
+
+=== Base64 Encoded ===
+MTEyMjMzNDQ1NQ==`;
 
 interface DetectedPII {
   type: string;
@@ -52,15 +95,59 @@ interface DetectedPII {
   color: string;
   confidence: number;
   position: [number, number];
+  category: string;
 }
 
+// 18 Saudi-specific PII patterns + InfoStealer + Smart Detection
 const piiRegexPatterns = [
-  { type: "National ID", typeAr: "رقم الهوية الوطنية", regex: /\b1\d{9}\b/g, icon: Hash, color: "text-red-400" },
-  { type: "Iqama Number", typeAr: "رقم الإقامة", regex: /\b2\d{9}\b/g, icon: FileText, color: "text-amber-400" },
-  { type: "Saudi Phone", typeAr: "رقم جوال سعودي", regex: /\b05\d{8}\b/g, icon: Phone, color: "text-cyan-400" },
-  { type: "Saudi Email", typeAr: "بريد إلكتروني سعودي", regex: /[\w.-]+@[\w.-]+\.sa\b/g, icon: Mail, color: "text-violet-400" },
-  { type: "IBAN", typeAr: "رقم الحساب البنكي", regex: /\bSA\d{22}\b/g, icon: CreditCard, color: "text-emerald-400" },
+  // === Identity Data ===
+  { type: "National ID", typeAr: "رقم الهوية الوطنية", regex: /\b1\d{9}\b/g, icon: Hash, color: "text-red-400", category: "identity", confidence: 0.98 },
+  { type: "Iqama Number", typeAr: "رقم الإقامة", regex: /\b2\d{9}\b/g, icon: FileText, color: "text-amber-400", category: "identity", confidence: 0.97 },
+  { type: "Passport", typeAr: "رقم جواز السفر", regex: /\b[A-Z]\d{8}\b/g, icon: Globe, color: "text-indigo-400", category: "identity", confidence: 0.85 },
+  { type: "Family Book", typeAr: "رقم دفتر العائلة", regex: /\b\d{10}\b/g, icon: BookOpen, color: "text-pink-400", category: "identity", confidence: 0.60 },
+  { type: "Driving License", typeAr: "رقم رخصة القيادة", regex: /\bDL[-]?\d{10}\b/gi, icon: Car, color: "text-orange-400", category: "identity", confidence: 0.92 },
+
+  // === Contact Data ===
+  { type: "Saudi Phone", typeAr: "رقم جوال سعودي", regex: /\b05\d{8}\b/g, icon: Phone, color: "text-cyan-400", category: "contact", confidence: 0.96 },
+  { type: "Saudi Email", typeAr: "بريد إلكتروني سعودي", regex: /[\w.-]+@[\w.-]+\.sa\b/gi, icon: Mail, color: "text-violet-400", category: "contact", confidence: 0.95 },
+  { type: "National Address", typeAr: "العنوان الوطني", regex: /\b[A-Z]{4}\d{4}\b/g, icon: MapPin, color: "text-teal-400", category: "contact", confidence: 0.88 },
+
+  // === Financial Data ===
+  { type: "IBAN", typeAr: "رقم الحساب البنكي", regex: /\bSA\d{22}\b/g, icon: CreditCard, color: "text-emerald-400", category: "financial", confidence: 0.99 },
+  { type: "Credit Card", typeAr: "بطاقة ائتمان", regex: /\b\d{4}[-\s]?\d{4}[-\s]?\d{4}[-\s]?\d{4}\b/g, icon: CreditCard, color: "text-yellow-400", category: "financial", confidence: 0.90 },
+  { type: "Tax Number", typeAr: "الرقم الضريبي", regex: /\b3\d{14}\b/g, icon: Receipt, color: "text-lime-400", category: "financial", confidence: 0.93 },
+  { type: "Salary", typeAr: "الراتب", regex: /(?:راتب|salary|أجر)[:\s]*[\d,]+(?:\s*(?:ريال|SAR|SR))?/gi, icon: DollarSign, color: "text-green-400", category: "financial", confidence: 0.85 },
+
+  // === Sensitive Data ===
+  { type: "Date of Birth", typeAr: "تاريخ الميلاد", regex: /\b(?:19|20)\d{2}[\/\-]\d{2}[\/\-]\d{2}\b/g, icon: Calendar, color: "text-blue-400", category: "sensitive", confidence: 0.80 },
+  { type: "Medical Record", typeAr: "السجل الطبي", regex: /\bMRN[-]?\d{4}[-]?\d{5}\b/gi, icon: Stethoscope, color: "text-rose-400", category: "sensitive", confidence: 0.94 },
+  { type: "IP Address", typeAr: "عنوان IP", regex: /\b(?:(?:25[0-5]|2[0-4]\d|[01]?\d\d?)\.){3}(?:25[0-5]|2[0-4]\d|[01]?\d\d?)\b/g, icon: Globe, color: "text-sky-400", category: "technical", confidence: 0.92 },
+
+  // === Smart Detection: InfoStealer ===
+  { type: "Credentials", typeAr: "بيانات تسجيل الدخول", regex: /(?:password|passwd|pass|كلمة.?(?:المرور|السر))[:\s]+\S+/gi, icon: Key, color: "text-red-500", category: "stealer", confidence: 0.95 },
+  { type: "InfoStealer URL", typeAr: "رابط InfoStealer", regex: /(?:URL|Host)[:\s]+https?:\/\/[^\s]+(?:login|auth|bank|pay)/gi, icon: Bug, color: "text-red-600", category: "stealer", confidence: 0.90 },
+
+  // === Smart Detection: SQL/Code ===
+  { type: "SQL Pattern", typeAr: "نمط SQL", regex: /\b(?:SELECT|INSERT|UPDATE|DELETE|DROP)\b.*(?:national_id|phone|email|iqama|salary|password)/gi, icon: Database, color: "text-purple-400", category: "code", confidence: 0.88 },
+
+  // === Smart Detection: Masked Data ===
+  { type: "Masked Data", typeAr: "بيانات مقنّعة", regex: /\b(?:05|10|20)\d*X{3,}\d*\b/g, icon: Eye, color: "text-gray-400", category: "masked", confidence: 0.75 },
+
+  // === Smart Detection: Base64 ===
+  { type: "Base64 Encoded", typeAr: "بيانات مشفرة Base64", regex: /\b[A-Za-z0-9+/]{20,}={1,2}\b/g, icon: Binary, color: "text-fuchsia-400", category: "encoded", confidence: 0.70 },
 ];
+
+const categoryInfo: Record<string, { label: string; labelEn: string; color: string; icon: React.ElementType }> = {
+  identity: { label: "بيانات الهوية", labelEn: "Identity Data", color: "border-red-500/30 bg-red-500/5", icon: Hash },
+  contact: { label: "بيانات الاتصال", labelEn: "Contact Data", color: "border-cyan-500/30 bg-cyan-500/5", icon: Phone },
+  financial: { label: "البيانات المالية", labelEn: "Financial Data", color: "border-emerald-500/30 bg-emerald-500/5", icon: CreditCard },
+  sensitive: { label: "البيانات الحساسة", labelEn: "Sensitive Data", color: "border-amber-500/30 bg-amber-500/5", icon: Shield },
+  technical: { label: "البيانات التقنية", labelEn: "Technical Data", color: "border-sky-500/30 bg-sky-500/5", icon: Globe },
+  stealer: { label: "InfoStealer", labelEn: "InfoStealer Logs", color: "border-red-600/30 bg-red-600/5", icon: Bug },
+  code: { label: "أنماط الكود", labelEn: "Code Patterns", color: "border-purple-500/30 bg-purple-500/5", icon: Database },
+  masked: { label: "بيانات مقنّعة", labelEn: "Masked Data", color: "border-gray-500/30 bg-gray-500/5", icon: Eye },
+  encoded: { label: "بيانات مشفرة", labelEn: "Encoded Data", color: "border-fuchsia-500/30 bg-fuchsia-500/5", icon: Binary },
+};
 
 const piiTypeColors: Record<string, string> = {
   "National ID": "text-red-400 bg-red-500/10 border-red-500/30",
@@ -71,12 +158,28 @@ const piiTypeColors: Record<string, string> = {
   "Saudi Email": "text-violet-400 bg-violet-500/10 border-violet-500/30",
   "IBAN": "text-emerald-400 bg-emerald-500/10 border-emerald-500/30",
   "Full Name": "text-blue-400 bg-blue-500/10 border-blue-500/30",
+  "Passport": "text-indigo-400 bg-indigo-500/10 border-indigo-500/30",
+  "Credit Card": "text-yellow-400 bg-yellow-500/10 border-yellow-500/30",
+  "Credentials": "text-red-500 bg-red-500/10 border-red-500/30",
+  "InfoStealer URL": "text-red-600 bg-red-600/10 border-red-600/30",
+  "SQL Pattern": "text-purple-400 bg-purple-500/10 border-purple-500/30",
+  "Masked Data": "text-gray-400 bg-gray-500/10 border-gray-500/30",
+  "Base64 Encoded": "text-fuchsia-400 bg-fuchsia-500/10 border-fuchsia-500/30",
+  "National Address": "text-teal-400 bg-teal-500/10 border-teal-500/30",
+  "Date of Birth": "text-blue-400 bg-blue-500/10 border-blue-500/30",
+  "Medical Record": "text-rose-400 bg-rose-500/10 border-rose-500/30",
+  "IP Address": "text-sky-400 bg-sky-500/10 border-sky-500/30",
+  "Tax Number": "text-lime-400 bg-lime-500/10 border-lime-500/30",
+  "Salary": "text-green-400 bg-green-500/10 border-green-500/30",
+  "Family Book": "text-pink-400 bg-pink-500/10 border-pink-500/30",
+  "Driving License": "text-orange-400 bg-orange-500/10 border-orange-500/30",
 };
 
 export default function PIIClassifier() {
   const [inputText, setInputText] = useState(sampleData);
   const [hasScanned, setHasScanned] = useState(false);
   const [isScanning, setIsScanning] = useState(false);
+  const [expandedCategory, setExpandedCategory] = useState<string | null>(null);
   const [apiResults, setApiResults] = useState<{
     results: Array<{ type: string; typeAr: string; value: string; line: number }>;
     totalMatches: number;
@@ -85,7 +188,7 @@ export default function PIIClassifier() {
   const { data: history, isLoading: historyLoading } = trpc.pii.history.useQuery();
   const scanMutation = trpc.pii.scan.useMutation();
 
-  // Local regex scan
+  // Local regex scan with all 20 patterns
   const detectedPII = useMemo(() => {
     if (!hasScanned) return [];
     const results: DetectedPII[] = [];
@@ -93,7 +196,7 @@ export default function PIIClassifier() {
 
     lines.forEach((line, lineIdx) => {
       piiRegexPatterns.forEach((pattern) => {
-        const regex = new RegExp(pattern.regex.source, "g");
+        const regex = new RegExp(pattern.regex.source, pattern.regex.flags);
         let match;
         while ((match = regex.exec(line)) !== null) {
           results.push({
@@ -103,8 +206,9 @@ export default function PIIClassifier() {
             line: lineIdx + 1,
             icon: pattern.icon,
             color: pattern.color,
-            confidence: 0.95,
+            confidence: pattern.confidence,
             position: [match.index, match.index + match[0].length],
+            category: pattern.category,
           });
         }
       });
@@ -117,6 +221,15 @@ export default function PIIClassifier() {
     const summary: Record<string, number> = {};
     detectedPII.forEach((pii) => {
       summary[pii.typeAr] = (summary[pii.typeAr] || 0) + 1;
+    });
+    return summary;
+  }, [detectedPII]);
+
+  const categorySummary = useMemo(() => {
+    const summary: Record<string, DetectedPII[]> = {};
+    detectedPII.forEach((pii) => {
+      if (!summary[pii.category]) summary[pii.category] = [];
+      summary[pii.category].push(pii);
     });
     return summary;
   }, [detectedPII]);
@@ -148,10 +261,13 @@ export default function PIIClassifier() {
     setInputText(sampleData);
     setHasScanned(false);
     setApiResults(null);
+    setExpandedCategory(null);
   };
 
   const matchCount = apiResults?.totalMatches ?? detectedPII.length;
-  const riskScore = matchCount > 5 ? 85 : matchCount > 2 ? 60 : 30;
+  const riskScore = matchCount > 15 ? 95 : matchCount > 10 ? 85 : matchCount > 5 ? 70 : matchCount > 2 ? 50 : 20;
+  const hasStealerData = detectedPII.some(p => p.category === "stealer");
+  const hasSQLPatterns = detectedPII.some(p => p.category === "code");
 
   return (
     <div className="space-y-6">
@@ -168,20 +284,45 @@ export default function PIIClassifier() {
               <ScanSearch className="w-5 h-5 text-cyan-400" />
             </div>
             <div>
-              <h1 className="text-xl font-bold text-foreground">مصنّف البيانات الشخصية</h1>
-              <p className="text-xs text-muted-foreground">PII Classifier & Detector</p>
+              <h1 className="text-xl font-bold text-foreground">مصنّف البيانات الشخصية المتقدم</h1>
+              <p className="text-xs text-muted-foreground">Advanced PII Classifier — 20 Pattern • InfoStealer • Smart Detection</p>
             </div>
           </div>
           <p className="text-sm text-muted-foreground max-w-lg">
-            هل يحتوي على بيانات شخصية لأفراد في المملكة؟ — محرك التصنيف التلقائي
+            محرك كشف متقدم يدعم 20 نمطاً سعودياً + كشف InfoStealer + أنماط SQL + Base64 + البيانات المقنّعة
           </p>
         </div>
       </motion.div>
 
+      {/* Stats bar */}
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+        <div className="p-3 rounded-lg bg-secondary/30 border border-border text-center">
+          <p className="text-2xl font-bold text-cyan-400">20</p>
+          <p className="text-[10px] text-muted-foreground">نمط كشف</p>
+        </div>
+        <div className="p-3 rounded-lg bg-secondary/30 border border-border text-center">
+          <p className="text-2xl font-bold text-red-400">5</p>
+          <p className="text-[10px] text-muted-foreground">بيانات هوية</p>
+        </div>
+        <div className="p-3 rounded-lg bg-secondary/30 border border-border text-center">
+          <p className="text-2xl font-bold text-emerald-400">4</p>
+          <p className="text-[10px] text-muted-foreground">بيانات مالية</p>
+        </div>
+        <div className="p-3 rounded-lg bg-secondary/30 border border-border text-center">
+          <p className="text-2xl font-bold text-amber-400">2</p>
+          <p className="text-[10px] text-muted-foreground">InfoStealer</p>
+        </div>
+        <div className="p-3 rounded-lg bg-secondary/30 border border-border text-center">
+          <p className="text-2xl font-bold text-purple-400">3</p>
+          <p className="text-[10px] text-muted-foreground">كشف ذكي</p>
+        </div>
+      </div>
+
       <Tabs defaultValue="scanner" className="space-y-6">
         <TabsList className="bg-secondary/50">
           <TabsTrigger value="scanner">الماسح التفاعلي</TabsTrigger>
-          <TabsTrigger value="patterns">أنماط الكشف</TabsTrigger>
+          <TabsTrigger value="patterns">أنماط الكشف (20)</TabsTrigger>
+          <TabsTrigger value="categories">التصنيفات</TabsTrigger>
           <TabsTrigger value="history">سجل الفحوصات</TabsTrigger>
         </TabsList>
 
@@ -203,7 +344,7 @@ export default function PIIClassifier() {
                     </Button>
                     <Button size="sm" onClick={handleScan} disabled={isScanning} className="gap-1.5 h-7 text-xs bg-primary text-primary-foreground">
                       {isScanning ? <Loader2 className="w-3 h-3 animate-spin" /> : <Play className="w-3 h-3" />}
-                      فحص
+                      فحص شامل
                     </Button>
                   </div>
                 </CardTitle>
@@ -227,7 +368,7 @@ export default function PIIClassifier() {
                   نتائج الكشف
                   {hasScanned && (
                     <Badge variant="outline" className="mr-2 bg-primary/10 border-primary/30 text-primary text-xs">
-                      {detectedPII.length} نتيجة
+                      {matchCount} نتيجة
                     </Badge>
                   )}
                 </CardTitle>
@@ -237,12 +378,16 @@ export default function PIIClassifier() {
                   <div className="h-80 flex items-center justify-center text-muted-foreground">
                     <div className="text-center">
                       <ScanSearch className="w-12 h-12 mx-auto mb-3 opacity-30" />
-                      <p className="text-sm">اضغط "فحص" لبدء الكشف عن البيانات الشخصية</p>
+                      <p className="text-sm">اضغط "فحص شامل" لبدء الكشف عن البيانات الشخصية</p>
+                      <p className="text-xs text-muted-foreground/60 mt-1">20 نمط كشف + InfoStealer + SQL + Base64</p>
                     </div>
                   </div>
                 ) : isScanning ? (
                   <div className="h-80 flex items-center justify-center">
-                    <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                    <div className="text-center">
+                      <Loader2 className="w-8 h-8 animate-spin text-primary mx-auto mb-3" />
+                      <p className="text-sm text-muted-foreground">جارٍ الفحص بـ 20 نمطاً...</p>
+                    </div>
                   </div>
                 ) : detectedPII.length === 0 ? (
                   <div className="h-80 flex items-center justify-center text-muted-foreground">
@@ -253,35 +398,72 @@ export default function PIIClassifier() {
                   </div>
                 ) : (
                   <div className="space-y-4">
-                    {/* Risk score */}
-                    <div className="flex items-center justify-between p-3 rounded-lg bg-secondary/20 border border-border">
-                      <span className="text-sm text-foreground">درجة الخطورة</span>
-                      <div className="flex items-center gap-3">
-                        <div className="w-24 h-2 rounded-full bg-secondary/50 overflow-hidden">
-                          <motion.div
-                            initial={{ width: 0 }}
-                            animate={{ width: `${riskScore}%` }}
-                            transition={{ duration: 0.8 }}
-                            className={`h-full rounded-full ${riskScore >= 80 ? "bg-red-500" : riskScore >= 50 ? "bg-amber-500" : "bg-emerald-500"}`}
-                          />
+                    {/* Risk score + alerts */}
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between p-3 rounded-lg bg-secondary/20 border border-border">
+                        <span className="text-sm text-foreground">درجة الخطورة</span>
+                        <div className="flex items-center gap-3">
+                          <div className="w-24 h-2 rounded-full bg-secondary/50 overflow-hidden">
+                            <motion.div
+                              initial={{ width: 0 }}
+                              animate={{ width: `${riskScore}%` }}
+                              transition={{ duration: 0.8 }}
+                              className={`h-full rounded-full ${riskScore >= 80 ? "bg-red-500" : riskScore >= 50 ? "bg-amber-500" : "bg-emerald-500"}`}
+                            />
+                          </div>
+                          <span className={`text-sm font-bold ${riskScore >= 80 ? "text-red-400" : riskScore >= 50 ? "text-amber-400" : "text-emerald-400"}`}>
+                            {riskScore}%
+                          </span>
                         </div>
-                        <span className={`text-sm font-bold ${riskScore >= 80 ? "text-red-400" : riskScore >= 50 ? "text-amber-400" : "text-emerald-400"}`}>
-                          {riskScore}%
-                        </span>
                       </div>
+
+                      {/* InfoStealer alert */}
+                      {hasStealerData && (
+                        <motion.div
+                          initial={{ opacity: 0, scale: 0.95 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          className="p-3 rounded-lg bg-red-500/10 border border-red-500/30 flex items-center gap-3"
+                        >
+                          <Bug className="w-5 h-5 text-red-500 flex-shrink-0" />
+                          <div>
+                            <p className="text-xs font-semibold text-red-400">تحذير: بيانات InfoStealer مكتشفة!</p>
+                            <p className="text-[10px] text-red-400/70">تم اكتشاف بيانات تسجيل دخول مسروقة — يُحتمل أنها من برمجيات RedLine/Vidar</p>
+                          </div>
+                        </motion.div>
+                      )}
+
+                      {/* SQL alert */}
+                      {hasSQLPatterns && (
+                        <motion.div
+                          initial={{ opacity: 0, scale: 0.95 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          className="p-3 rounded-lg bg-purple-500/10 border border-purple-500/30 flex items-center gap-3"
+                        >
+                          <Database className="w-5 h-5 text-purple-400 flex-shrink-0" />
+                          <div>
+                            <p className="text-xs font-semibold text-purple-400">تحذير: أنماط SQL مكتشفة!</p>
+                            <p className="text-[10px] text-purple-400/70">تم اكتشاف استعلامات SQL تحتوي على أسماء أعمدة بيانات شخصية</p>
+                          </div>
+                        </motion.div>
+                      )}
                     </div>
 
-                    {/* Summary */}
+                    {/* Category summary */}
                     <div className="flex flex-wrap gap-2">
-                      {Object.entries(piiSummary).map(([type, count]) => (
-                        <Badge key={type} variant="outline" className="bg-red-500/5 border-red-500/20 text-red-400 text-xs">
-                          {type}: {count}
-                        </Badge>
-                      ))}
+                      {Object.entries(categorySummary).map(([cat, items]) => {
+                        const info = categoryInfo[cat];
+                        if (!info) return null;
+                        return (
+                          <Badge key={cat} variant="outline" className={`${info.color} text-xs cursor-pointer`}
+                            onClick={() => setExpandedCategory(expandedCategory === cat ? null : cat)}>
+                            {info.label}: {items.length}
+                          </Badge>
+                        );
+                      })}
                     </div>
 
                     {/* Detailed results */}
-                    <div className="h-52 overflow-y-auto space-y-2">
+                    <div className="h-40 overflow-y-auto space-y-2">
                       {detectedPII.map((pii, i) => {
                         const Icon = pii.icon;
                         return (
@@ -289,15 +471,15 @@ export default function PIIClassifier() {
                             key={`${pii.type}-${pii.value}-${i}`}
                             initial={{ opacity: 0, x: 20 }}
                             animate={{ opacity: 1, x: 0 }}
-                            transition={{ delay: i * 0.03 }}
+                            transition={{ delay: i * 0.02 }}
                             className="flex items-center gap-3 p-2.5 rounded-lg bg-secondary/30 border border-border"
                           >
                             <Icon className={`w-4 h-4 ${pii.color} flex-shrink-0`} />
                             <div className="flex-1 min-w-0">
                               <p className="text-xs font-medium text-foreground">{pii.typeAr}</p>
-                              <p className="text-[10px] text-muted-foreground">سطر {pii.line}</p>
+                              <p className="text-[10px] text-muted-foreground">سطر {pii.line} • ثقة {Math.round(pii.confidence * 100)}%</p>
                             </div>
-                            <code className="text-xs font-mono text-primary bg-primary/5 px-2 py-0.5 rounded">
+                            <code className="text-xs font-mono text-primary bg-primary/5 px-2 py-0.5 rounded truncate max-w-[200px]">
                               {pii.value}
                             </code>
                             <Button
@@ -322,26 +504,35 @@ export default function PIIClassifier() {
           </div>
         </TabsContent>
 
-        {/* Patterns tab */}
+        {/* Patterns tab — all 20 patterns */}
         <TabsContent value="patterns" className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {piiRegexPatterns.map((pattern, i) => {
               const Icon = pattern.icon;
+              const catInfo = categoryInfo[pattern.category];
               return (
-                <motion.div key={pattern.type} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
-                  <Card className="border-border hover:border-primary/30 transition-colors">
+                <motion.div key={pattern.type} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 }}>
+                  <Card className="border-border hover:border-primary/30 transition-colors h-full">
                     <CardContent className="p-4">
                       <div className="flex items-center gap-3 mb-3">
                         <div className="w-9 h-9 rounded-lg bg-secondary flex items-center justify-center">
                           <Icon className={`w-4.5 h-4.5 ${pattern.color}`} />
                         </div>
-                        <div>
-                          <h3 className="text-sm font-semibold text-foreground">{pattern.typeAr}</h3>
+                        <div className="flex-1 min-w-0">
+                          <h3 className="text-sm font-semibold text-foreground truncate">{pattern.typeAr}</h3>
                           <p className="text-[10px] text-muted-foreground">{pattern.type}</p>
                         </div>
                       </div>
+                      <div className="flex items-center gap-2 mb-2">
+                        <Badge variant="outline" className={`text-[9px] ${catInfo?.color || ""}`}>
+                          {catInfo?.label || pattern.category}
+                        </Badge>
+                        <Badge variant="outline" className="text-[9px]">
+                          ثقة {Math.round(pattern.confidence * 100)}%
+                        </Badge>
+                      </div>
                       <div className="p-2 rounded bg-black/30 border border-border">
-                        <code className="text-xs font-mono text-primary" dir="ltr">{pattern.regex.source}</code>
+                        <code className="text-[10px] font-mono text-primary break-all" dir="ltr">{pattern.regex.source}</code>
                       </div>
                     </CardContent>
                   </Card>
@@ -349,22 +540,66 @@ export default function PIIClassifier() {
               );
             })}
           </div>
+        </TabsContent>
 
-          {/* PDPL categories */}
+        {/* Categories tab — PDPL classification */}
+        <TabsContent value="categories" className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {Object.entries(categoryInfo).map(([key, info]) => {
+              const Icon = info.icon;
+              const patterns = piiRegexPatterns.filter(p => p.category === key);
+              if (patterns.length === 0) return null;
+              return (
+                <Card key={key} className={`border ${info.color}`}>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                      <Icon className="w-4 h-4" />
+                      {info.label}
+                      <Badge variant="outline" className="text-[10px] mr-auto">{patterns.length} أنماط</Badge>
+                    </CardTitle>
+                    <p className="text-[10px] text-muted-foreground">{info.labelEn}</p>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2">
+                      {patterns.map((p) => {
+                        const PIcon = p.icon;
+                        return (
+                          <div key={p.type} className="flex items-center gap-2 p-2 rounded bg-secondary/20 border border-border/50">
+                            <PIcon className={`w-3.5 h-3.5 ${p.color} flex-shrink-0`} />
+                            <span className="text-xs text-foreground flex-1">{p.typeAr}</span>
+                            <span className="text-[9px] text-muted-foreground">{Math.round(p.confidence * 100)}%</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+
+          {/* PDPL Compliance Categories */}
           <Card className="border-border">
             <CardHeader>
-              <CardTitle className="text-base font-semibold">تصنيف البيانات حسب فئات PDPL</CardTitle>
+              <CardTitle className="text-base font-semibold flex items-center gap-2">
+                <Shield className="w-4 h-4 text-primary" />
+                تصنيف البيانات حسب نظام حماية البيانات الشخصية (PDPL)
+              </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {[
-                  { category: "بيانات الهوية", categoryEn: "Identity Data", items: ["رقم الهوية الوطنية", "رقم الإقامة", "رقم جواز السفر"], color: "border-red-500/30" },
-                  { category: "بيانات الاتصال", categoryEn: "Contact Data", items: ["رقم الجوال", "البريد الإلكتروني", "العنوان"], color: "border-cyan-500/30" },
-                  { category: "البيانات المالية", categoryEn: "Financial Data", items: ["رقم الحساب البنكي (IBAN)", "بيانات البطاقة", "السجل الائتماني"], color: "border-emerald-500/30" },
-                  { category: "البيانات الحساسة", categoryEn: "Sensitive Data", items: ["السجلات الصحية", "البيانات البيومترية", "المعتقدات الدينية"], color: "border-amber-500/30" },
+                  { category: "بيانات الهوية الشخصية", categoryEn: "Personal Identity Data", items: ["رقم الهوية الوطنية", "رقم الإقامة", "رقم جواز السفر", "رقم دفتر العائلة", "رقم رخصة القيادة"], color: "border-red-500/30", icon: "🪪" },
+                  { category: "بيانات الاتصال", categoryEn: "Contact Data", items: ["رقم الجوال السعودي", "البريد الإلكتروني", "العنوان الوطني"], color: "border-cyan-500/30", icon: "📱" },
+                  { category: "البيانات المالية", categoryEn: "Financial Data", items: ["رقم الحساب البنكي (IBAN)", "بطاقة الائتمان", "الرقم الضريبي", "الراتب والأجور"], color: "border-emerald-500/30", icon: "💳" },
+                  { category: "البيانات الحساسة", categoryEn: "Sensitive Data", items: ["تاريخ الميلاد", "السجل الطبي", "البيانات البيومترية"], color: "border-amber-500/30", icon: "🔒" },
+                  { category: "البيانات التقنية", categoryEn: "Technical Data", items: ["عنوان IP", "بيانات تسجيل الدخول", "بيانات InfoStealer"], color: "border-sky-500/30", icon: "🖥️" },
+                  { category: "الكشف الذكي", categoryEn: "Smart Detection", items: ["أنماط SQL/قواعد البيانات", "البيانات المقنّعة", "البيانات المشفرة Base64"], color: "border-purple-500/30", icon: "🧠" },
                 ].map((cat) => (
                   <div key={cat.category} className={`p-4 rounded-lg bg-secondary/20 border ${cat.color}`}>
-                    <h4 className="text-sm font-semibold text-foreground mb-1">{cat.category}</h4>
+                    <h4 className="text-sm font-semibold text-foreground mb-1 flex items-center gap-2">
+                      <span>{cat.icon}</span> {cat.category}
+                    </h4>
                     <p className="text-[10px] text-muted-foreground mb-2">{cat.categoryEn}</p>
                     <ul className="space-y-1">
                       {cat.items.map((item) => (
@@ -406,15 +641,15 @@ export default function PIIClassifier() {
                     </thead>
                     <tbody>
                       {history.map((scan) => {
-                        const matchCount = scan.totalMatches ?? (scan.results?.length ?? 0);
-                        const risk = matchCount > 5 ? 85 : matchCount > 2 ? 60 : 30;
+                        const mc = scan.totalMatches ?? (scan.results?.length ?? 0);
+                        const risk = mc > 15 ? 95 : mc > 10 ? 85 : mc > 5 ? 70 : mc > 2 ? 50 : 20;
                         return (
                           <tr key={scan.id} className="border-b border-border/50 hover:bg-secondary/30 transition-colors">
                             <td className="py-3 px-4 text-xs text-muted-foreground">
                               {scan.createdAt ? new Date(scan.createdAt).toLocaleDateString("ar-SA") : "—"}
                             </td>
                             <td className="py-3 px-4 text-xs text-foreground">{scan.inputText.length} حرف</td>
-                            <td className="py-3 px-4 text-xs text-foreground font-medium">{matchCount} نتيجة</td>
+                            <td className="py-3 px-4 text-xs text-foreground font-medium">{mc} نتيجة</td>
                             <td className="py-3 px-4">
                               <span className={`text-[10px] px-2 py-1 rounded border ${
                                 risk >= 80 ? "text-red-400 bg-red-500/10 border-red-500/30" :

@@ -26,37 +26,47 @@ import SellerProfiles from "./pages/SellerProfiles";
 import OsintTools from "./pages/OsintTools";
 import FeedbackAccuracy from "./pages/FeedbackAccuracy";
 import KnowledgeGraph from "./pages/KnowledgeGraph";
+import PlatformLogin from "./pages/PlatformLogin";
+import UserManagement from "./pages/UserManagement";
 
 function Router() {
-  // make sure to consider if you need authentication for certain routes
   return (
-    <DashboardLayout>
-      <Switch>
-        <Route path="/" component={Dashboard} />
-        <Route path="/telegram" component={TelegramMonitor} />
-        <Route path="/darkweb" component={DarkWebMonitor} />
-        <Route path="/paste-sites" component={PasteSites} />
-        <Route path="/pii-classifier" component={PIIClassifier} />
-        <Route path="/leaks" component={Leaks} />
-        <Route path="/reports" component={Reports} />
-        <Route path="/settings" component={Settings} />
-        <Route path="/monitoring-jobs" component={MonitoringJobs} />
-        <Route path="/threat-map" component={ThreatMap} />
-        <Route path="/alert-channels" component={AlertChannels} />
-        <Route path="/scheduled-reports" component={ScheduledReports} />
-        <Route path="/api-keys" component={ApiKeys} />
-        <Route path="/data-retention" component={DataRetention} />
-        <Route path="/audit-log" component={AuditLog} />
-        <Route path="/threat-rules" component={ThreatRules} />
-        <Route path="/evidence-chain" component={EvidenceChain} />
-        <Route path="/seller-profiles" component={SellerProfiles} />
-        <Route path="/osint-tools" component={OsintTools} />
-        <Route path="/feedback-accuracy" component={FeedbackAccuracy} />
-        <Route path="/knowledge-graph" component={KnowledgeGraph} />
-        <Route path="/404" component={NotFound} />
-        <Route component={NotFound} />
-      </Switch>
-    </DashboardLayout>
+    <Switch>
+      {/* Platform Login - outside DashboardLayout */}
+      <Route path="/login" component={PlatformLogin} />
+
+      {/* All dashboard routes inside DashboardLayout */}
+      <Route>
+        <DashboardLayout>
+          <Switch>
+            <Route path="/" component={Dashboard} />
+            <Route path="/telegram" component={TelegramMonitor} />
+            <Route path="/darkweb" component={DarkWebMonitor} />
+            <Route path="/paste-sites" component={PasteSites} />
+            <Route path="/pii-classifier" component={PIIClassifier} />
+            <Route path="/leaks" component={Leaks} />
+            <Route path="/reports" component={Reports} />
+            <Route path="/settings" component={Settings} />
+            <Route path="/monitoring-jobs" component={MonitoringJobs} />
+            <Route path="/threat-map" component={ThreatMap} />
+            <Route path="/alert-channels" component={AlertChannels} />
+            <Route path="/scheduled-reports" component={ScheduledReports} />
+            <Route path="/api-keys" component={ApiKeys} />
+            <Route path="/data-retention" component={DataRetention} />
+            <Route path="/audit-log" component={AuditLog} />
+            <Route path="/threat-rules" component={ThreatRules} />
+            <Route path="/evidence-chain" component={EvidenceChain} />
+            <Route path="/seller-profiles" component={SellerProfiles} />
+            <Route path="/osint-tools" component={OsintTools} />
+            <Route path="/feedback-accuracy" component={FeedbackAccuracy} />
+            <Route path="/knowledge-graph" component={KnowledgeGraph} />
+            <Route path="/user-management" component={UserManagement} />
+            <Route path="/404" component={NotFound} />
+            <Route component={NotFound} />
+          </Switch>
+        </DashboardLayout>
+      </Route>
+    </Switch>
   );
 }
 

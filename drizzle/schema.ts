@@ -191,7 +191,7 @@ export const auditLog = mysqlTable("audit_log", {
   userId: int("userId"),
   userName: varchar("userName", { length: 255 }),
   action: varchar("action", { length: 100 }).notNull(),
-  category: mysqlEnum("auditCategory", ["auth", "leak", "export", "pii", "user", "report", "system", "monitoring", "enrichment", "alert", "retention", "api"])
+  category: mysqlEnum("auditCategory", ["auth", "leak", "export", "pii", "user", "report", "system", "monitoring", "enrichment", "alert", "retention", "api", "user_management"])
     .default("system")
     .notNull(),
   details: text("details"),
@@ -515,3 +515,37 @@ export const knowledgeGraphEdges = mysqlTable("knowledge_graph_edges", {
 });
 
 export type KnowledgeGraphEdge = typeof knowledgeGraphEdges.$inferSelect;
+
+
+/**
+ * Platform Users — Custom authentication (userId + password)
+ * Roles: root_admin, director, vice_president, manager, analyst, viewer
+ */
+export const platformUsers = mysqlTable("platform_users", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: varchar("userId", { length: 50 }).notNull().unique(),
+  passwordHash: varchar("passwordHash", { length: 255 }).notNull(),
+  name: varchar("name", { length: 200 }).notNull(),
+  email: varchar("email", { length: 320 }),
+  mobile: varchar("mobile", { length: 20 }),
+  displayName: varchar("displayName", { length: 200 }).notNull(),
+  platformRole: mysqlEnum("platformRole", [
+    "root_admin",
+    "director",
+    "vice_president",
+    "manager",
+    "analyst",
+    "viewer",
+  ])
+    .default("viewer")
+    .notNull(),
+  status: mysqlEnum("status", ["active", "inactive", "suspended"])
+    .default("active")
+    .notNull(),
+  lastLoginAt: timestamp("lastLoginAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type PlatformUser = typeof platformUsers.$inferSelect;
+export type InsertPlatformUser = typeof platformUsers.$inferInsert;

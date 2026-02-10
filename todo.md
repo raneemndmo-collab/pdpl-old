@@ -167,3 +167,21 @@
 - [x] Cross-Source Correlation analysis (included in knowledge graph)
 - [x] Run tests and verify all enhancements (86/86 passed)
 - [x] Final checkpoint and deliver
+
+## Phase 19: Bug Fix - Logout on Leak Detail + Remaining Enhancements
+- [x] Fix: Viewing leak details causes logout/session loss
+- [x] Identify and implement remaining enhancements from attached code analysis
+- [x] Run tests and verify fixes
+- [x] Checkpoint and deliver
+
+## Phase 20: Custom Auth System & User Management
+- [x] Create platform_users table with userId, passwordHash, name, email, mobile, displayName, role, status
+- [x] Create custom login endpoint (userId + password, no OAuth)
+- [x] Create custom login page UI (userId + password form)
+- [x] Create user management page (admin only) - CRUD users, assign roles/permissions
+- [x] Add 4 users: MRUHAILY (Root Admin), aalrebdi (Director), msarhan (Vice President), malmoutaz (Platform Manager)
+- [x] Define role-based permissions (root_admin, director, vice_president, manager)
+- [x] Replace OAuth login with custom session/JWT auth
+- [x] Add user profile display in sidebar
+- [x] Test login flow and user management (86/86 tests passed)
+- [x] Checkpoint and deliver

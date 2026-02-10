@@ -1,0 +1,1 @@
+ALTER TABLE `audit_log` MODIFY COLUMN `auditCategory` enum('auth','leak','export','pii','user','report','system','monitoring','enrichment','alert','retention','api','user_management') NOT NULL DEFAULT 'system';

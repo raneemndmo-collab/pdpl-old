@@ -311,22 +311,25 @@ export default function Leaks() {
                         size="sm"
                         variant="ghost"
                         className="h-8 w-8 p-0"
-                        onClick={() => {
-                          if (!leak.enrichedAt) {
-                            handleEnrich(leak.leakId);
-                          }
-                          setSelectedLeak(leak.leakId);
-                        }}
-                        disabled={enrichingId === leak.leakId}
+                        onClick={() => setSelectedLeak(leak.leakId)}
                       >
-                        {enrichingId === leak.leakId ? (
-                          <Loader2 className="w-4 h-4 animate-spin" />
-                        ) : leak.enrichedAt ? (
-                          <Eye className="w-4 h-4" />
-                        ) : (
-                          <Brain className="w-4 h-4" />
-                        )}
+                        <Eye className="w-4 h-4" />
                       </Button>
+                      {!leak.enrichedAt && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-8 w-8 p-0"
+                          onClick={() => handleEnrich(leak.leakId)}
+                          disabled={enrichingId === leak.leakId}
+                        >
+                          {enrichingId === leak.leakId ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <Brain className="w-4 h-4" />
+                          )}
+                        </Button>
+                      )}
                     </div>
                   </div>
 
@@ -344,79 +347,201 @@ export default function Leaks() {
         })}
       </div>
 
-      {/* AI Enrichment Detail Panel */}
+      {/* Leak Detail Panel */}
       <AnimatePresence>
         {selectedLeak && selectedLeakData && (
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 20 }}
-            className="fixed inset-x-0 bottom-0 z-50 p-4 md:p-6"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
+            onClick={() => setSelectedLeak(null)}
           >
-            <div className="max-w-4xl mx-auto bg-gray-900/95 backdrop-blur-xl border border-gray-700/50 rounded-2xl shadow-2xl p-6">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-xl bg-gradient-to-br from-purple-500/20 to-cyan-500/20 border border-purple-500/30">
-                    <Brain className="w-5 h-5 text-purple-400" />
+            <motion.div
+              initial={{ scale: 0.95, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.95, y: 20 }}
+              className="w-full max-w-4xl max-h-[85vh] overflow-y-auto bg-gray-900/98 backdrop-blur-xl border border-gray-700/50 rounded-2xl shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Header */}
+              <div className="sticky top-0 bg-gray-900/95 backdrop-blur-xl border-b border-gray-700/50 p-5 rounded-t-2xl">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-xl bg-gradient-to-br from-red-500/20 to-amber-500/20 border border-red-500/30">
+                      <ShieldAlert className="w-5 h-5 text-red-400" />
+                    </div>
+                    <div>
+                      <h3 className="text-white font-semibold text-lg">{selectedLeakData.titleAr}</h3>
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className="text-xs font-mono text-primary">{selectedLeakData.leakId}</span>
+                        <span className={`text-[10px] px-2 py-0.5 rounded border ${severityColor(selectedLeakData.severity)}`}>
+                          {severityLabel(selectedLeakData.severity)}
+                        </span>
+                        <span className={`text-[10px] px-2 py-0.5 rounded border ${statusColor(selectedLeakData.status)}`}>
+                          {statusLabel(selectedLeakData.status)}
+                        </span>
+                      </div>
+                    </div>
                   </div>
-                  <div>
-                    <h3 className="text-white font-semibold">تحليل الذكاء الاصطناعي — {selectedLeakData.leakId}</h3>
-                    <p className="text-xs text-gray-400">{selectedLeakData.titleAr}</p>
-                  </div>
+                  <button onClick={() => setSelectedLeak(null)} className="p-2 rounded-lg hover:bg-gray-800 transition-colors">
+                    <X className="w-5 h-5 text-gray-400" />
+                  </button>
                 </div>
-                <button onClick={() => setSelectedLeak(null)} className="p-2 rounded-lg hover:bg-gray-800 transition-colors">
-                  <X className="w-5 h-5 text-gray-400" />
-                </button>
               </div>
 
-              {selectedLeakData.enrichedAt ? (
-                <div className="grid md:grid-cols-2 gap-4">
-                  <div>
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className={`text-xs px-2 py-0.5 rounded border ${severityColor(selectedLeakData.aiSeverity || selectedLeakData.severity)}`}>
-                        تقييم AI: {severityLabel(selectedLeakData.aiSeverity || selectedLeakData.severity)}
-                      </span>
-                      <span className="text-xs text-gray-400">ثقة: {selectedLeakData.aiConfidence}%</span>
+              <div className="p-5 space-y-5">
+                {/* Basic Info Grid */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  <div className="bg-gray-800/50 rounded-xl p-3 border border-gray-700/30">
+                    <p className="text-[10px] text-gray-500 mb-1">المصدر</p>
+                    <div className={`flex items-center gap-1.5 ${sourceColor(selectedLeakData.source)}`}>
+                      {(() => { const Icon = sourceIcon(selectedLeakData.source); return <Icon className="w-3.5 h-3.5" />; })()}
+                      <span className="text-sm font-medium">{sourceLabel(selectedLeakData.source)}</span>
                     </div>
-                    <p className="text-sm text-gray-300 leading-relaxed">{selectedLeakData.aiSummaryAr || selectedLeakData.aiSummary}</p>
                   </div>
-                  <div>
-                    <h4 className="text-xs font-semibold text-gray-400 mb-2 flex items-center gap-1">
-                      <AlertTriangle className="w-3 h-3" /> التوصيات
-                    </h4>
-                    <ul className="space-y-1.5">
-                      {((selectedLeakData.aiRecommendationsAr as string[]) || (selectedLeakData.aiRecommendations as string[]) || []).map((rec, i) => (
-                        <li key={i} className="flex items-start gap-2 text-xs text-gray-300">
-                          <CheckCircle className="w-3 h-3 text-emerald-400 mt-0.5 shrink-0" />
-                          {rec}
-                        </li>
-                      ))}
-                    </ul>
+                  <div className="bg-gray-800/50 rounded-xl p-3 border border-gray-700/30">
+                    <p className="text-[10px] text-gray-500 mb-1">السجلات المكشوفة</p>
+                    <p className="text-sm font-bold text-red-400">{selectedLeakData.recordCount.toLocaleString()}</p>
+                  </div>
+                  <div className="bg-gray-800/50 rounded-xl p-3 border border-gray-700/30">
+                    <p className="text-[10px] text-gray-500 mb-1">تاريخ الاكتشاف</p>
+                    <p className="text-sm text-gray-300">{selectedLeakData.detectedAt ? new Date(selectedLeakData.detectedAt).toLocaleDateString("ar-SA", { year: "numeric", month: "long", day: "numeric" }) : "—"}</p>
+                  </div>
+                  <div className="bg-gray-800/50 rounded-xl p-3 border border-gray-700/30">
+                    <p className="text-[10px] text-gray-500 mb-1">القطاع</p>
+                    <p className="text-sm text-gray-300">{selectedLeakData.sector || "غير محدد"}</p>
                   </div>
                 </div>
-              ) : (
-                <div className="text-center py-6">
-                  {enrichingId === selectedLeakData.leakId ? (
-                    <div className="flex items-center justify-center gap-3">
-                      <Loader2 className="w-6 h-6 animate-spin text-purple-400" />
-                      <span className="text-gray-300">جاري تحليل التسريب بالذكاء الاصطناعي...</span>
+
+                {/* Description */}
+                <div className="bg-gray-800/30 rounded-xl p-4 border border-gray-700/20">
+                  <h4 className="text-xs font-semibold text-gray-400 mb-2">الوصف</h4>
+                  <p className="text-sm text-gray-300 leading-relaxed">{selectedLeakData.descriptionAr || selectedLeakData.description || "لا يوجد وصف متاح"}</p>
+                </div>
+
+                {/* PII Types */}
+                {((selectedLeakData.piiTypes as string[]) || []).length > 0 && (
+                  <div className="bg-gray-800/30 rounded-xl p-4 border border-gray-700/20">
+                    <h4 className="text-xs font-semibold text-gray-400 mb-2">أنواع البيانات الشخصية المكشوفة</h4>
+                    <div className="flex flex-wrap gap-2">
+                      {((selectedLeakData.piiTypes as string[]) || []).map((type) => (
+                        <Badge key={type} variant="outline" className="text-xs bg-red-500/10 border-red-500/30 text-red-400">
+                          {type}
+                        </Badge>
+                      ))}
                     </div>
-                  ) : (
-                    <div>
-                      <Brain className="w-10 h-10 mx-auto mb-3 text-gray-500" />
-                      <p className="text-gray-400 text-sm mb-3">لم يتم إثراء هذا التسريب بعد</p>
-                      <Button
-                        onClick={() => handleEnrich(selectedLeakData.leakId)}
-                        className="gap-2 bg-gradient-to-r from-purple-600 to-cyan-600"
-                      >
-                        <Sparkles className="w-4 h-4" />
-                        إثراء بالذكاء الاصطناعي
-                      </Button>
+                  </div>
+                )}
+
+                {/* Additional Details */}
+                <div className="grid md:grid-cols-2 gap-3">
+                  {selectedLeakData.region && (
+                    <div className="bg-gray-800/30 rounded-xl p-4 border border-gray-700/20">
+                      <h4 className="text-xs font-semibold text-gray-400 mb-1">المنطقة</h4>
+                      <p className="text-sm text-gray-300">{selectedLeakData.region}</p>
+                    </div>
+                  )}
+                  {selectedLeakData.description && (
+                    <div className="bg-gray-800/30 rounded-xl p-4 border border-gray-700/20">
+                      <h4 className="text-xs font-semibold text-gray-400 mb-1">العنوان (EN)</h4>
+                      <p className="text-sm text-cyan-400" dir="ltr">{selectedLeakData.title}</p>
                     </div>
                   )}
                 </div>
-              )}
-            </div>
+
+                {/* AI Analysis Section */}
+                {selectedLeakData.enrichedAt ? (
+                  <div className="bg-gradient-to-br from-purple-500/5 to-cyan-500/5 rounded-xl p-4 border border-purple-500/20">
+                    <div className="flex items-center gap-2 mb-3">
+                      <Brain className="w-4 h-4 text-purple-400" />
+                      <h4 className="text-sm font-semibold text-purple-300">تحليل الذكاء الاصطناعي</h4>
+                      <span className={`text-[10px] px-2 py-0.5 rounded border ${severityColor(selectedLeakData.aiSeverity || selectedLeakData.severity)}`}>
+                        تقييم AI: {severityLabel(selectedLeakData.aiSeverity || selectedLeakData.severity)}
+                      </span>
+                      <span className="text-[10px] text-gray-400">ثقة: {selectedLeakData.aiConfidence}%</span>
+                    </div>
+                    <p className="text-sm text-gray-300 leading-relaxed mb-3">{selectedLeakData.aiSummaryAr || selectedLeakData.aiSummary}</p>
+                    {((selectedLeakData.aiRecommendationsAr as string[]) || (selectedLeakData.aiRecommendations as string[]) || []).length > 0 && (
+                      <div>
+                        <h5 className="text-xs font-semibold text-gray-400 mb-2 flex items-center gap-1">
+                          <AlertTriangle className="w-3 h-3" /> التوصيات
+                        </h5>
+                        <ul className="space-y-1.5">
+                          {((selectedLeakData.aiRecommendationsAr as string[]) || (selectedLeakData.aiRecommendations as string[]) || []).map((rec, i) => (
+                            <li key={i} className="flex items-start gap-2 text-xs text-gray-300">
+                              <CheckCircle className="w-3 h-3 text-emerald-400 mt-0.5 shrink-0" />
+                              {rec}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="bg-gray-800/30 rounded-xl p-4 border border-gray-700/20 text-center">
+                    {enrichingId === selectedLeakData.leakId ? (
+                      <div className="flex items-center justify-center gap-3 py-2">
+                        <Loader2 className="w-5 h-5 animate-spin text-purple-400" />
+                        <span className="text-gray-300 text-sm">جاري تحليل التسريب بالذكاء الاصطناعي...</span>
+                      </div>
+                    ) : (
+                      <div className="py-2">
+                        <p className="text-gray-500 text-xs mb-2">لم يتم إثراء هذا التسريب بالذكاء الاصطناعي بعد</p>
+                        <Button
+                          size="sm"
+                          onClick={() => handleEnrich(selectedLeakData.leakId)}
+                          className="gap-2 bg-gradient-to-r from-purple-600 to-cyan-600 text-xs"
+                        >
+                          <Sparkles className="w-3 h-3" />
+                          إثراء بالذكاء الاصطناعي
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* NCA Reporting & PDPL Compliance */}
+                <div className="bg-gradient-to-br from-blue-500/5 to-indigo-500/5 rounded-xl p-4 border border-blue-500/20">
+                  <div className="flex items-center gap-2 mb-3">
+                    <ShieldAlert className="w-4 h-4 text-blue-400" />
+                    <h4 className="text-sm font-semibold text-blue-300">إبلاغ NCA وامتثال PDPL</h4>
+                    {selectedLeakData.status === 'reported' ? (
+                      <span className="text-[10px] px-2 py-0.5 rounded border text-emerald-400 bg-emerald-500/10 border-emerald-500/30">تم الإبلاغ</span>
+                    ) : (
+                      <span className="text-[10px] px-2 py-0.5 rounded border text-amber-400 bg-amber-500/10 border-amber-500/30">بانتظار الإبلاغ</span>
+                    )}
+                  </div>
+                  <div className="grid grid-cols-2 gap-3 mb-3">
+                    <div className="p-2 rounded-lg bg-blue-500/10 border border-blue-500/20 text-center">
+                      <p className="text-xs font-bold text-blue-400">72 ساعة</p>
+                      <p className="text-[9px] text-gray-400">مهلة الإبلاغ القانونية</p>
+                    </div>
+                    <div className="p-2 rounded-lg bg-blue-500/10 border border-blue-500/20 text-center">
+                      <p className="text-xs font-bold text-blue-400">المادة 20</p>
+                      <p className="text-[9px] text-gray-400">PDPL</p>
+                    </div>
+                  </div>
+                  {(selectedLeakData.severity === 'critical' || selectedLeakData.severity === 'high') && selectedLeakData.status !== 'reported' && (
+                    <div className="p-2 rounded-lg bg-red-500/10 border border-red-500/20 mb-3">
+                      <p className="text-[10px] text-red-400 flex items-center gap-1">
+                        <AlertTriangle className="w-3 h-3" />
+                        تسريب {selectedLeakData.severity === 'critical' ? 'حرج' : 'عالي'} الخطورة — يجب إبلاغ NCA فوراً
+                      </p>
+                    </div>
+                  )}
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="w-full gap-2 text-xs border-blue-500/30 text-blue-400 hover:bg-blue-500/10"
+                    onClick={() => toast.success('تم إرسال التقرير إلى NCA', { description: 'سيتم إشعارك بالرد' })}
+                  >
+                    <Send className="w-3 h-3" />
+                    إرسال تقرير إلى NCA
+                  </Button>
+                </div>
+              </div>
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
