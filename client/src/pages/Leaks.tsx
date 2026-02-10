@@ -3,7 +3,7 @@
  * Dark Observatory Theme — Uses tRPC API
  */
 import { useState, useMemo } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   ShieldAlert,
   Search,
@@ -13,6 +13,11 @@ import {
   Globe,
   FileText,
   Loader2,
+  Brain,
+  Sparkles,
+  X,
+  CheckCircle,
+  AlertTriangle,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -110,7 +115,29 @@ export default function Leaks() {
     { enabled: false }
   );
 
+  const [selectedLeak, setSelectedLeak] = useState<string | null>(null);
+  const [enrichingId, setEnrichingId] = useState<string | null>(null);
+
+  const enrichMutation = trpc.enrichment.enrichLeak.useMutation({
+    onSuccess: (result, variables) => {
+      toast.success(`تم إثراء التسريب بنجاح (ثقة: ${result.aiConfidence}%)`);
+      setEnrichingId(null);
+      // Refetch leaks to get updated AI data
+      trpc.useUtils().leaks.list.invalidate();
+    },
+    onError: () => {
+      toast.error("فشل إثراء التسريب بالذكاء الاصطناعي");
+      setEnrichingId(null);
+    },
+  });
+
+  const handleEnrich = (leakId: string) => {
+    setEnrichingId(leakId);
+    enrichMutation.mutate({ leakId });
+  };
+
   const allLeaks = leaks ?? [];
+  const selectedLeakData = allLeaks.find((l) => l.leakId === selectedLeak);
 
   const filteredLeaks = useMemo(() => {
     if (!searchQuery) return allLeaks;
@@ -274,9 +301,33 @@ export default function Leaks() {
                       {leak.detectedAt ? new Date(leak.detectedAt).toLocaleDateString("ar-SA") : "—"}
                     </span>
 
-                    <Button size="sm" variant="ghost" className="h-8 w-8 p-0" onClick={() => toast("تفاصيل التسريب قريباً")}>
-                      <Eye className="w-4 h-4" />
-                    </Button>
+                    <div className="flex items-center gap-1">
+                      {leak.enrichedAt && (
+                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 flex items-center gap-1">
+                          <Sparkles className="w-3 h-3" /> AI
+                        </span>
+                      )}
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-8 w-8 p-0"
+                        onClick={() => {
+                          if (!leak.enrichedAt) {
+                            handleEnrich(leak.leakId);
+                          }
+                          setSelectedLeak(leak.leakId);
+                        }}
+                        disabled={enrichingId === leak.leakId}
+                      >
+                        {enrichingId === leak.leakId ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : leak.enrichedAt ? (
+                          <Eye className="w-4 h-4" />
+                        ) : (
+                          <Brain className="w-4 h-4" />
+                        )}
+                      </Button>
+                    </div>
                   </div>
 
                   <div className="flex flex-wrap gap-1.5 mt-3 pt-3 border-t border-border/50">
@@ -292,6 +343,83 @@ export default function Leaks() {
           );
         })}
       </div>
+
+      {/* AI Enrichment Detail Panel */}
+      <AnimatePresence>
+        {selectedLeak && selectedLeakData && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 20 }}
+            className="fixed inset-x-0 bottom-0 z-50 p-4 md:p-6"
+          >
+            <div className="max-w-4xl mx-auto bg-gray-900/95 backdrop-blur-xl border border-gray-700/50 rounded-2xl shadow-2xl p-6">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-xl bg-gradient-to-br from-purple-500/20 to-cyan-500/20 border border-purple-500/30">
+                    <Brain className="w-5 h-5 text-purple-400" />
+                  </div>
+                  <div>
+                    <h3 className="text-white font-semibold">تحليل الذكاء الاصطناعي — {selectedLeakData.leakId}</h3>
+                    <p className="text-xs text-gray-400">{selectedLeakData.titleAr}</p>
+                  </div>
+                </div>
+                <button onClick={() => setSelectedLeak(null)} className="p-2 rounded-lg hover:bg-gray-800 transition-colors">
+                  <X className="w-5 h-5 text-gray-400" />
+                </button>
+              </div>
+
+              {selectedLeakData.enrichedAt ? (
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div>
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className={`text-xs px-2 py-0.5 rounded border ${severityColor(selectedLeakData.aiSeverity || selectedLeakData.severity)}`}>
+                        تقييم AI: {severityLabel(selectedLeakData.aiSeverity || selectedLeakData.severity)}
+                      </span>
+                      <span className="text-xs text-gray-400">ثقة: {selectedLeakData.aiConfidence}%</span>
+                    </div>
+                    <p className="text-sm text-gray-300 leading-relaxed">{selectedLeakData.aiSummaryAr || selectedLeakData.aiSummary}</p>
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-semibold text-gray-400 mb-2 flex items-center gap-1">
+                      <AlertTriangle className="w-3 h-3" /> التوصيات
+                    </h4>
+                    <ul className="space-y-1.5">
+                      {((selectedLeakData.aiRecommendationsAr as string[]) || (selectedLeakData.aiRecommendations as string[]) || []).map((rec, i) => (
+                        <li key={i} className="flex items-start gap-2 text-xs text-gray-300">
+                          <CheckCircle className="w-3 h-3 text-emerald-400 mt-0.5 shrink-0" />
+                          {rec}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center py-6">
+                  {enrichingId === selectedLeakData.leakId ? (
+                    <div className="flex items-center justify-center gap-3">
+                      <Loader2 className="w-6 h-6 animate-spin text-purple-400" />
+                      <span className="text-gray-300">جاري تحليل التسريب بالذكاء الاصطناعي...</span>
+                    </div>
+                  ) : (
+                    <div>
+                      <Brain className="w-10 h-10 mx-auto mb-3 text-gray-500" />
+                      <p className="text-gray-400 text-sm mb-3">لم يتم إثراء هذا التسريب بعد</p>
+                      <Button
+                        onClick={() => handleEnrich(selectedLeakData.leakId)}
+                        className="gap-2 bg-gradient-to-r from-purple-600 to-cyan-600"
+                      >
+                        <Sparkles className="w-4 h-4" />
+                        إثراء بالذكاء الاصطناعي
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {filteredLeaks.length === 0 && (
         <div className="text-center py-12 text-muted-foreground">

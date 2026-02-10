@@ -22,6 +22,20 @@
       "when": 1770746776401,
       "tag": "0002_odd_argent",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "5",
+      "when": 1770748246951,
+      "tag": "0003_daffy_slyde",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "5",
+      "when": 1770748272734,
+      "tag": "0004_abnormal_wrecking_crew",
+      "breakpoints": true
     }
   ]
 }

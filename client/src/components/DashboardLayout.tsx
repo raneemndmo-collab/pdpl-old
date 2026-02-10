@@ -28,6 +28,8 @@ import {
   Loader2,
   Radio,
   ScrollText,
+  Bell,
+  Archive,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -53,6 +55,8 @@ const navItems: NavItem[] = [
   { label: "التسريبات", labelEn: "Leaks", icon: ShieldAlert, path: "/leaks" },
   { label: "التقارير", labelEn: "Reports", icon: BarChart3, path: "/reports" },
   { label: "مهام الرصد", labelEn: "Monitoring Jobs", icon: Radio, path: "/monitoring-jobs" },
+  { label: "قنوات التنبيه", labelEn: "Alert Channels", icon: Bell, path: "/alert-channels" },
+  { label: "الاحتفاظ بالبيانات", labelEn: "Data Retention", icon: Archive, path: "/data-retention", requiresAuth: true, minRole: "admin" },
   { label: "سجل المراجعة", labelEn: "Audit Log", icon: ScrollText, path: "/audit-log", requiresAuth: true, minRole: "admin" },
   { label: "إدارة المستخدمين", labelEn: "Users", icon: Users, path: "/settings", requiresAuth: true, minRole: "admin" },
 ];

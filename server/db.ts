@@ -386,3 +386,91 @@ export async function updateMonitoringJobStatus(
   if (extra?.totalRuns !== undefined) updateData.totalRuns = sql`${monitoringJobs.totalRuns} + 1`;
   await db.update(monitoringJobs).set(updateData).where(eq(monitoringJobs.jobId, jobId));
 }
+
+// ─── Alert Contacts ────────────────────────────────────────────
+
+import {
+  alertContacts,
+  alertRules,
+  alertHistory,
+  retentionPolicies,
+  type InsertAlertContact,
+  type InsertAlertRule,
+} from "../drizzle/schema";
+
+export async function getAlertContacts() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(alertContacts).orderBy(desc(alertContacts.createdAt));
+}
+
+export async function createAlertContact(contact: InsertAlertContact) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(alertContacts).values(contact);
+  return result[0].insertId;
+}
+
+export async function updateAlertContact(id: number, data: Partial<InsertAlertContact>) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(alertContacts).set(data).where(eq(alertContacts.id, id));
+}
+
+export async function deleteAlertContact(id: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.delete(alertContacts).where(eq(alertContacts.id, id));
+}
+
+// ─── Alert Rules ───────────────────────────────────────────────
+
+export async function getAlertRules() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(alertRules).orderBy(desc(alertRules.createdAt));
+}
+
+export async function createAlertRule(rule: InsertAlertRule) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(alertRules).values(rule);
+  return result[0].insertId;
+}
+
+export async function updateAlertRule(id: number, data: Partial<InsertAlertRule>) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(alertRules).set(data).where(eq(alertRules.id, id));
+}
+
+export async function deleteAlertRule(id: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.delete(alertRules).where(eq(alertRules.id, id));
+}
+
+// ─── Alert History ─────────────────────────────────────────────
+
+export async function getAlertHistory(limit: number = 100) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(alertHistory).orderBy(desc(alertHistory.sentAt)).limit(limit);
+}
+
+// ─── Retention Policies ────────────────────────────────────────
+
+export async function getRetentionPolicies() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(retentionPolicies).orderBy(retentionPolicies.entity);
+}
+
+export async function updateRetentionPolicy(
+  id: number,
+  data: { retentionDays?: number; archiveAction?: "delete" | "archive"; isEnabled?: boolean }
+) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(retentionPolicies).set(data).where(eq(retentionPolicies.id, id));
+}

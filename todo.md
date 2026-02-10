@@ -63,3 +63,29 @@
 - [x] Build Audit Log page with filterable table
 - [x] Add audit log to admin-only navigation
 - [x] Add export audit log as CSV
+
+## Phase 9: LLM Threat Intelligence Enrichment
+- [x] Add enrichment fields to leaks schema (aiSeverity, aiSummary, aiRecommendations, enrichedAt)
+- [x] Create LLM enrichment service using invokeLLM helper
+- [x] Add tRPC procedure to enrich a leak on demand
+- [x] Auto-enrich new leaks detected by scheduler
+- [x] Build enrichment UI panel on leak detail view
+- [x] Add "Enrich All" bulk action button
+- [x] Show AI-generated executive summary on Dashboard
+
+## Phase 10: Email/SMS Alert Channels
+- [x] Add alert_contacts table (name, email, phone, role, preferences)
+- [x] Add alert_rules table (severity threshold, channel, recipients)
+- [x] Create notifyOwner-based email alert service
+- [x] Build Alert Contacts management page
+- [x] Build Alert Rules configuration page
+- [x] Integrate alerts into scheduler when leaks are detected
+- [x] Add alert history/delivery log
+
+## Phase 11: Data Retention Policies
+- [x] Add retention_policies table (entity, retentionDays, archiveAction, enabled)
+- [x] Create retention enforcement cron job
+- [x] Add retention policy management UI in Settings (dedicated Data Retention page)
+- [x] Add archive/purge confirmation dialogs
+- [x] Show retention stats (records archived, storage saved)
+- [x] Add manual archive trigger for admin

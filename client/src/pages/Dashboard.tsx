@@ -14,6 +14,9 @@ import {
   TrendingUp,
   TrendingDown,
   Loader2,
+  Brain,
+  Bell,
+  Sparkles,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -81,8 +84,11 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 export default function Dashboard() {
   const { data: stats, isLoading: statsLoading } = trpc.dashboard.stats.useQuery();
   const { data: leaksData, isLoading: leaksLoading } = trpc.leaks.list.useQuery();
+  const { data: alertStats } = trpc.alerts.stats.useQuery();
 
   const isLoading = statsLoading || leaksLoading;
+  const enrichedCount = leaksData?.filter((l) => l.enrichedAt).length ?? 0;
+  const totalLeaksCount = leaksData?.length ?? 0;
   const leaks = leaksData ?? [];
 
   // Sector distribution
@@ -237,6 +243,71 @@ export default function Dashboard() {
                     <Bar dataKey="paste" name="مواقع لصق" fill="#F59E0B" radius={[4, 4, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+      </div>
+
+      {/* AI & Alerts Summary Row */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.32 }}>
+          <Card className="border-purple-500/20 bg-purple-500/5">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base font-semibold flex items-center gap-2">
+                <Brain className="w-4 h-4 text-purple-400" />
+                إثراء الذكاء الاصطناعي
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-3 gap-4">
+                <div className="text-center p-3 rounded-lg bg-purple-500/10 border border-purple-500/20">
+                  <p className="text-2xl font-bold text-purple-400">{enrichedCount}</p>
+                  <p className="text-xs text-muted-foreground mt-1">تسريبات مثراة</p>
+                </div>
+                <div className="text-center p-3 rounded-lg bg-gray-500/10 border border-gray-500/20">
+                  <p className="text-2xl font-bold text-gray-300">{totalLeaksCount - enrichedCount}</p>
+                  <p className="text-xs text-muted-foreground mt-1">بانتظار الإثراء</p>
+                </div>
+                <div className="text-center p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
+                  <p className="text-2xl font-bold text-emerald-400">{totalLeaksCount > 0 ? Math.round((enrichedCount / totalLeaksCount) * 100) : 0}%</p>
+                  <p className="text-xs text-muted-foreground mt-1">نسبة التغطية</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 mt-3 p-2 rounded-lg bg-purple-500/5 border border-purple-500/10">
+                <Sparkles className="w-4 h-4 text-purple-400" />
+                <p className="text-xs text-muted-foreground">يقوم الذكاء الاصطناعي بتصنيف الخطورة وتوليد ملخصات تنفيذية وتوصيات لكل تسريب</p>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.34 }}>
+          <Card className="border-amber-500/20 bg-amber-500/5">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base font-semibold flex items-center gap-2">
+                <Bell className="w-4 h-4 text-amber-400" />
+                قنوات التنبيه
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-3 gap-4">
+                <div className="text-center p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
+                  <p className="text-2xl font-bold text-emerald-400">{alertStats?.totalSent ?? 0}</p>
+                  <p className="text-xs text-muted-foreground mt-1">تنبيهات مرسلة</p>
+                </div>
+                <div className="text-center p-3 rounded-lg bg-red-500/10 border border-red-500/20">
+                  <p className="text-2xl font-bold text-red-400">{alertStats?.totalFailed ?? 0}</p>
+                  <p className="text-xs text-muted-foreground mt-1">فاشلة</p>
+                </div>
+                <div className="text-center p-3 rounded-lg bg-cyan-500/10 border border-cyan-500/20">
+                  <p className="text-2xl font-bold text-cyan-400">{alertStats?.activeRules ?? 0}</p>
+                  <p className="text-xs text-muted-foreground mt-1">قواعد نشطة</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 mt-3 p-2 rounded-lg bg-amber-500/5 border border-amber-500/10">
+                <Bell className="w-4 h-4 text-amber-400" />
+                <p className="text-xs text-muted-foreground">{alertStats?.activeContacts ?? 0} جهة اتصال نشطة لاستقبال التنبيهات عبر البريد والرسائل</p>
               </div>
             </CardContent>
           </Card>

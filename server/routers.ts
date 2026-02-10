@@ -28,9 +28,23 @@ import {
   createNotification,
   getMonitoringJobs,
   getMonitoringJobById,
+  getAlertContacts,
+  createAlertContact,
+  updateAlertContact,
+  deleteAlertContact,
+  getAlertRules,
+  createAlertRule,
+  updateAlertRule,
+  deleteAlertRule,
+  getAlertHistory,
+  getRetentionPolicies,
+  updateRetentionPolicy,
 } from "./db";
 import { triggerJob, toggleJobStatus } from "./scheduler";
 import { broadcastNotification } from "./websocket";
+import { enrichLeak, enrichAllPending } from "./enrichment";
+import { getAlertStats } from "./alertDispatch";
+import { executeRetentionPolicies, previewRetention } from "./retention";
 
 export const appRouter = router({
   system: systemRouter,
@@ -394,6 +408,140 @@ export const appRouter = router({
         await logAudit(ctx.user.id, "audit.export", "Exported audit logs as CSV", "export", ctx.user.name ?? undefined);
         return { csv, filename: `ndmo-audit-log-${Date.now()}.csv` };
       }),
+  }),
+
+  // ─── Enrichment (LLM Threat Intelligence) ───────────────────
+  enrichment: router({
+    enrichLeak: protectedProcedure
+      .input(z.object({ leakId: z.string() }))
+      .mutation(async ({ input, ctx }) => {
+        const leak = await getLeakById(input.leakId);
+        if (!leak) throw new Error("Leak not found");
+        const result = await enrichLeak({
+          ...leak,
+          piiTypes: (leak.piiTypes as string[]) || [],
+        });
+        await logAudit(ctx.user.id, "enrichment.run", `AI enriched leak ${input.leakId} (confidence: ${result.aiConfidence}%)`, "system", ctx.user.name ?? undefined);
+        return result;
+      }),
+
+    enrichAll: adminProcedure.mutation(async ({ ctx }) => {
+      const count = await enrichAllPending();
+      await logAudit(ctx.user.id, "enrichment.batch", `Batch enriched ${count} leaks`, "system", ctx.user.name ?? undefined);
+      return { enriched: count };
+    }),
+  }),
+
+  // ─── Alert Channels ─────────────────────────────────────────
+  alerts: router({
+    contacts: router({
+      list: publicProcedure.query(async () => getAlertContacts()),
+      create: adminProcedure
+        .input(z.object({
+          name: z.string(),
+          nameAr: z.string().optional(),
+          email: z.string().optional(),
+          phone: z.string().optional(),
+          role: z.string().optional(),
+          roleAr: z.string().optional(),
+          channels: z.array(z.string()).optional(),
+        }))
+        .mutation(async ({ input, ctx }) => {
+          const id = await createAlertContact(input);
+          await logAudit(ctx.user.id, "alert.contact.create", `Created alert contact: ${input.name}`, "system", ctx.user.name ?? undefined);
+          return { id, success: true };
+        }),
+      update: adminProcedure
+        .input(z.object({
+          id: z.number(),
+          name: z.string().optional(),
+          nameAr: z.string().optional(),
+          email: z.string().optional(),
+          phone: z.string().optional(),
+          isActive: z.boolean().optional(),
+          channels: z.array(z.string()).optional(),
+        }))
+        .mutation(async ({ input, ctx }) => {
+          const { id, ...data } = input;
+          await updateAlertContact(id, data);
+          await logAudit(ctx.user.id, "alert.contact.update", `Updated alert contact #${id}`, "system", ctx.user.name ?? undefined);
+          return { success: true };
+        }),
+      delete: adminProcedure
+        .input(z.object({ id: z.number() }))
+        .mutation(async ({ input, ctx }) => {
+          await deleteAlertContact(input.id);
+          await logAudit(ctx.user.id, "alert.contact.delete", `Deleted alert contact #${input.id}`, "system", ctx.user.name ?? undefined);
+          return { success: true };
+        }),
+    }),
+    rules: router({
+      list: publicProcedure.query(async () => getAlertRules()),
+      create: adminProcedure
+        .input(z.object({
+          name: z.string(),
+          nameAr: z.string().optional(),
+          severityThreshold: z.enum(["critical", "high", "medium", "low"]),
+          channel: z.enum(["email", "sms", "both"]),
+          recipients: z.array(z.number()).optional(),
+        }))
+        .mutation(async ({ input, ctx }) => {
+          const id = await createAlertRule(input);
+          await logAudit(ctx.user.id, "alert.rule.create", `Created alert rule: ${input.name}`, "system", ctx.user.name ?? undefined);
+          return { id, success: true };
+        }),
+      update: adminProcedure
+        .input(z.object({
+          id: z.number(),
+          name: z.string().optional(),
+          nameAr: z.string().optional(),
+          severityThreshold: z.enum(["critical", "high", "medium", "low"]).optional(),
+          channel: z.enum(["email", "sms", "both"]).optional(),
+          isEnabled: z.boolean().optional(),
+          recipients: z.array(z.number()).optional(),
+        }))
+        .mutation(async ({ input, ctx }) => {
+          const { id, ...data } = input;
+          await updateAlertRule(id, data);
+          await logAudit(ctx.user.id, "alert.rule.update", `Updated alert rule #${id}`, "system", ctx.user.name ?? undefined);
+          return { success: true };
+        }),
+      delete: adminProcedure
+        .input(z.object({ id: z.number() }))
+        .mutation(async ({ input, ctx }) => {
+          await deleteAlertRule(input.id);
+          await logAudit(ctx.user.id, "alert.rule.delete", `Deleted alert rule #${input.id}`, "system", ctx.user.name ?? undefined);
+          return { success: true };
+        }),
+    }),
+    history: publicProcedure
+      .input(z.object({ limit: z.number().optional() }).optional())
+      .query(async ({ input }) => getAlertHistory(input?.limit ?? 100)),
+    stats: publicProcedure.query(async () => getAlertStats()),
+  }),
+
+  // ─── Retention Policies ─────────────────────────────────────
+  retention: router({
+    list: publicProcedure.query(async () => getRetentionPolicies()),
+    update: adminProcedure
+      .input(z.object({
+        id: z.number(),
+        retentionDays: z.number().optional(),
+        archiveAction: z.enum(["delete", "archive"]).optional(),
+        isEnabled: z.boolean().optional(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const { id, ...data } = input;
+        await updateRetentionPolicy(id, data);
+        await logAudit(ctx.user.id, "retention.update", `Updated retention policy #${id}`, "system", ctx.user.name ?? undefined);
+        return { success: true };
+      }),
+    execute: adminProcedure.mutation(async ({ ctx }) => {
+      const results = await executeRetentionPolicies();
+      await logAudit(ctx.user.id, "retention.execute", `Executed retention policies: ${results.length} processed`, "system", ctx.user.name ?? undefined);
+      return results;
+    }),
+    preview: adminProcedure.query(async () => previewRetention()),
   }),
 
   // ─── Monitoring Jobs ────────────────────────────────────────

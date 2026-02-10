@@ -534,3 +534,197 @@ describe("jobs.toggleStatus", () => {
     expect(resumeResult).toEqual({ success: true });
   });
 });
+
+// ─── Alert Contacts ──────────────────────────────────────────
+describe("alerts.contacts.list", () => {
+  it("returns an array of alert contacts", async () => {
+    const ctx = createPublicContext();
+    const caller = appRouter.createCaller(ctx);
+
+    const contacts = await caller.alerts.contacts.list();
+
+    expect(Array.isArray(contacts)).toBe(true);
+  });
+});
+
+describe("alerts.contacts.create (admin only)", () => {
+  it("requires admin role", async () => {
+    const ctx = createPublicContext();
+    const caller = appRouter.createCaller(ctx);
+
+    await expect(
+      caller.alerts.contacts.create({ name: "Test Contact" })
+    ).rejects.toThrow();
+  });
+
+  it("creates a contact for admin", async () => {
+    const { ctx } = createAuthContext();
+    const caller = appRouter.createCaller(ctx);
+
+    const result = await caller.alerts.contacts.create({
+      name: "Test Contact",
+      email: "test@example.com",
+      channels: ["email"],
+    });
+
+    expect(result.success).toBe(true);
+    expect(typeof result.id).toBe("number");
+  });
+});
+
+// ─── Alert Rules ─────────────────────────────────────────────
+describe("alerts.rules.list", () => {
+  it("returns an array of alert rules", async () => {
+    const ctx = createPublicContext();
+    const caller = appRouter.createCaller(ctx);
+
+    const rules = await caller.alerts.rules.list();
+
+    expect(Array.isArray(rules)).toBe(true);
+  });
+});
+
+describe("alerts.rules.create (admin only)", () => {
+  it("requires admin role", async () => {
+    const ctx = createPublicContext();
+    const caller = appRouter.createCaller(ctx);
+
+    await expect(
+      caller.alerts.rules.create({
+        name: "Test Rule",
+        severityThreshold: "critical",
+        channel: "email",
+      })
+    ).rejects.toThrow();
+  });
+
+  it("creates a rule for admin", async () => {
+    const { ctx } = createAuthContext();
+    const caller = appRouter.createCaller(ctx);
+
+    const result = await caller.alerts.rules.create({
+      name: "Test Rule",
+      severityThreshold: "critical",
+      channel: "email",
+    });
+
+    expect(result.success).toBe(true);
+    expect(typeof result.id).toBe("number");
+  });
+});
+
+// ─── Alert History ───────────────────────────────────────────
+describe("alerts.history", () => {
+  it("returns an array of alert history entries", async () => {
+    const ctx = createPublicContext();
+    const caller = appRouter.createCaller(ctx);
+
+    const history = await caller.alerts.history();
+
+    expect(Array.isArray(history)).toBe(true);
+  });
+});
+
+// ─── Alert Stats ─────────────────────────────────────────────
+describe("alerts.stats", () => {
+  it("returns alert statistics", async () => {
+    const ctx = createPublicContext();
+    const caller = appRouter.createCaller(ctx);
+
+    const stats = await caller.alerts.stats();
+
+    expect(stats).toBeDefined();
+    expect(typeof stats.totalSent).toBe("number");
+    expect(typeof stats.totalFailed).toBe("number");
+    expect(typeof stats.activeRules).toBe("number");
+    expect(typeof stats.activeContacts).toBe("number");
+  });
+});
+
+// ─── Retention Policies ──────────────────────────────────────
+describe("retention.list", () => {
+  it("returns an array of retention policies", async () => {
+    const ctx = createPublicContext();
+    const caller = appRouter.createCaller(ctx);
+
+    const policies = await caller.retention.list();
+
+    expect(Array.isArray(policies)).toBe(true);
+  });
+});
+
+describe("retention.update (admin only)", () => {
+  it("requires admin role", async () => {
+    const ctx = createPublicContext();
+    const caller = appRouter.createCaller(ctx);
+
+    await expect(
+      caller.retention.update({ id: 1, retentionDays: 90 })
+    ).rejects.toThrow();
+  });
+});
+
+describe("retention.execute (admin only)", () => {
+  it("requires admin role", async () => {
+    const ctx = createPublicContext();
+    const caller = appRouter.createCaller(ctx);
+
+    await expect(caller.retention.execute()).rejects.toThrow();
+  });
+
+  it("executes for admin", async () => {
+    const { ctx } = createAuthContext();
+    const caller = appRouter.createCaller(ctx);
+
+    const results = await caller.retention.execute();
+
+    expect(Array.isArray(results)).toBe(true);
+  });
+});
+
+describe("retention.preview (admin only)", () => {
+  it("requires admin role", async () => {
+    const ctx = createPublicContext();
+    const caller = appRouter.createCaller(ctx);
+
+    await expect(caller.retention.preview()).rejects.toThrow();
+  });
+
+  it("returns preview for admin", async () => {
+    const { ctx } = createAuthContext();
+    const caller = appRouter.createCaller(ctx);
+
+    const preview = await caller.retention.preview();
+
+    expect(Array.isArray(preview)).toBe(true);
+  });
+});
+
+// ─── Enrichment ──────────────────────────────────────────────
+describe("enrichment.enrichLeak", () => {
+  it("requires authentication", async () => {
+    const ctx = createPublicContext();
+    const caller = appRouter.createCaller(ctx);
+
+    await expect(
+      caller.enrichment.enrichLeak({ leakId: "LK-001" })
+    ).rejects.toThrow();
+  });
+});
+
+describe("enrichment.enrichAll (admin only)", () => {
+  it("requires admin role", async () => {
+    const ctx = createPublicContext();
+    const caller = appRouter.createCaller(ctx);
+
+    await expect(caller.enrichment.enrichAll()).rejects.toThrow();
+  });
+
+  it("rejects non-admin users", async () => {
+    const { ctx } = createAuthContext();
+    (ctx.user as AuthenticatedUser).role = "user";
+    const caller = appRouter.createCaller(ctx);
+
+    await expect(caller.enrichment.enrichAll()).rejects.toThrow();
+  });
+});

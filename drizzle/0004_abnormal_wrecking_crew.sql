@@ -1,0 +1,1 @@
+ALTER TABLE `alert_contacts` MODIFY COLUMN `alertChannels` json;

@@ -34,6 +34,7 @@ export type InsertUser = typeof users.$inferInsert;
 
 /**
  * Leak records — core entity for detected data leaks
+ * Includes AI enrichment fields for LLM-powered threat intelligence
  */
 export const leaks = mysqlTable("leaks", {
   id: int("id").autoincrement().primaryKey(),
@@ -51,6 +52,14 @@ export const leaks = mysqlTable("leaks", {
     .notNull(),
   description: text("description"),
   descriptionAr: text("descriptionAr"),
+  // AI Enrichment fields
+  aiSeverity: mysqlEnum("aiSeverity", ["critical", "high", "medium", "low"]),
+  aiSummary: text("aiSummary"),
+  aiSummaryAr: text("aiSummaryAr"),
+  aiRecommendations: json("aiRecommendations").$type<string[]>(),
+  aiRecommendationsAr: json("aiRecommendationsAr").$type<string[]>(),
+  aiConfidence: int("aiConfidence"),
+  enrichedAt: timestamp("enrichedAt"),
   detectedAt: timestamp("detectedAt").defaultNow().notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
@@ -234,3 +243,80 @@ export const monitoringJobs = mysqlTable("monitoring_jobs", {
 
 export type MonitoringJob = typeof monitoringJobs.$inferSelect;
 export type InsertMonitoringJob = typeof monitoringJobs.$inferInsert;
+
+/**
+ * Alert contacts — people who receive email/SMS alerts
+ */
+export const alertContacts = mysqlTable("alert_contacts", {
+  id: int("id").autoincrement().primaryKey(),
+  name: varchar("contactName", { length: 255 }).notNull(),
+  nameAr: varchar("contactNameAr", { length: 255 }),
+  email: varchar("contactEmail", { length: 320 }),
+  phone: varchar("contactPhone", { length: 20 }),
+  role: varchar("contactRole", { length: 100 }),
+  roleAr: varchar("contactRoleAr", { length: 100 }),
+  isActive: boolean("isActive").default(true).notNull(),
+  channels: json("alertChannels").$type<string[]>(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type AlertContact = typeof alertContacts.$inferSelect;
+export type InsertAlertContact = typeof alertContacts.$inferInsert;
+
+/**
+ * Alert rules — configurable rules for when to send alerts
+ */
+export const alertRules = mysqlTable("alert_rules", {
+  id: int("id").autoincrement().primaryKey(),
+  name: varchar("ruleName", { length: 255 }).notNull(),
+  nameAr: varchar("ruleNameAr", { length: 255 }),
+  severityThreshold: mysqlEnum("severityThreshold", ["critical", "high", "medium", "low"]).notNull(),
+  channel: mysqlEnum("alertChannel", ["email", "sms", "both"]).default("email").notNull(),
+  isEnabled: boolean("isEnabled").default(true).notNull(),
+  recipients: json("ruleRecipients").$type<number[]>().default([]),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type AlertRule = typeof alertRules.$inferSelect;
+export type InsertAlertRule = typeof alertRules.$inferInsert;
+
+/**
+ * Alert history — log of sent alerts
+ */
+export const alertHistory = mysqlTable("alert_history", {
+  id: int("id").autoincrement().primaryKey(),
+  ruleId: int("ruleId"),
+  contactId: int("contactId"),
+  contactName: varchar("alertContactName", { length: 255 }),
+  channel: mysqlEnum("deliveryChannel", ["email", "sms"]).notNull(),
+  subject: varchar("alertSubject", { length: 500 }).notNull(),
+  body: text("alertBody"),
+  status: mysqlEnum("deliveryStatus", ["sent", "failed", "pending"]).default("pending").notNull(),
+  leakId: varchar("alertLeakId", { length: 32 }),
+  sentAt: timestamp("sentAt").defaultNow().notNull(),
+});
+
+export type AlertHistoryEntry = typeof alertHistory.$inferSelect;
+export type InsertAlertHistoryEntry = typeof alertHistory.$inferInsert;
+
+/**
+ * Retention policies — configurable data lifecycle rules
+ */
+export const retentionPolicies = mysqlTable("retention_policies", {
+  id: int("id").autoincrement().primaryKey(),
+  entity: mysqlEnum("retentionEntity", ["leaks", "audit_logs", "notifications", "pii_scans", "paste_entries"]).notNull().unique(),
+  entityLabel: varchar("entityLabel", { length: 100 }).notNull(),
+  entityLabelAr: varchar("entityLabelAr", { length: 100 }).notNull(),
+  retentionDays: int("retentionDays").notNull().default(365),
+  archiveAction: mysqlEnum("archiveAction", ["delete", "archive"]).default("archive").notNull(),
+  isEnabled: boolean("isEnabled").default(false).notNull(),
+  lastRunAt: timestamp("lastRunAt"),
+  recordsArchived: int("recordsArchived").default(0),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type RetentionPolicy = typeof retentionPolicies.$inferSelect;
+export type InsertRetentionPolicy = typeof retentionPolicies.$inferInsert;
