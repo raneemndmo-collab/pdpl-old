@@ -191,7 +191,7 @@ export const auditLog = mysqlTable("audit_log", {
   userId: int("userId"),
   userName: varchar("userName", { length: 255 }),
   action: varchar("action", { length: 100 }).notNull(),
-  category: mysqlEnum("auditCategory", ["auth", "leak", "export", "pii", "user", "report", "system", "monitoring"])
+  category: mysqlEnum("auditCategory", ["auth", "leak", "export", "pii", "user", "report", "system", "monitoring", "enrichment", "alert", "retention", "api"])
     .default("system")
     .notNull(),
   details: text("details"),
@@ -371,3 +371,147 @@ export const scheduledReports = mysqlTable("scheduled_reports", {
 
 export type ScheduledReport = typeof scheduledReports.$inferSelect;
 export type InsertScheduledReport = typeof scheduledReports.$inferInsert;
+
+/**
+ * Threat Hunting Rules — 25 Saudi-specific YARA-like rules
+ */
+export const threatRules = mysqlTable("threat_rules", {
+  id: int("id").autoincrement().primaryKey(),
+  ruleId: varchar("ruleId", { length: 32 }).notNull().unique(),
+  name: varchar("ruleName", { length: 255 }).notNull(),
+  nameAr: varchar("ruleNameAr", { length: 255 }).notNull(),
+  description: text("ruleDescription"),
+  descriptionAr: text("ruleDescriptionAr"),
+  category: mysqlEnum("ruleCategory", [
+    "data_leak", "credentials", "sale_ad", "db_dump", "financial",
+    "health", "government", "telecom", "education", "infrastructure",
+  ]).notNull(),
+  severity: mysqlEnum("ruleSeverity", ["critical", "high", "medium", "low"]).notNull(),
+  patterns: json("rulePatterns").$type<string[]>().notNull(),
+  keywords: json("ruleKeywords").$type<string[]>(),
+  isEnabled: boolean("ruleEnabled").default(true).notNull(),
+  matchCount: int("ruleMatchCount").default(0),
+  lastMatchAt: timestamp("ruleLastMatchAt"),
+  createdAt: timestamp("ruleCreatedAt").defaultNow().notNull(),
+});
+
+export type ThreatRule = typeof threatRules.$inferSelect;
+export type InsertThreatRule = typeof threatRules.$inferInsert;
+
+/**
+ * Evidence Chain — SHA-256 blockchain-like integrity verification
+ */
+export const evidenceChain = mysqlTable("evidence_chain", {
+  id: int("id").autoincrement().primaryKey(),
+  evidenceId: varchar("evidenceId", { length: 64 }).notNull().unique(),
+  leakId: varchar("evidenceLeakId", { length: 32 }).notNull(),
+  evidenceType: mysqlEnum("evidenceType", ["text", "screenshot", "file", "metadata"]).notNull(),
+  contentHash: varchar("contentHash", { length: 128 }).notNull(),
+  previousHash: varchar("previousHash", { length: 128 }),
+  blockIndex: int("blockIndex").notNull(),
+  capturedBy: varchar("capturedBy", { length: 255 }),
+  metadata: json("evidenceMetadata").$type<Record<string, unknown>>(),
+  isVerified: boolean("isVerified").default(true).notNull(),
+  capturedAt: timestamp("capturedAt").defaultNow().notNull(),
+  createdAt: timestamp("evidenceCreatedAt").defaultNow().notNull(),
+});
+
+export type EvidenceChainEntry = typeof evidenceChain.$inferSelect;
+export type InsertEvidenceChainEntry = typeof evidenceChain.$inferInsert;
+
+/**
+ * Seller Profiles — track and score data sellers across platforms
+ */
+export const sellerProfiles = mysqlTable("seller_profiles", {
+  id: int("id").autoincrement().primaryKey(),
+  sellerId: varchar("sellerId", { length: 64 }).notNull().unique(),
+  name: varchar("sellerName", { length: 255 }).notNull(),
+  aliases: json("sellerAliases").$type<string[]>(),
+  platforms: json("sellerPlatforms").$type<string[]>().notNull(),
+  totalLeaks: int("totalLeaks").default(0),
+  totalRecords: int("sellerTotalRecords").default(0),
+  riskScore: int("sellerRiskScore").default(0),
+  riskLevel: mysqlEnum("sellerRiskLevel", ["critical", "high", "medium", "low"]).default("medium").notNull(),
+  sectors: json("sellerSectors").$type<string[]>(),
+  lastActivity: timestamp("sellerLastActivity"),
+  firstSeen: timestamp("sellerFirstSeen").defaultNow().notNull(),
+  notes: text("sellerNotes"),
+  isActive: boolean("sellerIsActive").default(true).notNull(),
+  createdAt: timestamp("sellerCreatedAt").defaultNow().notNull(),
+  updatedAt: timestamp("sellerUpdatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type SellerProfile = typeof sellerProfiles.$inferSelect;
+export type InsertSellerProfile = typeof sellerProfiles.$inferInsert;
+
+/**
+ * OSINT Queries — Google Dorks, Shodan queries, recon plans
+ */
+export const osintQueries = mysqlTable("osint_queries", {
+  id: int("id").autoincrement().primaryKey(),
+  queryId: varchar("queryId", { length: 32 }).notNull().unique(),
+  name: varchar("queryName", { length: 255 }).notNull(),
+  nameAr: varchar("queryNameAr", { length: 255 }).notNull(),
+  queryType: mysqlEnum("queryType", ["google_dork", "shodan", "recon", "spiderfoot"]).notNull(),
+  category: varchar("queryCategory", { length: 100 }).notNull(),
+  categoryAr: varchar("queryCategoryAr", { length: 100 }),
+  query: text("queryText").notNull(),
+  description: text("queryDescription"),
+  descriptionAr: text("queryDescriptionAr"),
+  resultsCount: int("queryResultsCount").default(0),
+  lastRunAt: timestamp("queryLastRunAt"),
+  isEnabled: boolean("queryEnabled").default(true).notNull(),
+  createdAt: timestamp("queryCreatedAt").defaultNow().notNull(),
+});
+
+export type OsintQuery = typeof osintQueries.$inferSelect;
+export type InsertOsintQuery = typeof osintQueries.$inferInsert;
+
+/**
+ * Feedback Entries — analyst feedback for self-learning accuracy metrics
+ */
+export const feedbackEntries = mysqlTable("feedback_entries", {
+  id: int("id").autoincrement().primaryKey(),
+  leakId: varchar("feedbackLeakId", { length: 32 }).notNull(),
+  userId: int("feedbackUserId"),
+  userName: varchar("feedbackUserName", { length: 255 }),
+  systemClassification: mysqlEnum("systemClassification", ["personal_data", "cybersecurity", "clean", "unknown"]).notNull(),
+  analystClassification: mysqlEnum("analystClassification", ["personal_data", "cybersecurity", "clean", "unknown"]).notNull(),
+  isCorrect: boolean("isCorrect").notNull(),
+  notes: text("feedbackNotes"),
+  createdAt: timestamp("feedbackCreatedAt").defaultNow().notNull(),
+});
+
+export type FeedbackEntry = typeof feedbackEntries.$inferSelect;
+export type InsertFeedbackEntry = typeof feedbackEntries.$inferInsert;
+
+/**
+ * Knowledge Graph Nodes — entities and relationships for threat intelligence
+ */
+export const knowledgeGraphNodes = mysqlTable("knowledge_graph_nodes", {
+  id: int("id").autoincrement().primaryKey(),
+  nodeId: varchar("nodeId", { length: 64 }).notNull().unique(),
+  nodeType: mysqlEnum("nodeType", ["leak", "seller", "entity", "sector", "pii_type", "platform", "campaign"]).notNull(),
+  label: varchar("nodeLabel", { length: 255 }).notNull(),
+  labelAr: varchar("nodeLabelAr", { length: 255 }),
+  metadata: json("nodeMetadata").$type<Record<string, unknown>>(),
+  createdAt: timestamp("nodeCreatedAt").defaultNow().notNull(),
+});
+
+export type KnowledgeGraphNode = typeof knowledgeGraphNodes.$inferSelect;
+
+/**
+ * Knowledge Graph Edges — relationships between nodes
+ */
+export const knowledgeGraphEdges = mysqlTable("knowledge_graph_edges", {
+  id: int("id").autoincrement().primaryKey(),
+  sourceNodeId: varchar("sourceNodeId", { length: 64 }).notNull(),
+  targetNodeId: varchar("targetNodeId", { length: 64 }).notNull(),
+  relationship: varchar("edgeRelationship", { length: 100 }).notNull(),
+  relationshipAr: varchar("edgeRelationshipAr", { length: 100 }),
+  weight: int("edgeWeight").default(1),
+  metadata: json("edgeMetadata").$type<Record<string, unknown>>(),
+  createdAt: timestamp("edgeCreatedAt").defaultNow().notNull(),
+});
+
+export type KnowledgeGraphEdge = typeof knowledgeGraphEdges.$inferSelect;

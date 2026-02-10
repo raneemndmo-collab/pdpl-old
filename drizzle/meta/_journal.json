@@ -50,6 +50,20 @@
       "when": 1770750823525,
       "tag": "0006_whole_ricochet",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "5",
+      "when": 1770755258315,
+      "tag": "0007_rich_rick_jones",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "5",
+      "when": 1770759910390,
+      "tag": "0008_adorable_famine",
+      "breakpoints": true
     }
   ]
 }

@@ -598,3 +598,186 @@ export async function getThreatMapData() {
     leaks: allLeaks,
   };
 }
+
+// ─── New v5 Tables ──────────────────────────────────────────
+
+import {
+  threatRules,
+  evidenceChain,
+  sellerProfiles,
+  osintQueries,
+  feedbackEntries,
+  knowledgeGraphNodes,
+  knowledgeGraphEdges,
+  type InsertThreatRule,
+  type InsertEvidenceChainEntry,
+  type InsertSellerProfile,
+  type InsertOsintQuery,
+  type InsertFeedbackEntry,
+} from "../drizzle/schema";
+
+// ─── Threat Rules ────────────────────────────────────────────
+
+export async function getThreatRules() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(threatRules).orderBy(desc(threatRules.createdAt));
+}
+
+export async function getThreatRuleById(ruleId: string) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(threatRules).where(eq(threatRules.ruleId, ruleId)).limit(1);
+  return result[0];
+}
+
+export async function createThreatRule(rule: InsertThreatRule) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(threatRules).values(rule);
+  return result[0].insertId;
+}
+
+export async function updateThreatRule(id: number, data: Partial<InsertThreatRule>) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(threatRules).set(data).where(eq(threatRules.id, id));
+}
+
+export async function toggleThreatRule(id: number, isEnabled: boolean) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(threatRules).set({ isEnabled }).where(eq(threatRules.id, id));
+}
+
+// ─── Evidence Chain ──────────────────────────────────────────
+
+export async function getEvidenceChain(leakId?: string) {
+  const db = await getDb();
+  if (!db) return [];
+  if (leakId) {
+    return db.select().from(evidenceChain).where(eq(evidenceChain.leakId, leakId)).orderBy(evidenceChain.blockIndex);
+  }
+  return db.select().from(evidenceChain).orderBy(desc(evidenceChain.createdAt));
+}
+
+export async function createEvidenceEntry(entry: InsertEvidenceChainEntry) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(evidenceChain).values(entry);
+  return result[0].insertId;
+}
+
+export async function getEvidenceStats() {
+  const db = await getDb();
+  if (!db) return { total: 0, verified: 0, types: {} };
+  const all = await db.select().from(evidenceChain);
+  const verified = all.filter(e => e.isVerified).length;
+  const types: Record<string, number> = {};
+  all.forEach(e => { types[e.evidenceType] = (types[e.evidenceType] || 0) + 1; });
+  return { total: all.length, verified, types };
+}
+
+// ─── Seller Profiles ─────────────────────────────────────────
+
+export async function getSellerProfiles(filters?: { riskLevel?: string }) {
+  const db = await getDb();
+  if (!db) return [];
+  if (filters?.riskLevel && filters.riskLevel !== "all") {
+    return db.select().from(sellerProfiles).where(eq(sellerProfiles.riskLevel, filters.riskLevel as any)).orderBy(desc(sellerProfiles.riskScore));
+  }
+  return db.select().from(sellerProfiles).orderBy(desc(sellerProfiles.riskScore));
+}
+
+export async function getSellerById(sellerId: string) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(sellerProfiles).where(eq(sellerProfiles.sellerId, sellerId)).limit(1);
+  return result[0];
+}
+
+export async function createSellerProfile(seller: InsertSellerProfile) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(sellerProfiles).values(seller);
+  return result[0].insertId;
+}
+
+export async function updateSellerProfile(id: number, data: Partial<InsertSellerProfile>) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(sellerProfiles).set(data).where(eq(sellerProfiles.id, id));
+}
+
+// ─── OSINT Queries ───────────────────────────────────────────
+
+export async function getOsintQueries(filters?: { queryType?: string; category?: string }) {
+  const db = await getDb();
+  if (!db) return [];
+  const conditions = [];
+  if (filters?.queryType && filters.queryType !== "all") {
+    conditions.push(eq(osintQueries.queryType, filters.queryType as any));
+  }
+  if (filters?.category && filters.category !== "all") {
+    conditions.push(eq(osintQueries.category, filters.category));
+  }
+  const where = conditions.length > 0 ? and(...conditions) : undefined;
+  return db.select().from(osintQueries).where(where).orderBy(desc(osintQueries.createdAt));
+}
+
+export async function createOsintQuery(query: InsertOsintQuery) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(osintQueries).values(query);
+  return result[0].insertId;
+}
+
+export async function updateOsintQuery(id: number, data: Partial<InsertOsintQuery>) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(osintQueries).set(data).where(eq(osintQueries.id, id));
+}
+
+// ─── Feedback Entries ────────────────────────────────────────
+
+export async function getFeedbackEntries() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(feedbackEntries).orderBy(desc(feedbackEntries.createdAt));
+}
+
+export async function createFeedbackEntry(entry: InsertFeedbackEntry) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(feedbackEntries).values(entry);
+  return result[0].insertId;
+}
+
+export async function getFeedbackStats() {
+  const db = await getDb();
+  if (!db) return { total: 0, correct: 0, precision: 0, recall: 0, f1: 0 };
+  const all = await db.select().from(feedbackEntries);
+  const total = all.length;
+  const correct = all.filter(e => e.isCorrect).length;
+  
+  // Calculate precision, recall, F1
+  const truePositives = all.filter(e => e.systemClassification === "personal_data" && e.analystClassification === "personal_data").length;
+  const falsePositives = all.filter(e => e.systemClassification === "personal_data" && e.analystClassification !== "personal_data").length;
+  const falseNegatives = all.filter(e => e.systemClassification !== "personal_data" && e.analystClassification === "personal_data").length;
+  
+  const precision = truePositives + falsePositives > 0 ? Math.round((truePositives / (truePositives + falsePositives)) * 100) : 0;
+  const recall = truePositives + falseNegatives > 0 ? Math.round((truePositives / (truePositives + falseNegatives)) * 100) : 0;
+  const f1 = precision + recall > 0 ? Math.round((2 * precision * recall) / (precision + recall)) : 0;
+  
+  return { total, correct, precision, recall, f1 };
+}
+
+// ─── Knowledge Graph ─────────────────────────────────────────
+
+export async function getKnowledgeGraphData() {
+  const db = await getDb();
+  if (!db) return { nodes: [], edges: [] };
+  const nodes = await db.select().from(knowledgeGraphNodes);
+  const edges = await db.select().from(knowledgeGraphEdges);
+  return { nodes, edges };
+}

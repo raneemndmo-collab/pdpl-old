@@ -57,6 +57,27 @@ import {
   getThreatMapData,
 } from "./db";
 import { checkAndRunScheduledReports } from "./reportScheduler";
+import {
+  getThreatRules,
+  getThreatRuleById,
+  createThreatRule,
+  updateThreatRule,
+  toggleThreatRule,
+  getEvidenceChain,
+  createEvidenceEntry,
+  getEvidenceStats,
+  getSellerProfiles,
+  getSellerById,
+  createSellerProfile,
+  updateSellerProfile,
+  getOsintQueries,
+  createOsintQuery,
+  updateOsintQuery,
+  getFeedbackEntries,
+  createFeedbackEntry,
+  getFeedbackStats,
+  getKnowledgeGraphData,
+} from "./db";
 
 export const appRouter = router({
   system: systemRouter,
@@ -713,6 +734,190 @@ export const appRouter = router({
         );
         return { success: true };
       }),
+  }),
+
+  // ─── Threat Rules ──────────────────────────────────────────
+  threatRules: router({
+    list: publicProcedure.query(async () => {
+      return getThreatRules();
+    }),
+
+    getById: publicProcedure
+      .input(z.object({ ruleId: z.string() }))
+      .query(async ({ input }) => {
+        return getThreatRuleById(input.ruleId);
+      }),
+
+    create: protectedProcedure
+      .input(z.object({
+        ruleId: z.string(),
+        name: z.string(),
+        nameAr: z.string(),
+        description: z.string().optional(),
+        descriptionAr: z.string().optional(),
+        category: z.enum(["data_leak", "credentials", "sale_ad", "db_dump", "financial", "health", "government", "telecom", "education", "infrastructure"]),
+        severity: z.enum(["critical", "high", "medium", "low"]),
+        patterns: z.array(z.string()),
+        keywords: z.array(z.string()).optional(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const id = await createThreatRule(input);
+        await logAudit(ctx.user.id, "threatRule.create", `Created threat rule ${input.ruleId}`, "system", ctx.user.name ?? undefined);
+        return { id };
+      }),
+
+    toggle: protectedProcedure
+      .input(z.object({ id: z.number(), isEnabled: z.boolean() }))
+      .mutation(async ({ input, ctx }) => {
+        await toggleThreatRule(input.id, input.isEnabled);
+        await logAudit(ctx.user.id, "threatRule.toggle", `${input.isEnabled ? "Enabled" : "Disabled"} threat rule #${input.id}`, "system", ctx.user.name ?? undefined);
+        return { success: true };
+      }),
+  }),
+
+  // ─── Evidence Chain ────────────────────────────────────────
+  evidence: router({
+    list: publicProcedure
+      .input(z.object({ leakId: z.string().optional() }).optional())
+      .query(async ({ input }) => {
+        return getEvidenceChain(input?.leakId);
+      }),
+
+    stats: publicProcedure.query(async () => {
+      return getEvidenceStats();
+    }),
+
+    create: protectedProcedure
+      .input(z.object({
+        evidenceId: z.string(),
+        leakId: z.string(),
+        evidenceType: z.enum(["text", "screenshot", "file", "metadata"]),
+        contentHash: z.string(),
+        previousHash: z.string().optional(),
+        blockIndex: z.number(),
+        capturedBy: z.string().optional(),
+        metadata: z.record(z.string(), z.unknown()).optional(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const id = await createEvidenceEntry(input);
+        await logAudit(ctx.user.id, "evidence.create", `Added evidence ${input.evidenceId} for leak ${input.leakId}`, "leak", ctx.user.name ?? undefined);
+        return { id };
+      }),
+  }),
+
+  // ─── Seller Profiles ───────────────────────────────────────
+  sellers: router({
+    list: publicProcedure
+      .input(z.object({ riskLevel: z.string().optional() }).optional())
+      .query(async ({ input }) => {
+        return getSellerProfiles(input);
+      }),
+
+    getById: publicProcedure
+      .input(z.object({ sellerId: z.string() }))
+      .query(async ({ input }) => {
+        return getSellerById(input.sellerId);
+      }),
+
+    create: protectedProcedure
+      .input(z.object({
+        sellerId: z.string(),
+        name: z.string(),
+        aliases: z.array(z.string()).optional(),
+        platforms: z.array(z.string()),
+        totalLeaks: z.number().optional(),
+        totalRecords: z.number().optional(),
+        riskScore: z.number().optional(),
+        riskLevel: z.enum(["critical", "high", "medium", "low"]).optional(),
+        sectors: z.array(z.string()).optional(),
+        notes: z.string().optional(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const id = await createSellerProfile(input);
+        await logAudit(ctx.user.id, "seller.create", `Created seller profile ${input.sellerId}`, "system", ctx.user.name ?? undefined);
+        return { id };
+      }),
+
+    update: protectedProcedure
+      .input(z.object({
+        id: z.number(),
+        data: z.object({
+          name: z.string().optional(),
+          aliases: z.array(z.string()).optional(),
+          riskScore: z.number().optional(),
+          riskLevel: z.enum(["critical", "high", "medium", "low"]).optional(),
+          notes: z.string().optional(),
+          isActive: z.boolean().optional(),
+        }),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        await updateSellerProfile(input.id, input.data);
+        await logAudit(ctx.user.id, "seller.update", `Updated seller profile #${input.id}`, "system", ctx.user.name ?? undefined);
+        return { success: true };
+      }),
+  }),
+
+  // ─── OSINT Queries ─────────────────────────────────────────
+  osint: router({
+    list: publicProcedure
+      .input(z.object({ queryType: z.string().optional(), category: z.string().optional() }).optional())
+      .query(async ({ input }) => {
+        return getOsintQueries(input);
+      }),
+
+    create: protectedProcedure
+      .input(z.object({
+        queryId: z.string(),
+        name: z.string(),
+        nameAr: z.string(),
+        queryType: z.enum(["google_dork", "shodan", "recon", "spiderfoot"]),
+        category: z.string(),
+        categoryAr: z.string().optional(),
+        query: z.string(),
+        description: z.string().optional(),
+        descriptionAr: z.string().optional(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const id = await createOsintQuery(input);
+        await logAudit(ctx.user.id, "osint.create", `Created OSINT query ${input.queryId}`, "system", ctx.user.name ?? undefined);
+        return { id };
+      }),
+  }),
+
+  // ─── Feedback / Accuracy ───────────────────────────────────
+  feedback: router({
+    list: publicProcedure.query(async () => {
+      return getFeedbackEntries();
+    }),
+
+    stats: publicProcedure.query(async () => {
+      return getFeedbackStats();
+    }),
+
+    create: protectedProcedure
+      .input(z.object({
+        leakId: z.string(),
+        systemClassification: z.enum(["personal_data", "cybersecurity", "clean", "unknown"]),
+        analystClassification: z.enum(["personal_data", "cybersecurity", "clean", "unknown"]),
+        isCorrect: z.boolean(),
+        notes: z.string().optional(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const id = await createFeedbackEntry({
+          ...input,
+          userId: ctx.user.id,
+          userName: ctx.user.name ?? undefined,
+        });
+        await logAudit(ctx.user.id, "feedback.create", `Submitted feedback for leak ${input.leakId}`, "system", ctx.user.name ?? undefined);
+        return { id };
+      }),
+  }),
+
+  // ─── Knowledge Graph ───────────────────────────────────────
+  knowledgeGraph: router({
+    data: publicProcedure.query(async () => {
+      return getKnowledgeGraphData();
+    }),
   }),
 });
 

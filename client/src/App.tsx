@@ -20,6 +20,12 @@ import DataRetention from "./pages/DataRetention";
 import ThreatMap from "./pages/ThreatMap";
 import ScheduledReports from "./pages/ScheduledReports";
 import ApiKeys from "./pages/ApiKeys";
+import ThreatRules from "./pages/ThreatRules";
+import EvidenceChain from "./pages/EvidenceChain";
+import SellerProfiles from "./pages/SellerProfiles";
+import OsintTools from "./pages/OsintTools";
+import FeedbackAccuracy from "./pages/FeedbackAccuracy";
+import KnowledgeGraph from "./pages/KnowledgeGraph";
 
 function Router() {
   // make sure to consider if you need authentication for certain routes
@@ -41,6 +47,12 @@ function Router() {
         <Route path="/api-keys" component={ApiKeys} />
         <Route path="/data-retention" component={DataRetention} />
         <Route path="/audit-log" component={AuditLog} />
+        <Route path="/threat-rules" component={ThreatRules} />
+        <Route path="/evidence-chain" component={EvidenceChain} />
+        <Route path="/seller-profiles" component={SellerProfiles} />
+        <Route path="/osint-tools" component={OsintTools} />
+        <Route path="/feedback-accuracy" component={FeedbackAccuracy} />
+        <Route path="/knowledge-graph" component={KnowledgeGraph} />
         <Route path="/404" component={NotFound} />
         <Route component={NotFound} />
       </Switch>

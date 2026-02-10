@@ -477,11 +477,11 @@ describe("jobs.getById", () => {
     const ctx = createPublicContext();
     const caller = appRouter.createCaller(ctx);
 
-    const job = await caller.jobs.getById({ jobId: "job-telegram-monitor" });
+    const job = await caller.jobs.getById({ jobId: "JOB-TG-001" });
 
     expect(job).toBeDefined();
     if (job) {
-      expect(job.jobId).toBe("job-telegram-monitor");
+      expect(job.jobId).toBe("JOB-TG-001");
       expect(job.platform).toBe("telegram");
     }
   });
@@ -492,14 +492,14 @@ describe("jobs.trigger", () => {
     const ctx = createPublicContext();
     const caller = appRouter.createCaller(ctx);
 
-    await expect(caller.jobs.trigger({ jobId: "job-telegram-monitor" })).rejects.toThrow();
+    await expect(caller.jobs.trigger({ jobId: "JOB-TG-001" })).rejects.toThrow();
   });
 
   it("succeeds for authenticated users", async () => {
     const { ctx } = createAuthContext();
     const caller = appRouter.createCaller(ctx);
 
-    const result = await caller.jobs.trigger({ jobId: "job-telegram-monitor" });
+    const result = await caller.jobs.trigger({ jobId: "JOB-TG-001" });
 
     expect(result).toEqual({ success: true, message: "Job triggered" });
   });
@@ -511,7 +511,7 @@ describe("jobs.toggleStatus", () => {
     const caller = appRouter.createCaller(ctx);
 
     await expect(
-      caller.jobs.toggleStatus({ jobId: "job-telegram-monitor", status: "paused" })
+      caller.jobs.toggleStatus({ jobId: "JOB-TG-001", status: "paused" })
     ).rejects.toThrow();
   });
 
@@ -521,14 +521,14 @@ describe("jobs.toggleStatus", () => {
 
     // Pause
     const pauseResult = await caller.jobs.toggleStatus({
-      jobId: "job-telegram-monitor",
+      jobId: "JOB-TG-001",
       status: "paused",
     });
     expect(pauseResult).toEqual({ success: true });
 
     // Resume
     const resumeResult = await caller.jobs.toggleStatus({
-      jobId: "job-telegram-monitor",
+      jobId: "JOB-TG-001",
       status: "active",
     });
     expect(resumeResult).toEqual({ success: true });
@@ -905,5 +905,231 @@ describe("apiKeys", () => {
     const caller = appRouter.createCaller(ctx);
 
     await expect(caller.apiKeys.list()).rejects.toThrow();
+  });
+});
+
+// ─── V5 Enhancements: Threat Rules ─────────────────────────────────
+describe("threatRules", () => {
+  it("lists threat rules", async () => {
+    const ctx = createPublicContext();
+    const caller = appRouter.createCaller(ctx);
+
+    const result = await caller.threatRules.list();
+    expect(Array.isArray(result)).toBe(true);
+    if (result.length > 0) {
+      const rule = result[0];
+      expect(rule).toHaveProperty("ruleId");
+      expect(rule).toHaveProperty("nameAr");
+      expect(rule).toHaveProperty("name");
+      expect(rule).toHaveProperty("category");
+      expect(rule).toHaveProperty("severity");
+      expect(rule).toHaveProperty("patterns");
+      expect(rule).toHaveProperty("keywords");
+      expect(rule).toHaveProperty("matchCount");
+      expect(rule).toHaveProperty("isEnabled");
+    }
+  });
+
+  it("returns stats with correct structure", async () => {
+    const ctx = createPublicContext();
+    const caller = appRouter.createCaller(ctx);
+
+    // threatRules doesn't have a stats endpoint, test list instead
+    const rules = await caller.threatRules.list();
+    expect(Array.isArray(rules)).toBe(true);
+    expect(rules.length).toBeGreaterThan(0);
+    // Verify we can compute stats from the list
+    const active = rules.filter((r: any) => r.isEnabled).length;
+    expect(active).toBeGreaterThan(0);
+  });
+});
+
+// ─── V5 Enhancements: Evidence Chain ────────────────────────────────
+describe("evidence", () => {
+  it("lists evidence chain entries", async () => {
+    const ctx = createPublicContext();
+    const caller = appRouter.createCaller(ctx);
+
+    const result = await caller.evidence.list();
+    expect(Array.isArray(result)).toBe(true);
+    if (result.length > 0) {
+      const entry = result[0];
+      expect(entry).toHaveProperty("leakId");
+      expect(entry).toHaveProperty("evidenceType");
+      expect(entry).toHaveProperty("contentHash");
+      expect(entry).toHaveProperty("isVerified");
+    }
+  });
+
+  it("returns stats with verification rate", async () => {
+    const ctx = createPublicContext();
+    const caller = appRouter.createCaller(ctx);
+
+    const stats = await caller.evidence.stats();
+    expect(stats).toHaveProperty("total");
+    expect(stats).toHaveProperty("verified");
+    expect(stats).toHaveProperty("types");
+    expect(typeof stats.total).toBe("number");
+    expect(typeof stats.verified).toBe("number");
+  });
+});
+
+// ─── V5 Enhancements: Seller Profiles ───────────────────────────────
+describe("sellers", () => {
+  it("lists seller profiles", async () => {
+    const ctx = createPublicContext();
+    const caller = appRouter.createCaller(ctx);
+
+    const result = await caller.sellers.list();
+    expect(Array.isArray(result)).toBe(true);
+    if (result.length > 0) {
+      const seller = result[0];
+      expect(seller).toHaveProperty("sellerId");
+      expect(seller).toHaveProperty("name");
+      expect(seller).toHaveProperty("riskScore");
+      expect(seller).toHaveProperty("riskLevel");
+      expect(seller).toHaveProperty("platforms");
+      expect(seller).toHaveProperty("aliases");
+      expect(seller).toHaveProperty("totalLeaks");
+      expect(seller).toHaveProperty("totalRecords");
+      expect(typeof seller.riskScore).toBe("number");
+    }
+  });
+
+  it("returns stats with risk breakdown", async () => {
+    const ctx = createPublicContext();
+    const caller = appRouter.createCaller(ctx);
+
+    // sellers doesn't have a stats endpoint, test list instead
+    const sellers = await caller.sellers.list();
+    expect(Array.isArray(sellers)).toBe(true);
+    expect(sellers.length).toBeGreaterThan(0);
+    const critical = sellers.filter((s: any) => s.riskLevel === "critical").length;
+    expect(critical).toBeGreaterThan(0);
+  });
+});
+
+// ─── V5 Enhancements: OSINT Tools ──────────────────────────────────
+describe("osint", () => {
+  it("lists OSINT queries", async () => {
+    const ctx = createPublicContext();
+    const caller = appRouter.createCaller(ctx);
+
+    const result = await caller.osint.list();
+    expect(Array.isArray(result)).toBe(true);
+    if (result.length > 0) {
+      const query = result[0];
+      expect(query).toHaveProperty("queryId");
+      expect(query).toHaveProperty("nameAr");
+      expect(query).toHaveProperty("name");
+      expect(query).toHaveProperty("queryType");
+      expect(query).toHaveProperty("query");
+      expect(query).toHaveProperty("category");
+    }
+  });
+
+  it("returns stats with tool type breakdown", async () => {
+    const ctx = createPublicContext();
+    const caller = appRouter.createCaller(ctx);
+
+    // osint doesn't have a stats endpoint, test list with filter
+    const all = await caller.osint.list();
+    expect(Array.isArray(all)).toBe(true);
+    expect(all.length).toBeGreaterThan(0);
+    const googleDorks = all.filter((q: any) => q.queryType === "google_dork").length;
+    expect(googleDorks).toBeGreaterThan(0);
+  });
+});
+
+// ─── V5 Enhancements: Feedback/Accuracy ─────────────────────────────
+describe("feedback", () => {
+  it("lists feedback entries", async () => {
+    const ctx = createPublicContext();
+    const caller = appRouter.createCaller(ctx);
+
+    const result = await caller.feedback.list();
+    expect(Array.isArray(result)).toBe(true);
+    if (result.length > 0) {
+      const entry = result[0];
+      expect(entry).toHaveProperty("leakId");
+      expect(entry).toHaveProperty("systemClassification");
+      expect(entry).toHaveProperty("analystClassification");
+      expect(entry).toHaveProperty("isCorrect");
+      expect(entry).toHaveProperty("userName");
+    }
+  });
+
+  it("returns accuracy metrics with Precision/Recall/F1", async () => {
+    const ctx = createPublicContext();
+    const caller = appRouter.createCaller(ctx);
+
+    const metrics = await caller.feedback.stats();
+    expect(metrics).toHaveProperty("total");
+    expect(metrics).toHaveProperty("correct");
+    expect(metrics).toHaveProperty("precision");
+    expect(metrics).toHaveProperty("recall");
+    expect(metrics).toHaveProperty("f1");
+    expect(typeof metrics.precision).toBe("number");
+    expect(typeof metrics.recall).toBe("number");
+    expect(typeof metrics.f1).toBe("number");
+    // Precision and Recall should be between 0 and 100
+    expect(metrics.precision).toBeGreaterThanOrEqual(0);
+    expect(metrics.precision).toBeLessThanOrEqual(100);
+    expect(metrics.recall).toBeGreaterThanOrEqual(0);
+    expect(metrics.recall).toBeLessThanOrEqual(100);
+  });
+});
+
+// ─── V5 Enhancements: Knowledge Graph ───────────────────────────────
+describe("knowledgeGraph", () => {
+  it("returns nodes and edges", async () => {
+    const ctx = createPublicContext();
+    const caller = appRouter.createCaller(ctx);
+
+    const result = await caller.knowledgeGraph.data();
+    expect(result).toHaveProperty("nodes");
+    expect(result).toHaveProperty("edges");
+    expect(Array.isArray(result.nodes)).toBe(true);
+    expect(Array.isArray(result.edges)).toBe(true);
+  });
+
+  it("nodes have correct structure", async () => {
+    const ctx = createPublicContext();
+    const caller = appRouter.createCaller(ctx);
+
+    const result = await caller.knowledgeGraph.data();
+    if (result.nodes.length > 0) {
+      const node = result.nodes[0];
+      expect(node).toHaveProperty("nodeId");
+      expect(node).toHaveProperty("nodeType");
+      expect(node).toHaveProperty("label");
+      expect(node).toHaveProperty("labelAr");
+    }
+  });
+
+  it("edges have correct structure", async () => {
+    const ctx = createPublicContext();
+    const caller = appRouter.createCaller(ctx);
+
+    const result = await caller.knowledgeGraph.data();
+    if (result.edges.length > 0) {
+      const edge = result.edges[0];
+      expect(edge).toHaveProperty("sourceNodeId");
+      expect(edge).toHaveProperty("targetNodeId");
+      expect(edge).toHaveProperty("relationship");
+    }
+  });
+
+  it("returns stats with node type distribution", async () => {
+    const ctx = createPublicContext();
+    const caller = appRouter.createCaller(ctx);
+
+    // knowledgeGraph doesn't have a stats endpoint, test data instead
+    const data = await caller.knowledgeGraph.data();
+    expect(data.nodes.length).toBeGreaterThan(0);
+    expect(data.edges.length).toBeGreaterThan(0);
+    // Verify node types exist
+    const nodeTypes = new Set(data.nodes.map((n: any) => n.nodeType));
+    expect(nodeTypes.size).toBeGreaterThan(0);
   });
 });
