@@ -228,3 +228,14 @@
 - [x] Fix all TypeScript errors (0 errors)
 - [x] Run tests (89/89 passed)
 - [x] Save checkpoint and deliver
+
+## Phase 24: Enrich Leaks with Realistic Sample Data, Screenshots, and Source Links
+- [x] Add sample PII data fields to leak schema (sampleData JSON with fake but realistic personal data)
+- [x] Add screenshot URLs field to leaks (images showing the leak source)
+- [x] Add source URLs field (links to where the leak was found)
+- [x] Generate 14 realistic leak screenshot images (dark web forums, Telegram channels, paste sites)
+- [x] Create enrichment script with realistic sample data for all 105 leaks
+- [x] Update Leaks detail modal to show: sample data table, screenshot gallery, source links
+- [x] Ensure all data is fake but realistic (no real personal data)
+- [x] Test and verify enriched data displays correctly
+- [x] Run tests and save checkpoint

@@ -60,6 +60,21 @@ export const leaks = mysqlTable("leaks", {
   aiRecommendationsAr: json("aiRecommendationsAr").$type<string[]>(),
   aiConfidence: int("aiConfidence"),
   enrichedAt: timestamp("enrichedAt"),
+  // Sample leaked data (fake but realistic PII examples)
+  sampleData: json("sampleData").$type<Array<Record<string, string>>>(),
+  // Source URL where the leak was found
+  sourceUrl: text("sourceUrl"),
+  // Source platform name
+  sourcePlatform: varchar("sourcePlatform", { length: 255 }),
+  // Screenshot URLs showing the leak evidence
+  screenshotUrls: json("screenshotUrls").$type<string[]>(),
+  // Seller/threat actor name
+  threatActor: varchar("threatActor", { length: 255 }),
+  // Price if sold on dark web
+  price: varchar("leakPrice", { length: 100 }),
+  // Breach method
+  breachMethod: varchar("breachMethod", { length: 255 }),
+  breachMethodAr: varchar("breachMethodAr", { length: 255 }),
   // Geographic data for threat map
   region: varchar("region", { length: 100 }),
   regionAr: varchar("regionAr", { length: 100 }),

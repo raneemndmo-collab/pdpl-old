@@ -33,6 +33,13 @@ import {
   ChevronRight,
   ExternalLink,
   Fingerprint,
+  DollarSign,
+  Skull,
+  Zap,
+  Image as ImageIcon,
+  Table,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -176,6 +183,32 @@ function StatsDetailModal({ open, onClose, title, leaks }: { open: boolean; onCl
   );
 }
 
+/* ─── Screenshot Lightbox ─── */
+function ScreenshotLightbox({ url, onClose }: { url: string; onClose: () => void }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-[60] bg-black/90 backdrop-blur-md flex items-center justify-center p-4"
+      onClick={onClose}
+    >
+      <motion.div
+        initial={{ scale: 0.8 }}
+        animate={{ scale: 1 }}
+        exit={{ scale: 0.8 }}
+        className="relative max-w-4xl max-h-[90vh]"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <button onClick={onClose} className="absolute -top-10 left-0 p-2 rounded-lg bg-white/10 hover:bg-white/20 transition-colors">
+          <X className="w-5 h-5 text-white" />
+        </button>
+        <img src={url} alt="Evidence Screenshot" className="max-w-full max-h-[85vh] rounded-xl shadow-2xl border border-white/10 object-contain" />
+      </motion.div>
+    </motion.div>
+  );
+}
+
 export default function Leaks() {
   const [searchQuery, setSearchQuery] = useState("");
   const [severityFilter, setSeverityFilter] = useState("all");
@@ -200,8 +233,9 @@ export default function Leaks() {
 
   const [selectedLeak, setSelectedLeak] = useState<string | null>(null);
   const [enrichingId, setEnrichingId] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<"overview" | "evidence" | "ai">("overview");
+  const [activeTab, setActiveTab] = useState<"overview" | "samples" | "evidence" | "ai">("overview");
   const [statsModal, setStatsModal] = useState<{ title: string; leaks: any[] } | null>(null);
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const utils = trpc.useUtils();
 
   // Fetch detail with evidence when a leak is selected
@@ -287,11 +321,15 @@ export default function Leaks() {
                 className={`border ${stat.borderColor} ${stat.bgColor} cursor-pointer hover:scale-[1.02] transition-all`}
                 onClick={() => setStatsModal({ title: stat.label, leaks: stat.filter() })}
               >
-                <CardContent className="p-4 text-center">
-                  <Icon className={`w-5 h-5 mx-auto mb-2 ${stat.color}`} />
-                  <p className={`text-2xl font-bold ${stat.color}`}>{stat.value}</p>
-                  <p className="text-xs text-muted-foreground mt-1">{stat.label}</p>
-                  <p className="text-[10px] text-primary/60 mt-1">اضغط للتفاصيل</p>
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-xs text-muted-foreground">{stat.label}</p>
+                      <p className={`text-2xl font-bold mt-1 ${stat.color}`}>{stat.value}</p>
+                    </div>
+                    <Icon className={`w-8 h-8 ${stat.color} opacity-30`} />
+                  </div>
+                  <p className="text-[10px] text-muted-foreground mt-2">اضغط للتفاصيل</p>
                 </CardContent>
               </Card>
             </motion.div>
@@ -302,18 +340,20 @@ export default function Leaks() {
       {/* Filters */}
       <Card className="border-border">
         <CardContent className="p-4">
-          <div className="flex flex-col lg:flex-row gap-3">
-            <div className="relative flex-1">
-              <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input
-                placeholder="البحث في التسريبات..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pr-10 bg-secondary/50 border-border"
-              />
+          <div className="flex flex-wrap gap-3">
+            <div className="flex-1 min-w-[200px]">
+              <div className="relative">
+                <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  placeholder="بحث في التسريبات..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pr-10 bg-secondary/50 border-border"
+                />
+              </div>
             </div>
             <Select value={severityFilter} onValueChange={setSeverityFilter}>
-              <SelectTrigger className="w-full lg:w-40 bg-secondary/50 border-border">
+              <SelectTrigger className="w-[140px] bg-secondary/50 border-border">
                 <SelectValue placeholder="الخطورة" />
               </SelectTrigger>
               <SelectContent>
@@ -325,18 +365,18 @@ export default function Leaks() {
               </SelectContent>
             </Select>
             <Select value={sourceFilter} onValueChange={setSourceFilter}>
-              <SelectTrigger className="w-full lg:w-40 bg-secondary/50 border-border">
+              <SelectTrigger className="w-[140px] bg-secondary/50 border-border">
                 <SelectValue placeholder="المصدر" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">جميع المصادر</SelectItem>
                 <SelectItem value="telegram">تليجرام</SelectItem>
                 <SelectItem value="darkweb">دارك ويب</SelectItem>
-                <SelectItem value="paste">مواقع لصق</SelectItem>
+                <SelectItem value="paste">موقع لصق</SelectItem>
               </SelectContent>
             </Select>
             <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-full lg:w-40 bg-secondary/50 border-border">
+              <SelectTrigger className="w-[140px] bg-secondary/50 border-border">
                 <SelectValue placeholder="الحالة" />
               </SelectTrigger>
               <SelectContent>
@@ -347,7 +387,7 @@ export default function Leaks() {
                 <SelectItem value="reported">تم الإبلاغ</SelectItem>
               </SelectContent>
             </Select>
-            <Button variant="outline" className="gap-2" onClick={handleExportCsv}>
+            <Button variant="outline" onClick={handleExportCsv} className="gap-2">
               <Download className="w-4 h-4" />
               تصدير CSV
             </Button>
@@ -355,47 +395,37 @@ export default function Leaks() {
         </CardContent>
       </Card>
 
-      {/* Leak cards */}
-      <div className="space-y-3">
-        {filteredLeaks.map((leak, i) => {
+      {/* Leak List */}
+      <div className="space-y-2">
+        {filteredLeaks.map((leak, idx) => {
           const SourceIcon = sourceIcon(leak.source);
           return (
             <motion.div
               key={leak.id}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.03 }}
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: idx * 0.02 }}
             >
               <Card
-                className="border-border hover:border-primary/30 transition-all cursor-pointer hover:shadow-lg"
+                className="border-border hover:border-primary/30 cursor-pointer transition-all hover:shadow-lg hover:shadow-primary/5"
                 onClick={() => { setSelectedLeak(leak.leakId); setActiveTab("overview"); }}
               >
                 <CardContent className="p-4">
-                  <div className="flex flex-col lg:flex-row lg:items-center gap-4">
-                    <div className="flex items-center gap-3 lg:w-32">
-                      <span className={`text-[10px] px-2 py-1 rounded border ${severityColor(leak.severity)}`}>
-                        {severityLabel(leak.severity)}
-                      </span>
-                      <span className="text-xs font-mono text-primary">{leak.leakId}</span>
-                    </div>
+                  <div className="flex items-center gap-3 flex-wrap">
+                    <span className={`text-[10px] px-2 py-0.5 rounded border ${severityColor(leak.severity)}`}>
+                      {severityLabel(leak.severity)}
+                    </span>
 
                     <div className="flex-1 min-w-0">
-                      <h3 className="text-sm font-semibold text-foreground">{leak.titleAr}</h3>
-                      <p className="text-xs text-muted-foreground mt-0.5 truncate">{leak.descriptionAr || leak.title}</p>
+                      <p className="text-sm font-medium text-foreground truncate">{leak.titleAr}</p>
+                      <p className="text-[10px] text-muted-foreground mt-0.5">
+                        {leak.leakId} — {leak.sectorAr} — {leak.recordCount.toLocaleString()} سجل
+                      </p>
                     </div>
 
-                    <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full ${sourceColor(leak.source)} lg:w-28`}>
-                      <SourceIcon className="w-3.5 h-3.5" />
-                      <span className="text-xs">{sourceLabel(leak.source)}</span>
-                    </div>
-
-                    <div className="lg:w-20">
-                      <span className="text-xs text-muted-foreground">{leak.sectorAr}</span>
-                    </div>
-
-                    <div className="lg:w-24 text-left">
-                      <span className="text-sm font-semibold text-foreground">{leak.recordCount.toLocaleString()}</span>
-                      <span className="text-[10px] text-muted-foreground mr-1">سجل</span>
+                    <div className={`flex items-center gap-1 px-2 py-0.5 rounded text-[10px] ${sourceColor(leak.source)}`}>
+                      <SourceIcon className="w-3 h-3" />
+                      {sourceLabel(leak.source)}
                     </div>
 
                     <span className={`text-[10px] px-2 py-1 rounded border ${statusColor(leak.status)} lg:w-24 text-center`}>
@@ -493,9 +523,14 @@ export default function Leaks() {
                             <span className={`text-[10px] px-2 py-0.5 rounded border ${statusColor(leakDetail.status)}`}>
                               {statusLabel(leakDetail.status)}
                             </span>
-                            {leakDetail.enrichedAt && (
-                              <span className="text-[10px] px-2 py-0.5 rounded bg-purple-500/10 text-purple-400 border border-purple-500/30 flex items-center gap-1">
-                                <Brain className="w-3 h-3" /> مُحلّل بالذكاء الاصطناعي
+                            {(leakDetail as any).threatActor && (
+                              <span className="text-[10px] px-2 py-0.5 rounded bg-red-500/10 text-red-400 border border-red-500/30 flex items-center gap-1">
+                                <Skull className="w-3 h-3" /> {(leakDetail as any).threatActor}
+                              </span>
+                            )}
+                            {(leakDetail as any).price && (
+                              <span className="text-[10px] px-2 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/30 flex items-center gap-1">
+                                <DollarSign className="w-3 h-3" /> {(leakDetail as any).price}
                               </span>
                             )}
                           </div>
@@ -510,7 +545,8 @@ export default function Leaks() {
                     <div className="flex gap-1 mt-4 bg-secondary/50 rounded-lg p-1">
                       {[
                         { key: "overview" as const, label: "نظرة عامة", icon: Eye },
-                        { key: "evidence" as const, label: `الأدلة (${leakDetail.evidence?.length ?? 0})`, icon: Shield },
+                        { key: "samples" as const, label: `عينات البيانات (${((leakDetail as any).sampleData as any[] || []).length})`, icon: Table },
+                        { key: "evidence" as const, label: `الأدلة (${(leakDetail.evidence?.length ?? 0) + ((leakDetail as any).screenshotUrls as any[] || []).length})`, icon: Shield },
                         { key: "ai" as const, label: "تحليل AI", icon: Brain },
                       ].map((tab) => {
                         const TabIcon = tab.icon;
@@ -547,6 +583,9 @@ export default function Leaks() {
                               {(() => { const Icon = sourceIcon(leakDetail.source); return <Icon className="w-3.5 h-3.5" />; })()}
                               <span className="text-sm font-medium">{sourceLabel(leakDetail.source)}</span>
                             </div>
+                            {(leakDetail as any).sourcePlatform && (
+                              <p className="text-[10px] text-muted-foreground mt-1">{(leakDetail as any).sourcePlatform}</p>
+                            )}
                           </div>
                           <div className="bg-secondary/50 rounded-xl p-3 border border-border/50">
                             <div className="flex items-center gap-1.5 mb-1.5">
@@ -557,18 +596,78 @@ export default function Leaks() {
                           </div>
                           <div className="bg-secondary/50 rounded-xl p-3 border border-border/50">
                             <div className="flex items-center gap-1.5 mb-1.5">
+                              <Zap className="w-3 h-3 text-muted-foreground" />
+                              <p className="text-[10px] text-muted-foreground">طريقة الاختراق</p>
+                            </div>
+                            <p className="text-sm text-foreground font-medium">{(leakDetail as any).breachMethodAr || "غير محدد"}</p>
+                            {(leakDetail as any).breachMethod && (
+                              <p className="text-[10px] text-muted-foreground mt-0.5 font-mono" dir="ltr">{(leakDetail as any).breachMethod}</p>
+                            )}
+                          </div>
+                          <div className="bg-secondary/50 rounded-xl p-3 border border-border/50">
+                            <div className="flex items-center gap-1.5 mb-1.5">
                               <Calendar className="w-3 h-3 text-muted-foreground" />
                               <p className="text-[10px] text-muted-foreground">تاريخ الاكتشاف</p>
                             </div>
                             <p className="text-sm text-foreground">{leakDetail.detectedAt ? new Date(leakDetail.detectedAt).toLocaleDateString("ar-SA", { year: "numeric", month: "long", day: "numeric" }) : "—"}</p>
                           </div>
-                          <div className="bg-secondary/50 rounded-xl p-3 border border-border/50">
-                            <div className="flex items-center gap-1.5 mb-1.5">
-                              <MapPin className="w-3 h-3 text-muted-foreground" />
-                              <p className="text-[10px] text-muted-foreground">القطاع / المنطقة</p>
+                        </div>
+
+                        {/* Threat Actor & Source Info */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          {/* Threat Actor Card */}
+                          <div className="bg-gradient-to-br from-red-500/5 to-red-500/10 rounded-xl p-4 border border-red-500/20">
+                            <h4 className="text-xs font-semibold text-red-400 mb-3 flex items-center gap-1.5">
+                              <Skull className="w-3.5 h-3.5" />
+                              معلومات المهاجم / البائع
+                            </h4>
+                            <div className="space-y-2">
+                              <div className="flex items-center justify-between">
+                                <span className="text-xs text-muted-foreground">الاسم المستعار</span>
+                                <span className="text-sm font-mono text-red-400 font-bold">{(leakDetail as any).threatActor || "مجهول"}</span>
+                              </div>
+                              <div className="flex items-center justify-between">
+                                <span className="text-xs text-muted-foreground">السعر المطلوب</span>
+                                <span className="text-sm font-mono text-amber-400 font-bold">{(leakDetail as any).price || "غير محدد"}</span>
+                              </div>
+                              <div className="flex items-center justify-between">
+                                <span className="text-xs text-muted-foreground">المنصة</span>
+                                <span className="text-sm text-foreground">{(leakDetail as any).sourcePlatform || sourceLabel(leakDetail.source)}</span>
+                              </div>
                             </div>
-                            <p className="text-sm text-foreground">{leakDetail.sectorAr}</p>
-                            {leakDetail.regionAr && <p className="text-[10px] text-muted-foreground mt-0.5">{leakDetail.regionAr} {leakDetail.cityAr ? `— ${leakDetail.cityAr}` : ""}</p>}
+                          </div>
+
+                          {/* Source Link Card */}
+                          <div className="bg-gradient-to-br from-violet-500/5 to-violet-500/10 rounded-xl p-4 border border-violet-500/20">
+                            <h4 className="text-xs font-semibold text-violet-400 mb-3 flex items-center gap-1.5">
+                              <Link2 className="w-3.5 h-3.5" />
+                              مصدر التسريب
+                            </h4>
+                            <div className="space-y-2">
+                              <div className="flex items-center justify-between">
+                                <span className="text-xs text-muted-foreground">القطاع</span>
+                                <span className="text-sm text-foreground">{leakDetail.sectorAr}</span>
+                              </div>
+                              {leakDetail.regionAr && (
+                                <div className="flex items-center justify-between">
+                                  <span className="text-xs text-muted-foreground">المنطقة</span>
+                                  <span className="text-sm text-foreground">{leakDetail.regionAr} {leakDetail.cityAr ? `— ${leakDetail.cityAr}` : ""}</span>
+                                </div>
+                              )}
+                              {(leakDetail as any).sourceUrl && (
+                                <div className="mt-2 pt-2 border-t border-border/30">
+                                  <a
+                                    href={(leakDetail as any).sourceUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="flex items-center gap-2 text-xs text-violet-400 hover:text-violet-300 transition-colors bg-violet-500/10 rounded-lg p-2"
+                                  >
+                                    <ExternalLink className="w-3.5 h-3.5 shrink-0" />
+                                    <span className="truncate font-mono" dir="ltr">{(leakDetail as any).sourceUrl}</span>
+                                  </a>
+                                </div>
+                              )}
+                            </div>
                           </div>
                         </div>
 
@@ -631,14 +730,168 @@ export default function Leaks() {
                       </>
                     )}
 
+                    {/* ═══ SAMPLES TAB — Leaked Data Samples ═══ */}
+                    {activeTab === "samples" && (
+                      <>
+                        {(() => {
+                          const samples = (leakDetail as any).sampleData as Record<string, string>[] | null;
+                          if (!samples || samples.length === 0) {
+                            return (
+                              <div className="text-center py-12">
+                                <Table className="w-12 h-12 mx-auto mb-3 text-muted-foreground/30" />
+                                <p className="text-sm text-muted-foreground">لا توجد عينات بيانات مسجلة لهذا التسريب</p>
+                              </div>
+                            );
+                          }
+                          const columns = Object.keys(samples[0]);
+                          return (
+                            <>
+                              {/* Warning Banner */}
+                              <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4 flex items-start gap-3">
+                                <AlertTriangle className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
+                                <div>
+                                  <p className="text-sm font-semibold text-red-400">تحذير: بيانات شخصية مسربة</p>
+                                  <p className="text-xs text-muted-foreground mt-1">
+                                    هذه عينة من البيانات الشخصية التي تم اكتشافها في التسريب. تم عرض {samples.length} سجلات من أصل {leakDetail.recordCount.toLocaleString()} سجل مكشوف.
+                                    يجب التعامل مع هذه البيانات بسرية تامة وفقاً لنظام حماية البيانات الشخصية.
+                                  </p>
+                                </div>
+                              </div>
+
+                              {/* Data Table */}
+                              <div className="bg-secondary/30 rounded-xl border border-border/30 overflow-hidden">
+                                <div className="overflow-x-auto">
+                                  <table className="w-full text-sm" dir="rtl">
+                                    <thead>
+                                      <tr className="border-b border-border bg-secondary/50">
+                                        <th className="text-right text-[10px] font-semibold text-muted-foreground p-3 w-8">#</th>
+                                        {columns.map((col) => (
+                                          <th key={col} className="text-right text-[10px] font-semibold text-muted-foreground p-3 whitespace-nowrap">
+                                            {col}
+                                          </th>
+                                        ))}
+                                      </tr>
+                                    </thead>
+                                    <tbody>
+                                      {samples.map((row, idx) => (
+                                        <tr key={idx} className="border-b border-border/30 hover:bg-secondary/40 transition-colors">
+                                          <td className="p-3 text-[10px] text-muted-foreground font-mono">{idx + 1}</td>
+                                          {columns.map((col) => (
+                                            <td key={col} className="p-3 text-xs text-foreground whitespace-nowrap font-mono">
+                                              {row[col] || "—"}
+                                            </td>
+                                          ))}
+                                        </tr>
+                                      ))}
+                                    </tbody>
+                                  </table>
+                                </div>
+                                <div className="p-3 border-t border-border/30 bg-secondary/20 flex items-center justify-between">
+                                  <p className="text-[10px] text-muted-foreground">
+                                    عرض {samples.length} من {leakDetail.recordCount.toLocaleString()} سجل
+                                  </p>
+                                  <div className="flex items-center gap-2">
+                                    <Badge variant="outline" className="text-[10px]">{columns.length} حقل</Badge>
+                                    <Badge variant="outline" className="text-[10px] bg-red-500/10 text-red-400 border-red-500/30">بيانات حساسة</Badge>
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* Column Analysis */}
+                              <div className="bg-secondary/30 rounded-xl p-4 border border-border/30">
+                                <h4 className="text-xs font-semibold text-muted-foreground mb-3 flex items-center gap-1.5">
+                                  <Fingerprint className="w-3.5 h-3.5" />
+                                  تحليل الحقول المكشوفة
+                                </h4>
+                                <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                                  {columns.map((col) => (
+                                    <div key={col} className="flex items-center gap-2 p-2.5 rounded-lg bg-red-500/5 border border-red-500/20">
+                                      <Lock className="w-3 h-3 text-red-400 shrink-0" />
+                                      <div>
+                                        <p className="text-xs text-foreground font-medium">{col}</p>
+                                        <p className="text-[10px] text-muted-foreground">{samples.length} قيمة مكشوفة</p>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            </>
+                          );
+                        })()}
+                      </>
+                    )}
+
                     {/* ═══ EVIDENCE TAB ═══ */}
                     {activeTab === "evidence" && (
                       <>
-                        {(leakDetail.evidence?.length ?? 0) === 0 ? (
-                          <div className="text-center py-12">
-                            <Shield className="w-12 h-12 mx-auto mb-3 text-muted-foreground/30" />
-                            <p className="text-sm text-muted-foreground">لا توجد أدلة مسجلة لهذا التسريب</p>
+                        {/* Screenshots Section */}
+                        {(() => {
+                          const screenshots = (leakDetail as any).screenshotUrls as string[] | null;
+                          if (screenshots && screenshots.length > 0) {
+                            return (
+                              <div className="bg-secondary/30 rounded-xl p-4 border border-border/30">
+                                <h4 className="text-xs font-semibold text-muted-foreground mb-3 flex items-center gap-1.5">
+                                  <Camera className="w-3.5 h-3.5" />
+                                  لقطات شاشة من مصدر التسريب ({screenshots.length})
+                                </h4>
+                                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                                  {screenshots.map((url, idx) => (
+                                    <div
+                                      key={idx}
+                                      className="relative group cursor-pointer rounded-lg overflow-hidden border border-border/50 hover:border-primary/50 transition-all hover:shadow-lg"
+                                      onClick={() => setLightboxUrl(url)}
+                                    >
+                                      <img
+                                        src={url}
+                                        alt={`Evidence Screenshot ${idx + 1}`}
+                                        className="w-full h-48 object-cover object-top"
+                                        loading="lazy"
+                                      />
+                                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-all flex items-center justify-center">
+                                        <Eye className="w-8 h-8 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                                      </div>
+                                      <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-2">
+                                        <p className="text-[10px] text-white/80">لقطة {idx + 1} — {(leakDetail as any).sourcePlatform || sourceLabel(leakDetail.source)}</p>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            );
+                          }
+                          return null;
+                        })()}
+
+                        {/* Source Link */}
+                        {(leakDetail as any).sourceUrl && (
+                          <div className="bg-violet-500/5 rounded-xl p-4 border border-violet-500/20">
+                            <h4 className="text-xs font-semibold text-violet-400 mb-2 flex items-center gap-1.5">
+                              <Link2 className="w-3.5 h-3.5" />
+                              رابط المصدر الأصلي
+                            </h4>
+                            <a
+                              href={(leakDetail as any).sourceUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-center gap-2 text-sm text-violet-400 hover:text-violet-300 transition-colors bg-violet-500/10 rounded-lg p-3"
+                            >
+                              <ExternalLink className="w-4 h-4 shrink-0" />
+                              <span className="truncate font-mono text-xs" dir="ltr">{(leakDetail as any).sourceUrl}</span>
+                            </a>
+                            <p className="text-[10px] text-muted-foreground mt-2">
+                              تم اكتشاف هذا التسريب على منصة <strong>{(leakDetail as any).sourcePlatform || sourceLabel(leakDetail.source)}</strong> بواسطة نظام المراقبة الآلي
+                            </p>
                           </div>
+                        )}
+
+                        {/* Evidence Chain */}
+                        {(leakDetail.evidence?.length ?? 0) === 0 ? (
+                          !((leakDetail as any).screenshotUrls as any[] || []).length && (
+                            <div className="text-center py-12">
+                              <Shield className="w-12 h-12 mx-auto mb-3 text-muted-foreground/30" />
+                              <p className="text-sm text-muted-foreground">لا توجد أدلة مسجلة لهذا التسريب</p>
+                            </div>
+                          )
                         ) : (
                           <>
                             {/* Evidence Summary */}
@@ -656,7 +909,7 @@ export default function Leaks() {
                               })}
                             </div>
 
-                            {/* Evidence Chain */}
+                            {/* Evidence Chain Items */}
                             <div className="space-y-3">
                               {leakDetail.evidence?.map((ev: any, idx: number) => {
                                 const Icon = evidenceTypeIcon(ev.evidenceType);
@@ -812,6 +1065,13 @@ export default function Leaks() {
               )}
             </motion.div>
           </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Screenshot Lightbox */}
+      <AnimatePresence>
+        {lightboxUrl && (
+          <ScreenshotLightbox url={lightboxUrl} onClose={() => setLightboxUrl(null)} />
         )}
       </AnimatePresence>
 
