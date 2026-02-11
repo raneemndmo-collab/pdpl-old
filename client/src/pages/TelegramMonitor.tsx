@@ -29,6 +29,7 @@ import { Badge } from "@/components/ui/badge";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import { DetailModal } from "@/components/DetailModal";
+import LeakDetailDrilldown from "@/components/LeakDetailDrilldown";
 
 const riskColor = (r: string) => {
   switch (r) {
@@ -500,58 +501,14 @@ export default function TelegramMonitor() {
         )}
       </DetailModal>
 
-      {/* Leak Detail Modal */}
-      <DetailModal
+      {/* Leak Detail Drilldown */}
+      <LeakDetailDrilldown
+        leak={selectedLeak}
         open={activeModal === "leakDetail" && !!selectedLeak}
         onClose={() => { setActiveModal(null); setSelectedLeak(null); }}
-        title={selectedLeak?.titleAr ?? "تفاصيل التسريب"}
-        icon={<ShieldAlert className="w-5 h-5 text-red-400" />}
-      >
-        {selectedLeak && (
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              <div className="bg-secondary/50 rounded-xl p-3 border border-border/50 text-center">
-                <p className="text-xs text-muted-foreground">المعرّف</p>
-                <p className="text-sm font-mono font-bold text-primary mt-1">{selectedLeak.leakId}</p>
-              </div>
-              <div className="bg-secondary/50 rounded-xl p-3 border border-border/50 text-center">
-                <p className="text-xs text-muted-foreground">السجلات</p>
-                <p className="text-sm font-bold text-foreground mt-1">{selectedLeak.recordCount.toLocaleString()}</p>
-              </div>
-              <div className="bg-secondary/50 rounded-xl p-3 border border-border/50 text-center">
-                <p className="text-xs text-muted-foreground">الخطورة</p>
-                <p className={`text-sm font-bold mt-1 ${severityColor(selectedLeak.severity).split(" ")[0]}`}>{severityLabel(selectedLeak.severity)}</p>
-              </div>
-              <div className="bg-secondary/50 rounded-xl p-3 border border-border/50 text-center">
-                <p className="text-xs text-muted-foreground">القطاع</p>
-                <p className="text-sm font-bold text-foreground mt-1">{selectedLeak.sectorAr}</p>
-              </div>
-            </div>
-            {selectedLeak.descriptionAr && (
-              <div className="bg-secondary/30 rounded-xl p-4 border border-border/30">
-                <h4 className="text-xs font-semibold text-muted-foreground mb-2">الوصف</h4>
-                <p className="text-sm text-foreground leading-relaxed">{selectedLeak.descriptionAr}</p>
-              </div>
-            )}
-            {selectedLeak.piiTypes && (selectedLeak.piiTypes as string[]).length > 0 && (
-              <div className="bg-secondary/30 rounded-xl p-4 border border-border/30">
-                <h4 className="text-xs font-semibold text-muted-foreground mb-2">أنواع البيانات الشخصية</h4>
-                <div className="flex flex-wrap gap-1.5">
-                  {(selectedLeak.piiTypes as string[]).map((type: string) => (
-                    <Badge key={type} variant="outline" className="text-[10px]">{type}</Badge>
-                  ))}
-                </div>
-              </div>
-            )}
-            {selectedLeak.aiSummaryAr && (
-              <div className="bg-purple-500/5 rounded-xl p-4 border border-purple-500/20">
-                <h4 className="text-xs font-semibold text-purple-400 mb-2">ملخص الذكاء الاصطناعي</h4>
-                <p className="text-sm text-foreground leading-relaxed">{selectedLeak.aiSummaryAr}</p>
-              </div>
-            )}
-          </div>
-        )}
-      </DetailModal>
+        showBackButton={true}
+        onBack={() => { setActiveModal(null); setSelectedLeak(null); }}
+      />
     </div>
   );
 }

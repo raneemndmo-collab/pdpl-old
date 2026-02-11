@@ -49,6 +49,7 @@ import {
   Legend,
 } from "recharts";
 import { trpc } from "@/lib/trpc";
+import LeakDetailDrilldown from "@/components/LeakDetailDrilldown";
 
 const CHART_COLORS = ["#06B6D4", "#10B981", "#F59E0B", "#EF4444", "#8B5CF6", "#EC4899"];
 const SOURCE_COLORS = ["#06B6D4", "#8B5CF6", "#F59E0B"];
@@ -164,9 +165,10 @@ function DetailModal({
   );
 }
 
-/* ─── Leak List in Modal ─── */
+/* ─── Leak List in Modal (Clickable for deep-drill) ─── */
 function LeakListInModal({ leaks, emptyMessage = "لا توجد بيانات" }: { leaks: any[]; emptyMessage?: string }) {
   const [page, setPage] = useState(0);
+  const [drillLeak, setDrillLeak] = useState<any>(null);
   const perPage = 10;
   const totalPages = Math.ceil(leaks.length / perPage);
   const pageLeaks = leaks.slice(page * perPage, (page + 1) * perPage);
@@ -174,15 +176,20 @@ function LeakListInModal({ leaks, emptyMessage = "لا توجد بيانات" }:
   if (leaks.length === 0) return <p className="text-center text-muted-foreground text-sm py-8">{emptyMessage}</p>;
 
   return (
+    <>
     <div className="space-y-3">
       <p className="text-xs text-muted-foreground">{leaks.length} تسريب</p>
       {pageLeaks.map((leak) => (
-        <div key={leak.id} className="flex items-center gap-3 p-3 rounded-lg bg-secondary/30 border border-border/50 hover:bg-secondary/50 transition-colors">
+        <div
+          key={leak.id}
+          className="flex items-center gap-3 p-3 rounded-lg bg-secondary/30 border border-border/50 hover:bg-secondary/50 hover:border-primary/30 transition-all cursor-pointer group"
+          onClick={() => setDrillLeak(leak)}
+        >
           <span className={`text-[10px] px-2 py-0.5 rounded border shrink-0 ${severityColor(leak.severity)}`}>
             {severityLabel(leak.severity)}
           </span>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-foreground truncate">{leak.titleAr}</p>
+            <p className="text-sm font-medium text-foreground truncate group-hover:text-primary transition-colors">{leak.titleAr}</p>
             <div className="flex items-center gap-2 mt-0.5 text-[10px] text-muted-foreground">
               <span className="font-mono text-primary">{leak.leakId}</span>
               <span>•</span>
@@ -193,9 +200,12 @@ function LeakListInModal({ leaks, emptyMessage = "لا توجد بيانات" }:
               <span>{sourceLabel(leak.source)}</span>
             </div>
           </div>
-          <span className={`text-[10px] px-2 py-0.5 rounded border shrink-0 ${statusColor(leak.status)}`}>
-            {statusLabel(leak.status)}
-          </span>
+          <div className="flex items-center gap-2">
+            <span className={`text-[10px] px-2 py-0.5 rounded border shrink-0 ${statusColor(leak.status)}`}>
+              {statusLabel(leak.status)}
+            </span>
+            <Eye className="w-3.5 h-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+          </div>
         </div>
       ))}
       {totalPages > 1 && (
@@ -210,6 +220,14 @@ function LeakListInModal({ leaks, emptyMessage = "لا توجد بيانات" }:
         </div>
       )}
     </div>
+    <LeakDetailDrilldown
+      leak={drillLeak}
+      open={!!drillLeak}
+      onClose={() => setDrillLeak(null)}
+      showBackButton={true}
+      onBack={() => setDrillLeak(null)}
+    />
+    </>
   );
 }
 

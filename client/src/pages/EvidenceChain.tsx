@@ -27,6 +27,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { trpc } from "@/lib/trpc";
 import { DetailModal } from "@/components/DetailModal";
+import LeakDetailDrilldown from "@/components/LeakDetailDrilldown";
 
 const typeConfig: Record<string, { label: string; icon: React.ElementType; color: string }> = {
   text: { label: "نص", icon: FileText, color: "text-cyan-400" },
@@ -39,6 +40,7 @@ export default function EvidenceChain() {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [activeModal, setActiveModal] = useState<string | null>(null);
   const [selectedEvidence, setSelectedEvidence] = useState<any>(null);
+  const [drillLeakId, setDrillLeakId] = useState<string | null>(null);
 
   const { data: evidence, isLoading } = trpc.evidence.list.useQuery();
   const { data: stats } = trpc.evidence.stats.useQuery();
@@ -459,9 +461,26 @@ export default function EvidenceChain() {
                 </div>
               </div>
             )}
+
+            {/* Deep-drill: View full leak details */}
+            <button
+              onClick={() => setDrillLeakId(selectedEvidence.leakId)}
+              className="w-full p-3 rounded-xl bg-primary/10 border border-primary/20 hover:bg-primary/20 transition-colors text-center"
+            >
+              <span className="text-xs text-primary font-medium">عرض تفاصيل التسريب الكاملة ({selectedEvidence.leakId}) ←</span>
+            </button>
           </div>
         )}
       </DetailModal>
+
+      {/* Leak Detail Drilldown from Evidence */}
+      <LeakDetailDrilldown
+        leak={drillLeakId ? { leakId: drillLeakId } : null}
+        open={!!drillLeakId}
+        onClose={() => setDrillLeakId(null)}
+        showBackButton={true}
+        onBack={() => setDrillLeakId(null)}
+      />
     </div>
   );
 }

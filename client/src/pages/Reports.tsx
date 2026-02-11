@@ -44,6 +44,9 @@ import {
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import { DetailModal } from "@/components/DetailModal";
+import ComplianceWarningDialog from "@/components/ComplianceWarningDialog";
+import ReportCustomizer from "@/components/ReportCustomizer";
+import LeakDetailDrilldown from "@/components/LeakDetailDrilldown";
 
 const CHART_COLORS = ["#06B6D4", "#10B981", "#F59E0B", "#EF4444", "#8B5CF6", "#EC4899"];
 
@@ -175,6 +178,9 @@ export default function Reports() {
   const [activeModal, setActiveModal] = useState<string | null>(null);
   const [selectedGap, setSelectedGap] = useState<typeof policyGaps[0] | null>(null);
   const [selectedReport, setSelectedReport] = useState<any>(null);
+  const [showReportCustomizer, setShowReportCustomizer] = useState(false);
+  const [showComplianceWarning, setShowComplianceWarning] = useState(false);
+  const [drillLeak, setDrillLeak] = useState<any>(null);
 
   const handleExportReport = async () => {
     try {
@@ -227,10 +233,16 @@ export default function Reports() {
             تقارير دورية لصناع القرار وتوصيات تحديث السياسات
           </p>
         </div>
-        <Button className="gap-2 bg-primary text-primary-foreground" onClick={handleExportReport}>
-          <Download className="w-4 h-4" />
-          تصدير تقرير شامل
-        </Button>
+        <div className="flex gap-2">
+          <Button className="gap-2 bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 text-white" onClick={() => setShowReportCustomizer(true)}>
+            <FileText className="w-4 h-4" />
+            إنشاء تقرير مخصص
+          </Button>
+          <Button variant="outline" className="gap-2" onClick={() => setShowComplianceWarning(true)}>
+            <Download className="w-4 h-4" />
+            تصدير سريع
+          </Button>
+        </div>
       </div>
 
       {/* Key metrics — clickable */}
@@ -695,13 +707,39 @@ export default function Reports() {
                 <p className="text-sm text-foreground leading-relaxed">{selectedReport.summaryAr}</p>
               </div>
             )}
-            <Button className="w-full gap-2" onClick={handleExportReport}>
+            <Button className="w-full gap-2" onClick={() => setShowComplianceWarning(true)}>
               <Download className="w-4 h-4" />
               تصدير هذا التقرير
             </Button>
           </div>
         )}
       </DetailModal>
+
+      {/* Report Customizer */}
+      <ReportCustomizer
+        open={showReportCustomizer}
+        onClose={() => setShowReportCustomizer(false)}
+      />
+
+      {/* Compliance Warning for Quick Export */}
+      <ComplianceWarningDialog
+        open={showComplianceWarning}
+        onConfirm={() => {
+          setShowComplianceWarning(false);
+          handleExportReport();
+        }}
+        onCancel={() => setShowComplianceWarning(false)}
+        reportType="التقرير"
+      />
+
+      {/* Leak Detail Drilldown */}
+      <LeakDetailDrilldown
+        leak={drillLeak}
+        open={!!drillLeak}
+        onClose={() => setDrillLeak(null)}
+        showBackButton={true}
+        onBack={() => setDrillLeak(null)}
+      />
     </div>
   );
 }

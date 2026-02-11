@@ -28,12 +28,16 @@ import FeedbackAccuracy from "./pages/FeedbackAccuracy";
 import KnowledgeGraph from "./pages/KnowledgeGraph";
 import PlatformLogin from "./pages/PlatformLogin";
 import UserManagement from "./pages/UserManagement";
+import VerifyDocument from "./pages/VerifyDocument";
 
 function Router() {
   return (
     <Switch>
       {/* Platform Login - outside DashboardLayout */}
       <Route path="/login" component={PlatformLogin} />
+      {/* Document Verification - outside DashboardLayout (public) */}
+      <Route path="/verify/:code" component={VerifyDocument} />
+      <Route path="/verify" component={VerifyDocument} />
 
       {/* All dashboard routes inside DashboardLayout */}
       <Route>

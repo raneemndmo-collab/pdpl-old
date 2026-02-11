@@ -564,3 +564,48 @@ export const platformUsers = mysqlTable("platform_users", {
 
 export type PlatformUser = typeof platformUsers.$inferSelect;
 export type InsertPlatformUser = typeof platformUsers.$inferInsert;
+
+
+/**
+ * Incident Documentation — PDF documentation records with verification codes
+ * Each documentation has a unique verification code and content hash for integrity verification
+ */
+export const incidentDocuments = mysqlTable("incident_documents", {
+  id: int("id").autoincrement().primaryKey(),
+  documentId: varchar("documentId", { length: 64 }).notNull().unique(),
+  leakId: varchar("leakId", { length: 32 }).notNull(),
+  verificationCode: varchar("verificationCode", { length: 32 }).notNull().unique(),
+  contentHash: varchar("contentHash", { length: 128 }).notNull(),
+  documentType: mysqlEnum("documentType", ["incident_report", "custom_report", "executive_summary"]).default("incident_report").notNull(),
+  title: varchar("title", { length: 500 }).notNull(),
+  titleAr: varchar("titleAr", { length: 500 }).notNull(),
+  generatedBy: int("generatedBy").notNull(),
+  generatedByName: varchar("generatedByName", { length: 200 }),
+  pdfUrl: text("pdfUrl"),
+  metadata: json("docMetadata").$type<Record<string, unknown>>(),
+  isVerified: boolean("isVerified").default(true),
+  createdAt: timestamp("docCreatedAt").defaultNow().notNull(),
+});
+
+export type IncidentDocument = typeof incidentDocuments.$inferSelect;
+export type InsertIncidentDocument = typeof incidentDocuments.$inferInsert;
+
+/**
+ * Report Generation Audit — tracks all report generation with compliance acknowledgment
+ */
+export const reportAudit = mysqlTable("report_audit", {
+  id: int("id").autoincrement().primaryKey(),
+  reportId: varchar("reportId", { length: 64 }).notNull(),
+  documentId: varchar("documentId", { length: 64 }),
+  reportType: varchar("reportType", { length: 100 }).notNull(),
+  generatedBy: int("generatedBy").notNull(),
+  generatedByName: varchar("generatedByName", { length: 200 }),
+  complianceAcknowledged: boolean("complianceAcknowledged").default(false),
+  acknowledgedAt: timestamp("acknowledgedAt"),
+  filters: json("reportFilters").$type<Record<string, unknown>>(),
+  metadata: json("reportMetadata").$type<Record<string, unknown>>(),
+  createdAt: timestamp("reportCreatedAt").defaultNow().notNull(),
+});
+
+export type ReportAudit = typeof reportAudit.$inferSelect;
+export type InsertReportAudit = typeof reportAudit.$inferInsert;

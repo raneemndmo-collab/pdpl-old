@@ -23,6 +23,7 @@ import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import { useState } from "react";
 import { DetailModal } from "@/components/DetailModal";
+import LeakDetailDrilldown from "@/components/LeakDetailDrilldown";
 
 const statusStyle = (s: string) => {
   switch (s) {
@@ -46,6 +47,7 @@ export default function PasteSites() {
   const { data: pastes, isLoading: pastesLoading } = trpc.pastes.list.useQuery();
   const { data: channels, isLoading: channelsLoading } = trpc.channels.list.useQuery({ platform: "paste" });
   const [activeModal, setActiveModal] = useState<string | null>(null);
+  const [drillLeak, setDrillLeak] = useState<any>(null);
 
   const pasteEntries = pastes ?? [];
   const pasteChannels = channels ?? [];
@@ -309,6 +311,15 @@ export default function PasteSites() {
           </div>
         </DetailModal>
       ))}
+
+      {/* Leak Detail Drilldown */}
+      <LeakDetailDrilldown
+        leak={drillLeak}
+        open={!!drillLeak}
+        onClose={() => setDrillLeak(null)}
+        showBackButton={true}
+        onBack={() => setDrillLeak(null)}
+      />
     </div>
   );
 }

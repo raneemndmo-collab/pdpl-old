@@ -53,6 +53,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { trpc } from "@/lib/trpc";
+import LeakDetailDrilldown from "@/components/LeakDetailDrilldown";
 import { toast } from "sonner";
 
 const severityColor = (s: string) => {
@@ -135,10 +136,12 @@ const evidenceTypeLabel = (t: string) => {
   }
 };
 
-/* ─── Stats Detail Modal ─── */
+/* ─── Stats Detail Modal (with deep-drill) ─── */
 function StatsDetailModal({ open, onClose, title, leaks }: { open: boolean; onClose: () => void; title: string; leaks: any[] }) {
+  const [drillLeak, setDrillLeak] = useState<any>(null);
   if (!open) return null;
   return (
+    <>
     <AnimatePresence>
       <motion.div
         initial={{ opacity: 0 }}
@@ -163,23 +166,38 @@ function StatsDetailModal({ open, onClose, title, leaks }: { open: boolean; onCl
           <div className="p-4 space-y-2">
             {leaks.length === 0 && <p className="text-center text-muted-foreground text-sm py-8">لا توجد بيانات</p>}
             {leaks.map((leak) => (
-              <div key={leak.id} className="flex items-center gap-3 p-3 rounded-lg bg-secondary/30 border border-border/50 hover:bg-secondary/50 transition-colors">
+              <div
+                key={leak.id}
+                className="flex items-center gap-3 p-3 rounded-lg bg-secondary/30 border border-border/50 hover:bg-secondary/50 hover:border-primary/30 transition-all cursor-pointer group"
+                onClick={() => setDrillLeak(leak)}
+              >
                 <span className={`text-[10px] px-2 py-0.5 rounded border shrink-0 ${severityColor(leak.severity)}`}>
                   {severityLabel(leak.severity)}
                 </span>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-foreground truncate">{leak.titleAr}</p>
+                  <p className="text-sm font-medium text-foreground truncate group-hover:text-primary transition-colors">{leak.titleAr}</p>
                   <p className="text-[10px] text-muted-foreground mt-0.5">{leak.leakId} — {leak.sectorAr} — {leak.recordCount.toLocaleString()} سجل</p>
                 </div>
-                <span className={`text-[10px] px-2 py-0.5 rounded border shrink-0 ${statusColor(leak.status)}`}>
-                  {statusLabel(leak.status)}
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className={`text-[10px] px-2 py-0.5 rounded border shrink-0 ${statusColor(leak.status)}`}>
+                    {statusLabel(leak.status)}
+                  </span>
+                  <Eye className="w-3.5 h-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                </div>
               </div>
             ))}
           </div>
         </motion.div>
       </motion.div>
     </AnimatePresence>
+    <LeakDetailDrilldown
+      leak={drillLeak}
+      open={!!drillLeak}
+      onClose={() => setDrillLeak(null)}
+      showBackButton={true}
+      onBack={() => setDrillLeak(null)}
+    />
+    </>
   );
 }
 

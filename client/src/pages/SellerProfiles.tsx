@@ -25,6 +25,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { trpc } from "@/lib/trpc";
 import { DetailModal } from "@/components/DetailModal";
+import LeakDetailDrilldown from "@/components/LeakDetailDrilldown";
 
 const riskColors: Record<string, string> = {
   critical: "bg-red-500/10 text-red-400 border-red-500/30",
@@ -51,6 +52,7 @@ export default function SellerProfiles() {
   const [filterRisk, setFilterRisk] = useState("all");
   const [activeModal, setActiveModal] = useState<string | null>(null);
   const [selectedSeller, setSelectedSeller] = useState<any>(null);
+  const [drillLeak, setDrillLeak] = useState<any>(null);
 
   const { data: sellers, isLoading } = trpc.sellers.list.useQuery(
     filterRisk !== "all" ? { riskLevel: filterRisk } : undefined
@@ -424,9 +426,30 @@ export default function SellerProfiles() {
                 <p className="text-sm text-foreground leading-relaxed">{selectedSeller.notes}</p>
               </div>
             )}
+
+            {/* Sectors */}
+            {selectedSeller.sectors && (selectedSeller.sectors as string[]).length > 0 && (
+              <div className="bg-secondary/30 rounded-xl p-4 border border-border/30">
+                <h4 className="text-xs font-semibold text-muted-foreground mb-2">القطاعات المستهدفة</h4>
+                <div className="flex flex-wrap gap-1.5">
+                  {(selectedSeller.sectors as string[]).map((sector: string, si: number) => (
+                    <Badge key={si} variant="outline" className="text-xs">{sector}</Badge>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
       </DetailModal>
+
+      {/* Leak Detail Drilldown */}
+      <LeakDetailDrilldown
+        leak={drillLeak}
+        open={!!drillLeak}
+        onClose={() => setDrillLeak(null)}
+        showBackButton={true}
+        onBack={() => setDrillLeak(null)}
+      />
     </div>
   );
 }

@@ -250,3 +250,43 @@
 - [x] Update seed data in database
 - [x] Verify all incidents display correctly
 - [x] Run tests and save checkpoint (89/89 passed)
+
+## Phase 26: Deep-Drill Interactive Modals, Incident Documentation PDF, QR Verification & Advanced Reports
+
+### A. Deep-Drill Interactive Modals (All Pages)
+- [x] Make every item in dashboard detail modals clickable to show full incident details
+- [x] Make every leak item in any modal open full leak detail with all 4 tabs
+- [x] Ensure all pages have clickable stats/cards that drill down to details
+- [x] Enable navigation-free workflow: user can follow any incident without page switching
+- [x] All displayed data items must be clickable for deeper details
+
+### B. Incident Documentation PDF System
+- [x] Create "توثيق حادثة التسرب" button on every leak detail view
+- [x] Generate professional PDF with all incident details (no exceptions)
+- [x] Include Rasid logo, date/time of documentation, employee name
+- [x] Assign unique numeric code to each document
+- [x] Generate QR code for each document
+- [x] Add text under QR: "للتأكد من صحة بيانات التوثيق يرجى مسح الكود في منصة راصد الوطنية"
+- [x] Save document record in database with full details
+- [x] Log documentation action in audit trail
+- [x] Create document_reports table in schema
+
+### C. QR Verification System
+- [x] Create internal verification page in dashboard (التحقق من التوثيق)
+- [x] Create public standalone verification page (no login required)
+- [x] Support QR scanning via camera
+- [x] Support file/image upload for QR extraction
+- [x] Perform literal content matching against stored document
+- [x] Show professional animated verification screen with creative effects
+- [x] Display verification result (valid/invalid) with full details
+
+### D. Advanced Report Generation
+- [x] Build comprehensive report customization UI
+- [x] Add compliance warning dialog before any report generation
+- [x] Warning message about personal data protection and official duties only
+- [x] Require employee acknowledgment before proceeding
+- [x] Log warning acknowledgment in audit trail
+- [x] Apply same QR code and verification to all generated reports
+- [x] Professional formatting with Rasid branding on all reports
+- [x] All 103 tests passing
+- [x] Checkpoint saved

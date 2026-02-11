@@ -86,7 +86,15 @@ import {
   updatePlatformUser,
   deletePlatformUser,
   getPlatformUserById,
+  createIncidentDocument,
+  getIncidentDocumentByVerificationCode,
+  getIncidentDocumentByDocumentId,
+  getIncidentDocumentsByLeakId,
+  getAllIncidentDocuments,
+  createReportAudit,
+  getReportAuditEntries,
 } from "./db";
+import { generateIncidentDocumentation } from "./pdfService";
 
 // Helper to get current user info from either auth source
 function getAuthUser(ctx: { user: any; platformUser: any }) {
@@ -1168,6 +1176,145 @@ export const appRouter = router({
     data: publicProcedure.query(async () => {
       return getKnowledgeGraphData();
     }),
+  }),
+
+  // ─── Incident Documentation ────────────────────────────────
+  documentation: router({
+    generate: protectedProcedure
+      .input(z.object({
+        leakId: z.string(),
+        origin: z.string(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const leak = await getLeakById(input.leakId);
+        if (!leak) throw new Error("التسريب غير موجود");
+        const evidence = await getEvidenceChain(input.leakId);
+        const leakWithEvidence = { ...leak, evidence, piiTypes: (leak.piiTypes as string[]) || [] };
+        const who = getAuthUser(ctx);
+        const result = await generateIncidentDocumentation(leakWithEvidence, who.name, input.origin);
+
+        // Save to database
+        await createIncidentDocument({
+          documentId: result.documentId,
+          leakId: input.leakId,
+          verificationCode: result.verificationCode,
+          contentHash: result.contentHash,
+          documentType: "incident_report",
+          title: result.title,
+          titleAr: result.titleAr,
+          generatedBy: who.id,
+          generatedByName: who.name,
+          metadata: {
+            severity: leak.severity,
+            sector: leak.sectorAr,
+            recordCount: leak.recordCount,
+            source: leak.source,
+          },
+        });
+
+        // Log audit
+        await logAudit(who.id, "documentation.generate", `Generated incident documentation ${result.documentId} for leak ${input.leakId}`, "report", who.name);
+
+        // Log report audit with compliance
+        await createReportAudit({
+          reportId: result.documentId,
+          documentId: result.documentId,
+          reportType: "incident_report",
+          generatedBy: who.id,
+          generatedByName: who.name,
+          complianceAcknowledged: true,
+          acknowledgedAt: new Date(),
+          metadata: {
+            leakId: input.leakId,
+            verificationCode: result.verificationCode,
+          },
+        });
+
+        return {
+          documentId: result.documentId,
+          verificationCode: result.verificationCode,
+          contentHash: result.contentHash,
+          htmlContent: result.htmlContent,
+          generatedAt: result.generatedAt,
+        };
+      }),
+
+    verify: publicProcedure
+      .input(z.object({ code: z.string() }))
+      .query(async ({ input }) => {
+        const doc = await getIncidentDocumentByVerificationCode(input.code);
+        if (!doc) {
+          return { valid: false, message: "رمز التحقق غير صالح أو غير موجود" };
+        }
+        const leak = await getLeakById(doc.leakId);
+        return {
+          valid: true,
+          document: {
+            documentId: doc.documentId,
+            leakId: doc.leakId,
+            verificationCode: doc.verificationCode,
+            contentHash: doc.contentHash,
+            title: doc.title,
+            titleAr: doc.titleAr,
+            documentType: doc.documentType,
+            generatedByName: doc.generatedByName,
+            createdAt: doc.createdAt,
+            isVerified: doc.isVerified,
+            leakSeverity: leak?.severity,
+            leakSector: leak?.sectorAr,
+            leakRecordCount: leak?.recordCount,
+            leakStatus: leak?.status,
+          },
+          message: "الوثيقة صحيحة ومطابقة للنسخة المحفوظة",
+        };
+      }),
+
+    byLeak: publicProcedure
+      .input(z.object({ leakId: z.string() }))
+      .query(async ({ input }) => {
+        return getIncidentDocumentsByLeakId(input.leakId);
+      }),
+
+    list: protectedProcedure.query(async () => {
+      return getAllIncidentDocuments();
+    }),
+
+    getById: publicProcedure
+      .input(z.object({ documentId: z.string() }))
+      .query(async ({ input }) => {
+        return getIncidentDocumentByDocumentId(input.documentId);
+      }),
+  }),
+
+  // ─── Report Audit ──────────────────────────────────────────
+  reportAudit: router({
+    list: protectedProcedure
+      .input(z.object({ limit: z.number().optional() }).optional())
+      .query(async ({ input }) => {
+        return getReportAuditEntries(input?.limit ?? 100);
+      }),
+
+    create: protectedProcedure
+      .input(z.object({
+        reportType: z.string(),
+        filters: z.record(z.string(), z.unknown()).optional(),
+        complianceAcknowledged: z.boolean(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const who = getAuthUser(ctx);
+        const reportId = `RPT-${Date.now().toString(36).toUpperCase()}`;
+        const id = await createReportAudit({
+          reportId,
+          reportType: input.reportType,
+          generatedBy: who.id,
+          generatedByName: who.name,
+          complianceAcknowledged: input.complianceAcknowledged,
+          acknowledgedAt: input.complianceAcknowledged ? new Date() : undefined,
+          filters: input.filters as Record<string, unknown>,
+        });
+        await logAudit(who.id, "report.generate", `Generated ${input.reportType} report (${reportId})`, "report", who.name);
+        return { id, reportId };
+      }),
   }),
 });
 

@@ -85,6 +85,13 @@
       "when": 1770818775325,
       "tag": "0011_premium_the_twelve",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "5",
+      "when": 1770824848532,
+      "tag": "0012_neat_magdalene",
+      "breakpoints": true
     }
   ]
 }

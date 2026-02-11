@@ -26,6 +26,7 @@ import { Badge } from "@/components/ui/badge";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import { DetailModal } from "@/components/DetailModal";
+import LeakDetailDrilldown from "@/components/LeakDetailDrilldown";
 
 const severityColor = (s: string) => {
   switch (s) {
@@ -52,6 +53,7 @@ export default function DarkWebMonitor() {
   const [activeModal, setActiveModal] = useState<string | null>(null);
   const [selectedSource, setSelectedSource] = useState<any>(null);
   const [selectedListing, setSelectedListing] = useState<any>(null);
+  const [drillLeak, setDrillLeak] = useState<any>(null);
 
   const darkWebListings = listings ?? [];
   const darkWebChannels = channels ?? [];
@@ -438,6 +440,15 @@ export default function DarkWebMonitor() {
           </div>
         )}
       </DetailModal>
+
+      {/* Leak Detail Drilldown */}
+      <LeakDetailDrilldown
+        leak={drillLeak}
+        open={!!drillLeak}
+        onClose={() => setDrillLeak(null)}
+        showBackButton={true}
+        onBack={() => setDrillLeak(null)}
+      />
     </div>
   );
 }

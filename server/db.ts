@@ -828,3 +828,63 @@ export async function deletePlatformUser(id: number): Promise<void> {
   if (!db) throw new Error("Database not available");
   await db.delete(platformUsers).where(eq(platformUsers.id, id));
 }
+
+
+// ─── Incident Documentation Helpers ──────────────────────────────
+
+import {
+  incidentDocuments,
+  type InsertIncidentDocument,
+  type IncidentDocument,
+  reportAudit,
+  type InsertReportAudit,
+  type ReportAudit,
+} from "../drizzle/schema";
+
+export async function createIncidentDocument(doc: InsertIncidentDocument): Promise<number> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const [result] = await db.insert(incidentDocuments).values(doc).$returningId();
+  return result.id;
+}
+
+export async function getIncidentDocumentByVerificationCode(code: string): Promise<IncidentDocument | undefined> {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(incidentDocuments).where(eq(incidentDocuments.verificationCode, code)).limit(1);
+  return result.length > 0 ? result[0] : undefined;
+}
+
+export async function getIncidentDocumentByDocumentId(documentId: string): Promise<IncidentDocument | undefined> {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(incidentDocuments).where(eq(incidentDocuments.documentId, documentId)).limit(1);
+  return result.length > 0 ? result[0] : undefined;
+}
+
+export async function getIncidentDocumentsByLeakId(leakId: string): Promise<IncidentDocument[]> {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(incidentDocuments).where(eq(incidentDocuments.leakId, leakId)).orderBy(desc(incidentDocuments.createdAt));
+}
+
+export async function getAllIncidentDocuments(): Promise<IncidentDocument[]> {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(incidentDocuments).orderBy(desc(incidentDocuments.createdAt));
+}
+
+// ─── Report Audit Helpers ────────────────────────────────────────
+
+export async function createReportAudit(entry: InsertReportAudit): Promise<number> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const [result] = await db.insert(reportAudit).values(entry).$returningId();
+  return result.id;
+}
+
+export async function getReportAuditEntries(limit = 100): Promise<ReportAudit[]> {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(reportAudit).orderBy(desc(reportAudit.createdAt)).limit(limit);
+}

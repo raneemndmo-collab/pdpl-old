@@ -20,6 +20,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { trpc } from "@/lib/trpc";
 import { DetailModal } from "@/components/DetailModal";
+import LeakDetailDrilldown from "@/components/LeakDetailDrilldown";
 
 const REGION_POSITIONS: Record<string, { x: number; y: number }> = {
   "Riyadh": { x: 55, y: 52 },
@@ -417,42 +418,13 @@ export default function ThreatMap() {
       </DetailModal>
 
       {/* Leak Detail Modal */}
-      <DetailModal
+      <LeakDetailDrilldown
+        leak={selectedLeak}
         open={activeModal === "leakDetail" && !!selectedLeak}
         onClose={() => { setActiveModal(null); setSelectedLeak(null); }}
-        title={selectedLeak?.titleAr || "تفاصيل التسريب"}
-        icon={<Shield className="w-5 h-5 text-primary" />}
-        maxWidth="max-w-2xl"
-      >
-        {selectedLeak && (
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              <div className="bg-secondary/50 rounded-xl p-3 border border-border/50 text-center">
-                <p className="text-xs text-muted-foreground">الخطورة</p>
-                <span className={`text-sm font-bold mt-1 inline-block px-2 py-0.5 rounded ${severityColors[selectedLeak.severity as keyof typeof severityColors]?.bg}/20 ${severityColors[selectedLeak.severity as keyof typeof severityColors]?.text}`}>
-                  {sevLabels[selectedLeak.severity]}
-                </span>
-              </div>
-              <div className="bg-secondary/50 rounded-xl p-3 border border-border/50 text-center">
-                <p className="text-xs text-muted-foreground">السجلات</p>
-                <p className="text-lg font-bold text-foreground mt-1">{selectedLeak.recordCount?.toLocaleString()}</p>
-              </div>
-              <div className="bg-secondary/50 rounded-xl p-3 border border-border/50 text-center">
-                <p className="text-xs text-muted-foreground flex items-center justify-center gap-1"><MapPin className="w-3 h-3" /> المنطقة</p>
-                <p className="text-sm font-bold text-foreground mt-1">{selectedLeak.cityAr}</p>
-              </div>
-              <div className="bg-secondary/50 rounded-xl p-3 border border-border/50 text-center">
-                <p className="text-xs text-muted-foreground flex items-center justify-center gap-1"><Building2 className="w-3 h-3" /> القطاع</p>
-                <p className="text-sm font-bold text-foreground mt-1">{selectedLeak.sectorAr}</p>
-              </div>
-            </div>
-            <div className="bg-secondary/30 rounded-xl p-4 border border-border/30">
-              <h4 className="text-xs font-semibold text-muted-foreground mb-1">معرّف التسريب</h4>
-              <p className="text-sm text-primary font-mono">{selectedLeak.leakId}</p>
-            </div>
-          </div>
-        )}
-      </DetailModal>
+        showBackButton={true}
+        onBack={() => { setActiveModal(null); setSelectedLeak(null); }}
+      />
     </div>
   );
 }
