@@ -22,6 +22,10 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import * as pdfjsLib from "pdfjs-dist";
+
+// Configure PDF.js worker
+pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
 
 const RASID_LOGO_DARK = "https://files.manuscdn.com/user_upload_by_module/session_file/310519663296955420/kuCEchYUSnPsbhZS.png";
 
@@ -238,14 +242,52 @@ export default function PublicVerify() {
         };
         reader.readAsDataURL(file);
       } else if (file.type === "application/pdf") {
-        // For PDF files, try to extract text and find the verification code
-        setUploadStatus("error");
-        setUploadError(
-          "لقراءة ملفات PDF، يرجى فتح الملف واستخراج كود التوثيق (NDMO-DOC-XXXX-XXXX) ثم إدخاله يدوياً في الحقل أعلاه."
-        );
+        // Smart PDF text extraction using pdf.js
+        try {
+          const arrayBuffer = await file.arrayBuffer();
+          const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+          let fullText = "";
+          
+          // Extract text from all pages
+          for (let i = 1; i <= pdf.numPages; i++) {
+            const page = await pdf.getPage(i);
+            const textContent = await page.getTextContent();
+            const pageText = textContent.items
+              .map((item: any) => item.str)
+              .join(" ");
+            fullText += pageText + " ";
+          }
+          
+          // Try to find NDMO-DOC verification code in extracted text
+          const pdfCode = extractVerificationCode(fullText);
+          if (pdfCode) {
+            setCode(pdfCode);
+            setUploadStatus("idle");
+            handleVerify(pdfCode);
+            return;
+          }
+          
+          // Also try filename
+          const fileNameCode = extractVerificationCode(file.name);
+          if (fileNameCode) {
+            setCode(fileNameCode);
+            setUploadStatus("idle");
+            handleVerify(fileNameCode);
+            return;
+          }
+          
+          setUploadStatus("error");
+          setUploadError(
+            "لم يتم العثور على كود توثيق (NDMO-DOC-XXXX-XXXX) في ملف PDF. يرجى التأكد من أن الملف يحتوي على كود التوثيق أو إدخاله يدوياً."
+          );
+        } catch (pdfErr) {
+          console.error("PDF extraction error:", pdfErr);
+          setUploadStatus("error");
+          setUploadError("فشل في قراءة ملف PDF. يرجى التأكد من أن الملف غير تالف.");
+        }
       } else {
         setUploadStatus("error");
-        setUploadError("نوع الملف غير مدعوم. يرجى رفع صورة (PNG, JPG) تحتوي على رمز QR.");
+        setUploadError("نوع الملف غير مدعوم. يرجى رفع صورة (PNG, JPG) أو ملف PDF يحتوي على كود التوثيق.");
       }
     } catch (err) {
       setUploadStatus("error");

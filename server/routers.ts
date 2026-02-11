@@ -99,6 +99,18 @@ import { generateIncidentDocumentation } from "./pdfService";
 import { notifyOwner } from "./_core/notification";
 import { invokeLLM } from "./_core/llm";
 import { rasidAIChat } from "./rasidAI";
+import {
+  createAiRating,
+  getAiRatings,
+  getAiRatingStats,
+  getKnowledgeBaseEntries,
+  getKnowledgeBaseEntryById,
+  createKnowledgeBaseEntry,
+  updateKnowledgeBaseEntry,
+  deleteKnowledgeBaseEntry,
+  getKnowledgeBaseStats,
+  incrementKnowledgeBaseViewCount,
+} from "./db";
 
 // Helper to get current user info from either auth source
 function getAuthUser(ctx: { user: any; platformUser: any }) {
@@ -1438,6 +1450,127 @@ export const appRouter = router({
         totalLeaks: recentLeaks.length,
       };
     }),
+  }),
+
+  // ─── AI Response Ratings ──────────────────────────────────
+  aiRatings: router({
+    rate: protectedProcedure
+      .input(z.object({
+        messageId: z.string(),
+        rating: z.number().min(1).max(5),
+        userMessage: z.string().optional(),
+        aiResponse: z.string().optional(),
+        toolsUsed: z.array(z.string()).optional(),
+        feedback: z.string().optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const who = getAuthUser(ctx);
+        const id = await createAiRating({
+          messageId: input.messageId,
+          userId: who.id,
+          userName: who.name,
+          rating: input.rating,
+          userMessage: input.userMessage,
+          aiResponse: input.aiResponse,
+          toolsUsed: input.toolsUsed,
+          feedback: input.feedback,
+        });
+        return { id };
+      }),
+    list: protectedProcedure
+      .input(z.object({
+        limit: z.number().optional(),
+        minRating: z.number().optional(),
+        maxRating: z.number().optional(),
+      }).optional())
+      .query(async ({ input }) => {
+        return getAiRatings(input);
+      }),
+    stats: protectedProcedure.query(async () => {
+      return getAiRatingStats();
+    }),
+  }),
+
+  // ─── Knowledge Base Management ──────────────────────────────
+  knowledgeBaseAdmin: router({
+    list: protectedProcedure
+      .input(z.object({
+        category: z.string().optional(),
+        search: z.string().optional(),
+        isPublished: z.boolean().optional(),
+        limit: z.number().optional(),
+      }).optional())
+      .query(async ({ input }) => {
+        return getKnowledgeBaseEntries(input);
+      }),
+    getById: protectedProcedure
+      .input(z.object({ entryId: z.string() }))
+      .query(async ({ input }) => {
+        return getKnowledgeBaseEntryById(input.entryId);
+      }),
+    create: protectedProcedure
+      .input(z.object({
+        category: z.enum(["article", "faq", "glossary", "instruction", "policy", "regulation"]),
+        title: z.string().min(1),
+        titleAr: z.string().min(1),
+        content: z.string().min(1),
+        contentAr: z.string().min(1),
+        tags: z.array(z.string()).optional(),
+        isPublished: z.boolean().optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const who = getAuthUser(ctx);
+        const entryId = `KB-${Date.now()}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
+        const id = await createKnowledgeBaseEntry({
+          entryId,
+          category: input.category,
+          title: input.title,
+          titleAr: input.titleAr,
+          content: input.content,
+          contentAr: input.contentAr,
+          tags: input.tags || [],
+          isPublished: input.isPublished ?? true,
+          createdBy: who.id,
+          createdByName: who.name,
+        });
+        await logAudit(who.id, "knowledgeBase.create", `Created knowledge base entry: ${input.titleAr}`, "system", who.name);
+        return { id, entryId };
+      }),
+    update: protectedProcedure
+      .input(z.object({
+        entryId: z.string(),
+        category: z.enum(["article", "faq", "glossary", "instruction", "policy", "regulation"]).optional(),
+        title: z.string().optional(),
+        titleAr: z.string().optional(),
+        content: z.string().optional(),
+        contentAr: z.string().optional(),
+        tags: z.array(z.string()).optional(),
+        isPublished: z.boolean().optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const who = getAuthUser(ctx);
+        const { entryId, ...data } = input;
+        await updateKnowledgeBaseEntry(entryId, { ...data, updatedBy: who.id } as any);
+        await logAudit(who.id, "knowledgeBase.update", `Updated knowledge base entry: ${entryId}`, "system", who.name);
+        return { success: true };
+      }),
+    delete: protectedProcedure
+      .input(z.object({ entryId: z.string() }))
+      .mutation(async ({ ctx, input }) => {
+        const who = getAuthUser(ctx);
+        await deleteKnowledgeBaseEntry(input.entryId);
+        await logAudit(who.id, "knowledgeBase.delete", `Deleted knowledge base entry: ${input.entryId}`, "system", who.name);
+        return { success: true };
+      }),
+    stats: protectedProcedure.query(async () => {
+      return getKnowledgeBaseStats();
+    }),
+    incrementView: publicProcedure
+      .input(z.object({ entryId: z.string() }))
+      .mutation(async ({ input }) => {
+        await incrementKnowledgeBaseViewCount(input.entryId);
+        return { success: true };
+      }),
   }),
 });
 export type AppRouter = typeof appRouter;

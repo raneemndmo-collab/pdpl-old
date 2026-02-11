@@ -413,3 +413,165 @@
   fill: oklch(0.4 0.02 280) !important;
   font-family: 'Cairo', 'DM Sans', sans-serif !important;
 }
+
+/* ═══════════════════════════════════════════════════════════════════
+   GLOBAL GLASSMORPHISM — Auto-applies to all shadcn/ui components
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* ─── Cards: frosted glass effect ─── */
+.dark [data-slot="card"] {
+  background: oklch(0.17 0.04 278 / 50%);
+  backdrop-filter: blur(20px) saturate(1.5);
+  -webkit-backdrop-filter: blur(20px) saturate(1.5);
+  border-color: oklch(0.4 0.1 285 / 20%);
+  box-shadow:
+    0 8px 32px oklch(0.1 0.05 285 / 30%),
+    inset 0 1px 0 oklch(0.5 0.1 285 / 10%);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.dark [data-slot="card"]:hover {
+  border-color: oklch(0.45 0.12 285 / 30%);
+  box-shadow:
+    0 12px 40px oklch(0.1 0.05 285 / 35%),
+    inset 0 1px 0 oklch(0.5 0.1 285 / 15%);
+}
+
+/* ─── Dialog/Modal: frosted glass overlay ─── */
+.dark [data-slot="dialog-overlay"] {
+  background: oklch(0.08 0.04 275 / 70%);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+.dark [data-slot="dialog-content"] {
+  background: oklch(0.15 0.045 278 / 85%);
+  backdrop-filter: blur(24px) saturate(1.6);
+  -webkit-backdrop-filter: blur(24px) saturate(1.6);
+  border-color: oklch(0.4 0.1 285 / 25%);
+  box-shadow:
+    0 24px 80px oklch(0.08 0.05 285 / 50%),
+    inset 0 1px 0 oklch(0.5 0.1 285 / 12%);
+}
+
+/* ─── Tables: glass rows with hover glow ─── */
+.dark table {
+  border-collapse: separate;
+  border-spacing: 0;
+}
+.dark table thead tr {
+  background: oklch(0.14 0.04 278 / 60%);
+}
+.dark table thead th {
+  border-bottom: 1px solid oklch(0.35 0.1 285 / 25%);
+  font-weight: 600;
+}
+.dark table tbody tr {
+  transition: all 0.2s ease;
+}
+.dark table tbody tr:hover {
+  background: oklch(0.2 0.06 285 / 30%);
+}
+.dark table tbody td {
+  border-bottom: 1px solid oklch(0.25 0.05 280 / 20%);
+}
+
+/* ─── Inputs: glass input fields ─── */
+.dark input:not([type="checkbox"]):not([type="radio"]),
+.dark textarea,
+.dark select {
+  background: oklch(0.15 0.04 278 / 50%) !important;
+  border-color: oklch(0.35 0.08 285 / 30%);
+  transition: all 0.2s ease;
+}
+.dark input:not([type="checkbox"]):not([type="radio"]):focus,
+.dark textarea:focus,
+.dark select:focus {
+  border-color: oklch(0.55 0.2 285 / 50%);
+  box-shadow: 0 0 0 2px oklch(0.55 0.2 285 / 15%), 0 0 20px oklch(0.55 0.2 285 / 8%);
+}
+
+/* ─── Buttons: subtle glass effect on outline/ghost variants ─── */
+.dark button[data-slot="button"] {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ─── Badges/Tags: glass effect ─── */
+.dark [data-slot="badge"] {
+  backdrop-filter: blur(8px);
+  border-color: oklch(0.4 0.1 285 / 20%);
+}
+
+/* ─── Tabs: glass tab list ─── */
+.dark [role="tablist"] {
+  background: oklch(0.15 0.04 278 / 50%);
+  backdrop-filter: blur(12px);
+  border-color: oklch(0.35 0.08 285 / 25%);
+}
+.dark [role="tab"][data-state="active"] {
+  background: oklch(0.22 0.08 285 / 60%);
+  box-shadow: 0 2px 8px oklch(0.45 0.15 285 / 15%);
+}
+
+/* ─── Dropdown menus: glass popover ─── */
+.dark [data-slot="dropdown-menu-content"],
+.dark [data-slot="popover-content"],
+.dark [data-slot="select-content"] {
+  background: oklch(0.15 0.045 278 / 90%);
+  backdrop-filter: blur(24px) saturate(1.6);
+  -webkit-backdrop-filter: blur(24px) saturate(1.6);
+  border-color: oklch(0.4 0.1 285 / 25%);
+  box-shadow: 0 16px 48px oklch(0.08 0.05 285 / 40%);
+}
+
+/* ─── Tooltips: glass tooltip ─── */
+.dark [data-slot="tooltip-content"] {
+  background: oklch(0.18 0.05 278 / 90%);
+  backdrop-filter: blur(16px);
+  border: 1px solid oklch(0.4 0.1 285 / 20%);
+}
+
+/* ─── Stat cards: subtle glow on value numbers ─── */
+.dark .stat-value {
+  text-shadow: 0 0 20px oklch(0.65 0.22 285 / 30%);
+}
+
+/* ─── Page section headers: gradient underline ─── */
+.dark h1, .dark h2 {
+  position: relative;
+}
+
+/* ─── Skeleton loaders: purple shimmer ─── */
+.dark [data-slot="skeleton"] {
+  background: linear-gradient(
+    90deg,
+    oklch(0.2 0.04 278 / 40%) 0%,
+    oklch(0.25 0.06 285 / 50%) 50%,
+    oklch(0.2 0.04 278 / 40%) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 2s ease-in-out infinite;
+}
+
+/* ─── Toast notifications: glass effect ─── */
+.dark [data-sonner-toaster] [data-sonner-toast] {
+  background: oklch(0.17 0.045 278 / 85%);
+  backdrop-filter: blur(20px);
+  border-color: oklch(0.4 0.1 285 / 25%);
+  box-shadow: 0 8px 32px oklch(0.1 0.05 285 / 30%);
+}
+
+/* ─── Progress bars: purple gradient ─── */
+.dark [role="progressbar"] > div {
+  background: linear-gradient(90deg, oklch(0.55 0.25 285), oklch(0.65 0.22 260));
+}
+
+/* ─── Separator: subtle glass border ─── */
+.dark [data-slot="separator"] {
+  background: oklch(0.3 0.06 285 / 25%);
+}
+
+/* ─── Alert: glass alert ─── */
+.dark [data-slot="alert"] {
+  background: oklch(0.17 0.04 278 / 50%);
+  backdrop-filter: blur(12px);
+  border-color: oklch(0.4 0.1 285 / 20%);
+}

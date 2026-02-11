@@ -40,6 +40,7 @@ import {
   Cpu,
   Copy,
   Check,
+  Star,
 } from "lucide-react";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
@@ -50,6 +51,8 @@ interface ChatMessage {
   content: string;
   timestamp: Date;
   toolsUsed?: string[];
+  rating?: number;
+  userQuery?: string; // The user's original question for this response
 }
 
 const quickCommands = [
@@ -110,6 +113,9 @@ export default function SmartRasid() {
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [drillLeakId, setDrillLeakId] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [ratingHover, setRatingHover] = useState<{ msgId: string; star: number } | null>(null);
+
+  const rateMutation = trpc.aiRatings.rate.useMutation();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const suggestionsTimeoutRef = useRef<ReturnType<typeof setTimeout>>(undefined);
@@ -200,6 +206,7 @@ export default function SmartRasid() {
         content: (typeof result.response === 'string' ? result.response : '') as string,
         timestamp: new Date(),
         toolsUsed: (result as any).toolsUsed,
+        userQuery: msg,
       };
 
       setMessages(prev => [...prev, assistantMessage]);
@@ -221,6 +228,22 @@ export default function SmartRasid() {
     setMessages([]);
     setInputValue("");
     inputRef.current?.focus();
+  };
+
+  const handleRating = async (msg: ChatMessage, star: number) => {
+    try {
+      await rateMutation.mutateAsync({
+        messageId: msg.id,
+        rating: star,
+        userMessage: msg.userQuery || "",
+        aiResponse: msg.content,
+        toolsUsed: msg.toolsUsed || [],
+      });
+      setMessages(prev => prev.map(m => m.id === msg.id ? { ...m, rating: star } : m));
+      toast.success(`تم التقييم بنجاح (${star}/5)`);
+    } catch {
+      toast.error("فشل في حفظ التقييم");
+    }
   };
 
   const copyMessage = (id: string, content: string) => {
@@ -492,14 +515,41 @@ export default function SmartRasid() {
                     )}
                   </div>
 
-                  {/* Timestamp */}
-                  <div className={`flex items-center gap-1.5 mt-1.5 ${msg.role === "user" ? "justify-end" : ""}`}>
-                    <Clock className="w-2.5 h-2.5 text-muted-foreground/50" />
-                    <span className="text-[10px] text-muted-foreground/60">{formatTime(msg.timestamp)}</span>
+                  {/* Timestamp + Rating */}
+                  <div className={`flex items-center gap-1.5 mt-1.5 ${msg.role === "user" ? "justify-end" : "justify-between"}`}>
+                    <div className="flex items-center gap-1.5">
+                      <Clock className="w-2.5 h-2.5 text-muted-foreground/50" />
+                      <span className="text-[10px] text-muted-foreground/60">{formatTime(msg.timestamp)}</span>
+                      {msg.role === "assistant" && (
+                        <span className="text-[10px] text-emerald-500/70 flex items-center gap-0.5">
+                          <Check className="w-2.5 h-2.5" /> مكتمل
+                        </span>
+                      )}
+                    </div>
                     {msg.role === "assistant" && (
-                      <span className="text-[10px] text-emerald-500/70 flex items-center gap-0.5">
-                        <Check className="w-2.5 h-2.5" /> مكتمل
-                      </span>
+                      <div className="flex items-center gap-0.5" onMouseLeave={() => setRatingHover(null)}>
+                        {[1, 2, 3, 4, 5].map((star) => {
+                          const isActive = msg.rating ? star <= msg.rating : (ratingHover?.msgId === msg.id && star <= ratingHover.star);
+                          return (
+                            <button
+                              key={star}
+                              onClick={() => !msg.rating && handleRating(msg, star)}
+                              onMouseEnter={() => !msg.rating && setRatingHover({ msgId: msg.id, star })}
+                              className={`transition-all duration-150 ${msg.rating ? 'cursor-default' : 'cursor-pointer hover:scale-125'}`}
+                              title={msg.rating ? `تم التقييم: ${msg.rating}/5` : `تقييم ${star}/5`}
+                              disabled={!!msg.rating}
+                            >
+                              <Star
+                                className={`w-3.5 h-3.5 transition-colors ${
+                                  isActive
+                                    ? 'text-amber-400 fill-amber-400'
+                                    : 'text-muted-foreground/30 hover:text-amber-400/50'
+                                }`}
+                              />
+                            </button>
+                          );
+                        })}
+                      </div>
                     )}
                   </div>
 

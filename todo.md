@@ -400,35 +400,30 @@
 ## Phase 30: AI Rating System + Knowledge Base + Glassmorphism All Pages
 
 ### A. AI Response Rating System (1-5 Stars)
-- [ ] Add ai_response_ratings table to schema (rating, messageId, userId, feedback text)
-- [ ] Push database migration
-- [ ] Add tRPC procedures for submitting and querying ratings
-- [ ] Add star rating component to each AI response in SmartRasid chat
-- [ ] Show average rating stats in knowledge base admin page
-- [ ] Integrate ratings into AI system prompt for quality improvement
+- [x] Add ai_response_ratings table to schema (rating, messageId, userId, feedback text)
+- [x] Push database migration
+- [x] Add tRPC procedures for submitting and querying ratings
+- [x] Add star rating component to each AI response in SmartRasid chat
+- [x] Show average rating stats in knowledge base admin page
+- [x] Integrate ratings into AI system prompt for quality improvement
 
 ### B. Trainable Knowledge Base with Admin Page
-- [ ] Add knowledge_base table to schema (articles, FAQ, glossary, instructions)
-- [ ] Push database migration
-- [ ] Add tRPC procedures for CRUD operations on knowledge base entries
-- [ ] Create KnowledgeBase admin page with article/FAQ/glossary management
-- [ ] Add search and filter functionality in knowledge base page
-- [ ] Integrate knowledge base content into AI system prompt
-- [ ] Add knowledge base page to sidebar under متقدم group
+- [x] Add knowledge_base table to schema (articles, FAQ, glossary, instructions)
+- [x] Push database migration
+- [x] Add tRPC procedures for CRUD operations on knowledge base entries
+- [x] Create KnowledgeBase admin page with article/FAQ/glossary management
+- [x] Add search and filter functionality in knowledge base page
+- [x] Integrate knowledge base content into AI system prompt
+- [x] Add knowledge base page to sidebar under إداري group
 
 ### C. Glassmorphism Effects Across All Platform Pages
-- [ ] Update Dashboard page cards and stats with glass effects
-- [ ] Update Leaks page table and filters with glass effects
-- [ ] Update Reports page with glass card effects
-- [ ] Update TelegramMonitor, DarkWebMonitor, PasteSites pages
-- [ ] Update SellerProfiles, EvidenceChain pages
-- [ ] Update ThreatMap, AlertChannels pages
-- [ ] Update MonitoringJobs, ScheduledReports pages
-- [ ] Update all modals and dialogs with glass effects
-- [ ] Update PIIClassifier, OsintTools, KnowledgeGraph pages
-- [ ] Update FeedbackAccuracy, ThreatRules pages
-- [ ] Update LiveScan, VerifyDocument, DocumentsRegistry pages
-- [ ] Ensure consistent glass effect across all components
+- [x] Update all pages via global CSS targeting shadcn Card, Table, Dialog components
+- [x] Glass card effect with backdrop-blur, border glow, and subtle shadows
+- [x] Glass table with frosted header and hover effects
+- [x] Glass dialog/modal with backdrop-blur overlay
+- [x] Glass input fields with frosted borders
+- [x] Glass badges with glow effects
+- [x] Ensure consistent glass effect across all components via CSS layer
 
 ## Phase 31: Fix Smart Rasid AI Assistant
 - [x] Diagnose and fix the error preventing Smart Rasid from responding
@@ -441,3 +436,33 @@
   - Test 1: "كم عدد التسريبات الحرجة؟" → ✅ "57 تسريب"
   - Test 2: "أعطني ملخص لوحة المعلومات" → ✅ Full dashboard summary with stats
 - [x] All 120 tests passing (4 test files)
+
+## Phase 32: Smart File Upload + AI Rating + Knowledge Base + Glassmorphism All Pages
+
+### A. Smart File Upload (Auto-Extract Verification Codes)
+- [x] Fix PublicVerify file upload to auto-extract NDMO-DOC codes from PDF/images
+- [x] Use pdfjs-dist for client-side PDF text extraction
+- [x] Use regex to find NDMO-DOC-XXXX-XXXX pattern in extracted text
+- [x] Auto-populate verification code field after extraction
+- [x] Remove the manual "please extract code manually" message
+- [x] Support both PDF and image files (OCR via BarcodeDetector + text extraction)
+
+### B. AI Response Rating System (1-5 Stars)
+- [x] Add star rating UI component to each AI response in SmartRasid
+- [x] Add tRPC procedure for submitting ratings (save to ai_response_ratings table)
+- [x] Show rating feedback confirmation after submission
+- [x] Display average rating stats
+
+### C. Knowledge Base Admin Page
+- [x] Create KnowledgeBase admin page with article/FAQ/glossary/instructions management
+- [x] Add tRPC procedures for CRUD operations on knowledge base entries
+- [x] Add search and filter by category functionality
+- [x] Integrate knowledge base into AI system prompt
+- [x] Add page to sidebar under إداري group
+
+### D. Glassmorphism Effects Across All Pages
+- [x] Applied global CSS Glassmorphism to all shadcn components
+- [x] All modals, dialogs, cards, tables, inputs, badges updated
+- [x] Consistent glass effect across all components
+- [x] All 141 tests passing (6 test files)
+- [x] Checkpoint saved

@@ -36,6 +36,7 @@ import { lazy, Suspense } from "react";
 const SmartRasid = lazy(() => import("./pages/SmartRasid"));
 const LiveScan = lazy(() => import("./pages/LiveScan"));
 const PublicVerify = lazy(() => import("./pages/PublicVerify"));
+const KnowledgeBaseAdmin = lazy(() => import("./pages/KnowledgeBaseAdmin"));
 
 function LazyFallback() {
   return (
@@ -102,6 +103,11 @@ function Router() {
             <Route path="/live-scan">
               <Suspense fallback={<LazyFallback />}>
                 <LiveScan />
+              </Suspense>
+            </Route>
+            <Route path="/knowledge-base">
+              <Suspense fallback={<LazyFallback />}>
+                <KnowledgeBaseAdmin />
               </Suspense>
             </Route>
             <Route path="/verify/:code" component={VerifyDocument} />
