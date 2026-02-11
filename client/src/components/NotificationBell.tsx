@@ -126,7 +126,7 @@ export default function NotificationBell({ userId }: { userId?: number }) {
         {/* Connection indicator */}
         <span
           className={`absolute bottom-0.5 right-0.5 w-1.5 h-1.5 rounded-full ${
-            isConnected ? "bg-emerald-500" : "bg-gray-500"
+            isConnected ? "bg-emerald-500" : "bg-zinc-400"
           }`}
         />
       </Button>

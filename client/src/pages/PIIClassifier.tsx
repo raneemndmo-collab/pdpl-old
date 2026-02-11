@@ -46,6 +46,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
+import { DetailModal } from "@/components/DetailModal";
 
 const sampleData = `=== عينة بيانات شخصية سعودية شاملة ===
 
@@ -131,7 +132,7 @@ const piiRegexPatterns = [
   { type: "SQL Pattern", typeAr: "نمط SQL", regex: /\b(?:SELECT|INSERT|UPDATE|DELETE|DROP)\b.*(?:national_id|phone|email|iqama|salary|password)/gi, icon: Database, color: "text-purple-400", category: "code", confidence: 0.88 },
 
   // === Smart Detection: Masked Data ===
-  { type: "Masked Data", typeAr: "بيانات مقنّعة", regex: /\b(?:05|10|20)\d*X{3,}\d*\b/g, icon: Eye, color: "text-gray-400", category: "masked", confidence: 0.75 },
+  { type: "Masked Data", typeAr: "بيانات مقنّعة", regex: /\b(?:05|10|20)\d*X{3,}\d*\b/g, icon: Eye, color: "text-zinc-500", category: "masked", confidence: 0.75 },
 
   // === Smart Detection: Base64 ===
   { type: "Base64 Encoded", typeAr: "بيانات مشفرة Base64", regex: /\b[A-Za-z0-9+/]{20,}={1,2}\b/g, icon: Binary, color: "text-fuchsia-400", category: "encoded", confidence: 0.70 },
@@ -145,7 +146,7 @@ const categoryInfo: Record<string, { label: string; labelEn: string; color: stri
   technical: { label: "البيانات التقنية", labelEn: "Technical Data", color: "border-sky-500/30 bg-sky-500/5", icon: Globe },
   stealer: { label: "InfoStealer", labelEn: "InfoStealer Logs", color: "border-red-600/30 bg-red-600/5", icon: Bug },
   code: { label: "أنماط الكود", labelEn: "Code Patterns", color: "border-purple-500/30 bg-purple-500/5", icon: Database },
-  masked: { label: "بيانات مقنّعة", labelEn: "Masked Data", color: "border-gray-500/30 bg-gray-500/5", icon: Eye },
+  masked: { label: "بيانات مقنّعة", labelEn: "Masked Data", color: "border-zinc-500/30 bg-zinc-500/5", icon: Eye },
   encoded: { label: "بيانات مشفرة", labelEn: "Encoded Data", color: "border-fuchsia-500/30 bg-fuchsia-500/5", icon: Binary },
 };
 
@@ -163,7 +164,7 @@ const piiTypeColors: Record<string, string> = {
   "Credentials": "text-red-500 bg-red-500/10 border-red-500/30",
   "InfoStealer URL": "text-red-600 bg-red-600/10 border-red-600/30",
   "SQL Pattern": "text-purple-400 bg-purple-500/10 border-purple-500/30",
-  "Masked Data": "text-gray-400 bg-gray-500/10 border-gray-500/30",
+  "Masked Data": "text-zinc-500 bg-zinc-500/10 border-zinc-500/30",
   "Base64 Encoded": "text-fuchsia-400 bg-fuchsia-500/10 border-fuchsia-500/30",
   "National Address": "text-teal-400 bg-teal-500/10 border-teal-500/30",
   "Date of Birth": "text-blue-400 bg-blue-500/10 border-blue-500/30",
@@ -180,6 +181,7 @@ export default function PIIClassifier() {
   const [hasScanned, setHasScanned] = useState(false);
   const [isScanning, setIsScanning] = useState(false);
   const [expandedCategory, setExpandedCategory] = useState<string | null>(null);
+  const [activeModal, setActiveModal] = useState<string | null>(null);
   const [apiResults, setApiResults] = useState<{
     results: Array<{ type: string; typeAr: string; value: string; line: number }>;
     totalMatches: number;
@@ -294,28 +296,25 @@ export default function PIIClassifier() {
         </div>
       </motion.div>
 
-      {/* Stats bar */}
+      {/* Stats bar — clickable */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-        <div className="p-3 rounded-lg bg-secondary/30 border border-border text-center">
-          <p className="text-2xl font-bold text-cyan-400">20</p>
-          <p className="text-[10px] text-muted-foreground">نمط كشف</p>
-        </div>
-        <div className="p-3 rounded-lg bg-secondary/30 border border-border text-center">
-          <p className="text-2xl font-bold text-red-400">5</p>
-          <p className="text-[10px] text-muted-foreground">بيانات هوية</p>
-        </div>
-        <div className="p-3 rounded-lg bg-secondary/30 border border-border text-center">
-          <p className="text-2xl font-bold text-emerald-400">4</p>
-          <p className="text-[10px] text-muted-foreground">بيانات مالية</p>
-        </div>
-        <div className="p-3 rounded-lg bg-secondary/30 border border-border text-center">
-          <p className="text-2xl font-bold text-amber-400">2</p>
-          <p className="text-[10px] text-muted-foreground">InfoStealer</p>
-        </div>
-        <div className="p-3 rounded-lg bg-secondary/30 border border-border text-center">
-          <p className="text-2xl font-bold text-purple-400">3</p>
-          <p className="text-[10px] text-muted-foreground">كشف ذكي</p>
-        </div>
+        {[
+          { key: "patterns", label: "نمط كشف", value: 20, color: "text-cyan-400", borderColor: "border-cyan-500/20", bgColor: "bg-cyan-500/5" },
+          { key: "identity", label: "بيانات هوية", value: 5, color: "text-red-400", borderColor: "border-red-500/20", bgColor: "bg-red-500/5" },
+          { key: "financial", label: "بيانات مالية", value: 4, color: "text-emerald-400", borderColor: "border-emerald-500/20", bgColor: "bg-emerald-500/5" },
+          { key: "stealer", label: "InfoStealer", value: 2, color: "text-amber-400", borderColor: "border-amber-500/20", bgColor: "bg-amber-500/5" },
+          { key: "smart", label: "كشف ذكي", value: 3, color: "text-purple-400", borderColor: "border-purple-500/20", bgColor: "bg-purple-500/5" },
+        ].map((stat) => (
+          <div
+            key={stat.key}
+            className={`p-3 rounded-lg ${stat.bgColor} border ${stat.borderColor} text-center cursor-pointer hover:scale-[1.02] transition-all group`}
+            onClick={() => setActiveModal(stat.key)}
+          >
+            <p className={`text-2xl font-bold ${stat.color}`}>{stat.value}</p>
+            <p className="text-[10px] text-muted-foreground">{stat.label}</p>
+            <p className="text-[9px] text-primary/50 mt-1 opacity-0 group-hover:opacity-100 transition-opacity">اضغط للتفاصيل ←</p>
+          </div>
+        ))}
       </div>
 
       <Tabs defaultValue="scanner" className="space-y-6">
@@ -675,6 +674,92 @@ export default function PIIClassifier() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* ═══ MODALS ═══ */}
+      <DetailModal open={activeModal === "patterns"} onClose={() => setActiveModal(null)} title="أنماط الكشف المتقدمة" icon={<ScanSearch className="w-5 h-5 text-cyan-400" />}>
+        <div className="space-y-3">
+          <div className="bg-cyan-500/10 rounded-xl p-3 border border-cyan-500/20 text-center">
+            <p className="text-2xl font-bold text-cyan-400">20</p>
+            <p className="text-xs text-muted-foreground">نمط كشف متقدم</p>
+          </div>
+          <p className="text-xs text-muted-foreground">يدعم المحرك 20 نمطاً للكشف عن البيانات الشخصية السعودية، تشمل بيانات الهوية والاتصال والبيانات المالية والحساسة، بالإضافة إلى الكشف الذكي عن InfoStealer وأنماط SQL والبيانات المشفرة.</p>
+          <div className="space-y-2">
+            {Object.entries(categoryInfo).map(([key, info]) => {
+              const count = piiRegexPatterns.filter(p => p.category === key).length;
+              if (count === 0) return null;
+              const Icon = info.icon;
+              return (
+                <div key={key} className={`p-3 rounded-lg border ${info.color} flex items-center justify-between`}>
+                  <div className="flex items-center gap-2"><Icon className="w-4 h-4" /><span className="text-sm text-foreground">{info.label}</span></div>
+                  <span className="text-sm font-bold text-foreground">{count}</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </DetailModal>
+
+      <DetailModal open={activeModal === "identity"} onClose={() => setActiveModal(null)} title="أنماط بيانات الهوية" icon={<Hash className="w-5 h-5 text-red-400" />}>
+        <div className="space-y-3">
+          {piiRegexPatterns.filter(p => p.category === "identity").map(p => {
+            const Icon = p.icon;
+            return (
+              <div key={p.type} className="p-3 rounded-lg bg-red-500/5 border border-red-500/20">
+                <div className="flex items-center gap-2 mb-1"><Icon className={`w-4 h-4 ${p.color}`} /><span className="text-sm font-medium text-foreground">{p.typeAr}</span></div>
+                <p className="text-[10px] text-muted-foreground">{p.type} • ثقة {Math.round(p.confidence * 100)}%</p>
+                <code className="text-[10px] font-mono text-primary mt-1 block" dir="ltr">{p.regex.source}</code>
+              </div>
+            );
+          })}
+        </div>
+      </DetailModal>
+
+      <DetailModal open={activeModal === "financial"} onClose={() => setActiveModal(null)} title="أنماط البيانات المالية" icon={<CreditCard className="w-5 h-5 text-emerald-400" />}>
+        <div className="space-y-3">
+          {piiRegexPatterns.filter(p => p.category === "financial").map(p => {
+            const Icon = p.icon;
+            return (
+              <div key={p.type} className="p-3 rounded-lg bg-emerald-500/5 border border-emerald-500/20">
+                <div className="flex items-center gap-2 mb-1"><Icon className={`w-4 h-4 ${p.color}`} /><span className="text-sm font-medium text-foreground">{p.typeAr}</span></div>
+                <p className="text-[10px] text-muted-foreground">{p.type} • ثقة {Math.round(p.confidence * 100)}%</p>
+                <code className="text-[10px] font-mono text-primary mt-1 block" dir="ltr">{p.regex.source}</code>
+              </div>
+            );
+          })}
+        </div>
+      </DetailModal>
+
+      <DetailModal open={activeModal === "stealer"} onClose={() => setActiveModal(null)} title="أنماط InfoStealer" icon={<Bug className="w-5 h-5 text-amber-400" />}>
+        <div className="space-y-3">
+          <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/30">
+            <p className="text-xs text-red-400">تكشف هذه الأنماط عن بيانات تسجيل الدخول المسروقة بواسطة برمجيات مثل RedLine و Vidar و Raccoon</p>
+          </div>
+          {piiRegexPatterns.filter(p => p.category === "stealer").map(p => {
+            const Icon = p.icon;
+            return (
+              <div key={p.type} className="p-3 rounded-lg bg-amber-500/5 border border-amber-500/20">
+                <div className="flex items-center gap-2 mb-1"><Icon className={`w-4 h-4 ${p.color}`} /><span className="text-sm font-medium text-foreground">{p.typeAr}</span></div>
+                <p className="text-[10px] text-muted-foreground">{p.type} • ثقة {Math.round(p.confidence * 100)}%</p>
+              </div>
+            );
+          })}
+        </div>
+      </DetailModal>
+
+      <DetailModal open={activeModal === "smart"} onClose={() => setActiveModal(null)} title="الكشف الذكي" icon={<Zap className="w-5 h-5 text-purple-400" />}>
+        <div className="space-y-3">
+          <p className="text-xs text-muted-foreground">يشمل الكشف الذكي اكتشاف أنماط SQL التي تحتوي على أسماء أعمدة بيانات شخصية، والبيانات المقنّعة جزئياً، والبيانات المشفرة بـ Base64.</p>
+          {piiRegexPatterns.filter(p => ["code", "masked", "encoded"].includes(p.category)).map(p => {
+            const Icon = p.icon;
+            return (
+              <div key={p.type} className="p-3 rounded-lg bg-purple-500/5 border border-purple-500/20">
+                <div className="flex items-center gap-2 mb-1"><Icon className={`w-4 h-4 ${p.color}`} /><span className="text-sm font-medium text-foreground">{p.typeAr}</span></div>
+                <p className="text-[10px] text-muted-foreground">{p.type} • ثقة {Math.round(p.confidence * 100)}%</p>
+              </div>
+            );
+          })}
+        </div>
+      </DetailModal>
     </div>
   );
 }

@@ -354,6 +354,16 @@ export const appRouter = router({
         return getLeakById(input.leakId);
       }),
 
+    // Full detail with evidence chain for modal
+    detail: publicProcedure
+      .input(z.object({ leakId: z.string() }))
+      .query(async ({ input }) => {
+        const leak = await getLeakById(input.leakId);
+        if (!leak) return null;
+        const evidence = await getEvidenceChain(input.leakId);
+        return { ...leak, evidence };
+      }),
+
     create: protectedProcedure
       .input(
         z.object({

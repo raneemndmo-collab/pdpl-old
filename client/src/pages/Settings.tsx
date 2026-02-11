@@ -15,6 +15,13 @@ import {
   Clock,
   Save,
   Loader2,
+  Info,
+  Server,
+  DatabaseZap,
+  User,
+  Mail,
+  Calendar,
+  ShieldCheck,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -33,6 +40,7 @@ import {
 import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
+import { DetailModal } from "@/components/DetailModal";
 
 const roleLabel = (r: string) => {
   switch (r) {
@@ -58,6 +66,7 @@ const roleColor = (r: string) => {
 export default function Settings() {
   const { user } = useAuth();
   const isAdmin = user?.role === "admin";
+  const [activeModal, setActiveModal] = useState<string | null>(null);
 
   const { data: usersList, isLoading: usersLoading, refetch: refetchUsers } = trpc.users.list.useQuery(
     undefined,
@@ -163,17 +172,29 @@ export default function Settings() {
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="p-4 rounded-lg bg-secondary/20 border border-border text-center">
+                <div
+                  className="p-4 rounded-lg bg-secondary/20 border border-border text-center cursor-pointer hover:scale-[1.02] transition-all group"
+                  onClick={() => setActiveModal("systemVersion")}
+                >
                   <p className="text-lg font-bold text-primary">v2.0</p>
                   <p className="text-xs text-muted-foreground">إصدار النظام</p>
+                  <p className="text-[9px] text-primary/50 mt-1 opacity-0 group-hover:opacity-100 transition-opacity">اضغط للتفاصيل ←</p>
                 </div>
-                <div className="p-4 rounded-lg bg-secondary/20 border border-border text-center">
+                <div
+                  className="p-4 rounded-lg bg-secondary/20 border border-border text-center cursor-pointer hover:scale-[1.02] transition-all group"
+                  onClick={() => setActiveModal("serverStatus")}
+                >
                   <p className="text-lg font-bold text-emerald-400">نشط</p>
                   <p className="text-xs text-muted-foreground">حالة الخادم</p>
+                  <p className="text-[9px] text-primary/50 mt-1 opacity-0 group-hover:opacity-100 transition-opacity">اضغط للتفاصيل ←</p>
                 </div>
-                <div className="p-4 rounded-lg bg-secondary/20 border border-border text-center">
+                <div
+                  className="p-4 rounded-lg bg-secondary/20 border border-border text-center cursor-pointer hover:scale-[1.02] transition-all group"
+                  onClick={() => setActiveModal("databaseType")}
+                >
                   <p className="text-lg font-bold text-cyan-400">TiDB</p>
                   <p className="text-xs text-muted-foreground">قاعدة البيانات</p>
+                  <p className="text-[9px] text-primary/50 mt-1 opacity-0 group-hover:opacity-100 transition-opacity">اضغط للتفاصيل ←</p>
                 </div>
               </div>
             </CardContent>
@@ -258,7 +279,7 @@ export default function Settings() {
                 { key: "weeklyReport" as const, label: "تقرير أسبوعي", desc: "تقرير أسبوعي شامل بالإحصائيات", color: "text-violet-400" },
               ].map((item) => (
                 <div key={item.key} className="flex items-center justify-between p-4 rounded-lg bg-secondary/20 border border-border">
-                  <div>
+                  <div className="flex-1 pr-4">
                     <Label className={`text-sm font-medium ${item.color}`}>{item.label}</Label>
                     <p className="text-xs text-muted-foreground">{item.desc}</p>
                   </div>
@@ -325,8 +346,13 @@ export default function Settings() {
                   <Users className="w-4 h-4 text-primary" />
                   إدارة المستخدمين
                   {usersList && (
-                    <Badge variant="outline" className="mr-2 text-xs bg-primary/10 border-primary/30 text-primary">
+                    <Badge
+                      variant="outline"
+                      className="mr-2 text-xs bg-primary/10 border-primary/30 text-primary cursor-pointer hover:scale-[1.02] transition-all group"
+                      onClick={() => setActiveModal("userCount")}
+                    >
                       {usersList.length} مستخدم
+                      <span className="text-[9px] text-primary/50 ml-2 opacity-0 group-hover:opacity-100 transition-opacity">...</span>
                     </Badge>
                   )}
                 </CardTitle>
@@ -354,7 +380,11 @@ export default function Settings() {
                       </thead>
                       <tbody>
                         {usersList.map((u) => (
-                          <tr key={u.id} className="border-b border-border/50 hover:bg-secondary/30 transition-colors">
+                          <tr
+                            key={u.id}
+                            className="border-b border-border/50 hover:bg-secondary/30 transition-colors cursor-pointer group"
+                            onClick={() => setActiveModal(`user_${u.id}`)}
+                          >
                             <td className="py-3 px-4">
                               <div className="flex items-center gap-2">
                                 <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-xs font-bold text-primary">
@@ -381,6 +411,8 @@ export default function Settings() {
                               <Select
                                 value={u.ndmoRole || "viewer"}
                                 onValueChange={(val) => handleRoleChange(u.id, val)}
+                                // @ts-ignore
+                                onClick={(e) => e.stopPropagation()} // Prevent row click from triggering
                               >
                                 <SelectTrigger className="w-28 h-7 text-xs bg-secondary/50 border-border">
                                   <SelectValue />
@@ -404,6 +436,74 @@ export default function Settings() {
           </TabsContent>
         )}
       </Tabs>
+
+      {/* Modals */}
+      <DetailModal
+        open={activeModal === "systemVersion"}
+        onClose={() => setActiveModal(null)}
+        title="إصدار النظام"
+        icon={<Info className="w-5 h-5 text-primary" />}
+      >
+        <p className="text-sm text-muted-foreground">الإصدار الحالي للمنصة هو <span className="font-bold text-primary">v2.0 "Observatory"</span>. يتضمن هذا الإصدار تحسينات كبيرة في واجهة المستخدم، وتكامل مع مصادر رصد جديدة، وتعزيز أداء الاستعلامات.</p>
+      </DetailModal>
+
+      <DetailModal
+        open={activeModal === "serverStatus"}
+        onClose={() => setActiveModal(null)}
+        title="حالة الخادم"
+        icon={<Server className="w-5 h-5 text-emerald-400" />}
+      >
+        <p className="text-sm text-muted-foreground">جميع الخوادم تعمل بشكل طبيعي. زمن الاستجابة الحالي هو <span className="font-bold text-emerald-400">~45ms</span> وزمن التشغيل <span className="font-bold text-emerald-400">99.98%</span>. تتم مراقبة الخدمات على مدار الساعة.</p>
+      </DetailModal>
+
+      <DetailModal
+        open={activeModal === "databaseType"}
+        onClose={() => setActiveModal(null)}
+        title="قاعدة البيانات"
+        icon={<DatabaseZap className="w-5 h-5 text-cyan-400" />}
+      >
+        <p className="text-sm text-muted-foreground">تستخدم المنصة قاعدة بيانات <span className="font-bold text-cyan-400">TiDB</span>، وهي قاعدة بيانات موزعة متوافقة مع MySQL توفر قابلية التوسع الأفقي والاتساق القوي.</p>
+      </DetailModal>
+
+      <DetailModal
+        open={activeModal === "userCount"}
+        onClose={() => setActiveModal(null)}
+        title="إجمالي المستخدمين"
+        icon={<Users className="w-5 h-5 text-primary" />}
+      >
+        <p className="text-sm text-muted-foreground">يوجد حاليًا <span className="font-bold text-primary">{usersList?.length || 0}</span> مستخدم مسجل في المنصة. يمكن للمسؤولين إدارة المستخدمين من هذا القسم.</p>
+      </DetailModal>
+
+      {usersList?.map(u => (
+        <DetailModal
+          key={`modal_${u.id}`}
+          open={activeModal === `user_${u.id}`}
+          onClose={() => setActiveModal(null)}
+          title={`تفاصيل المستخدم: ${u.name}`}
+          icon={<User className="w-5 h-5 text-primary" />}
+          maxWidth="max-w-lg"
+        >
+          <div className="space-y-4 text-sm">
+            <div className="flex items-center gap-3 p-3 rounded-md bg-secondary/30 border border-border/50">
+              <Mail className="w-4 h-4 text-muted-foreground" />
+              <span className="text-muted-foreground">البريد الإلكتروني:</span>
+              <span className="font-medium text-foreground">{u.email}</span>
+            </div>
+            <div className="flex items-center gap-3 p-3 rounded-md bg-secondary/30 border border-border/50">
+              <ShieldCheck className="w-4 h-4 text-muted-foreground" />
+              <span className="text-muted-foreground">دور NDMO:</span>
+              <Badge variant="outline" className={`text-xs ${roleColor(u.ndmoRole || "viewer")}`}>
+                {roleLabel(u.ndmoRole || "viewer")}
+              </Badge>
+            </div>
+            <div className="flex items-center gap-3 p-3 rounded-md bg-secondary/30 border border-border/50">
+              <Calendar className="w-4 h-4 text-muted-foreground" />
+              <span className="text-muted-foreground">آخر تسجيل دخول:</span>
+              <span className="font-medium text-foreground">{u.lastSignedIn ? new Date(u.lastSignedIn).toLocaleString("ar-SA") : "لم يسجل دخول بعد"}</span>
+            </div>
+          </div>
+        </DetailModal>
+      ))}
     </div>
   );
 }

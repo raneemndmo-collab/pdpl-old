@@ -1,6 +1,6 @@
 /**
  * TelegramMonitor — Telegram channel monitoring view
- * Dark Observatory Theme — Uses tRPC API
+ * All stats and channel cards are clickable with detail modals
  */
 import { useState } from "react";
 import { motion } from "framer-motion";
@@ -16,6 +16,11 @@ import {
   Filter,
   RefreshCw,
   Loader2,
+  X,
+  ShieldAlert,
+  Clock,
+  MessageSquare,
+  Hash,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -23,6 +28,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
+import { DetailModal } from "@/components/DetailModal";
 
 const riskColor = (r: string) => {
   switch (r) {
@@ -56,8 +62,30 @@ const statusLabel = (s: string) => {
   }
 };
 
+const severityColor = (s: string) => {
+  switch (s) {
+    case "critical": return "text-red-400 bg-red-500/10 border-red-500/30";
+    case "high": return "text-amber-400 bg-amber-500/10 border-amber-500/30";
+    case "medium": return "text-yellow-400 bg-yellow-500/10 border-yellow-500/30";
+    default: return "text-cyan-400 bg-cyan-500/10 border-cyan-500/30";
+  }
+};
+
+const severityLabel = (s: string) => {
+  switch (s) {
+    case "critical": return "حرج";
+    case "high": return "عالي";
+    case "medium": return "متوسط";
+    default: return "منخفض";
+  }
+};
+
 export default function TelegramMonitor() {
   const [searchQuery, setSearchQuery] = useState("");
+  const [activeModal, setActiveModal] = useState<string | null>(null);
+  const [selectedChannel, setSelectedChannel] = useState<any>(null);
+  const [selectedLeak, setSelectedLeak] = useState<any>(null);
+
   const { data: channels, isLoading: channelsLoading } = trpc.channels.list.useQuery({ platform: "telegram" });
   const { data: leaksData, isLoading: leaksLoading } = trpc.leaks.list.useQuery({ source: "telegram" });
 
@@ -67,6 +95,10 @@ export default function TelegramMonitor() {
   const filteredChannels = telegramChannels.filter(
     (ch) => ch.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  const activeChannels = telegramChannels.filter(c => c.status === "active");
+  const highRiskChannels = telegramChannels.filter(c => c.riskLevel === "high");
+  const totalLeaksDetected = telegramChannels.reduce((a, c) => a + (c.leaksDetected ?? 0), 0);
 
   if (channelsLoading) {
     return (
@@ -101,19 +133,23 @@ export default function TelegramMonitor() {
         </div>
       </motion.div>
 
-      {/* Stats row */}
+      {/* Stats row — clickable */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          { label: "قنوات مراقبة", value: telegramChannels.length, color: "text-cyan-400" },
-          { label: "قنوات نشطة", value: telegramChannels.filter((c) => c.status === "active").length, color: "text-emerald-400" },
-          { label: "تسريبات مكتشفة", value: telegramChannels.reduce((a, c) => a + (c.leaksDetected ?? 0), 0), color: "text-amber-400" },
-          { label: "قنوات عالية الخطورة", value: telegramChannels.filter((c) => c.riskLevel === "high").length, color: "text-red-400" },
+          { key: "allChannels", label: "قنوات مراقبة", value: telegramChannels.length, color: "text-cyan-400", borderColor: "border-cyan-500/20", bgColor: "bg-cyan-500/5" },
+          { key: "activeChannels", label: "قنوات نشطة", value: activeChannels.length, color: "text-emerald-400", borderColor: "border-emerald-500/20", bgColor: "bg-emerald-500/5" },
+          { key: "detectedLeaks", label: "تسريبات مكتشفة", value: totalLeaksDetected, color: "text-amber-400", borderColor: "border-amber-500/20", bgColor: "bg-amber-500/5" },
+          { key: "highRisk", label: "قنوات عالية الخطورة", value: highRiskChannels.length, color: "text-red-400", borderColor: "border-red-500/20", bgColor: "bg-red-500/5" },
         ].map((stat, i) => (
-          <motion.div key={stat.label} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
-            <Card className="border-border">
+          <motion.div key={stat.key} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
+            <Card
+              className={`border ${stat.borderColor} ${stat.bgColor} cursor-pointer hover:scale-[1.02] transition-all group`}
+              onClick={() => setActiveModal(stat.key)}
+            >
               <CardContent className="p-4 text-center">
                 <p className={`text-2xl font-bold ${stat.color}`}>{stat.value}</p>
                 <p className="text-xs text-muted-foreground mt-1">{stat.label}</p>
+                <p className="text-[9px] text-primary/50 mt-1 opacity-0 group-hover:opacity-100 transition-opacity">اضغط للتفاصيل ←</p>
               </CardContent>
             </Card>
           </motion.div>
@@ -141,7 +177,7 @@ export default function TelegramMonitor() {
         </Button>
       </div>
 
-      {/* Channels grid */}
+      {/* Channels grid — clickable */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {filteredChannels.map((channel, i) => (
           <motion.div
@@ -150,7 +186,10 @@ export default function TelegramMonitor() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: i * 0.05 }}
           >
-            <Card className="border-border hover:border-primary/30 transition-colors">
+            <Card
+              className="border-border hover:border-primary/30 transition-colors cursor-pointer"
+              onClick={() => { setSelectedChannel(channel); setActiveModal("channelDetail"); }}
+            >
               <CardContent className="p-4">
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex items-center gap-3">
@@ -192,14 +231,7 @@ export default function TelegramMonitor() {
                   <span className={`text-[10px] px-2 py-1 rounded border ${riskColor(channel.riskLevel)}`}>
                     {riskLabel(channel.riskLevel)}
                   </span>
-                  <div className="flex gap-1.5">
-                    <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => toast("تم إيقاف/تشغيل المراقبة")}>
-                      {channel.status === "active" ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
-                    </Button>
-                    <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => toast("تم تعليم القناة")}>
-                      <Flag className="w-3.5 h-3.5" />
-                    </Button>
-                  </div>
+                  <p className="text-[9px] text-primary/50">اضغط للتفاصيل ←</p>
                 </div>
               </CardContent>
             </Card>
@@ -207,7 +239,7 @@ export default function TelegramMonitor() {
         ))}
       </div>
 
-      {/* Recent Telegram leaks */}
+      {/* Recent Telegram leaks — clickable rows */}
       <Card className="border-border">
         <CardHeader>
           <CardTitle className="text-base font-semibold">أحدث تسريبات تليجرام</CardTitle>
@@ -230,18 +262,18 @@ export default function TelegramMonitor() {
                 </thead>
                 <tbody>
                   {telegramLeaks.map((leak) => (
-                    <tr key={leak.id} className="border-b border-border/50 hover:bg-secondary/30 transition-colors">
+                    <tr
+                      key={leak.id}
+                      className="border-b border-border/50 hover:bg-secondary/30 transition-colors cursor-pointer"
+                      onClick={() => { setSelectedLeak(leak); setActiveModal("leakDetail"); }}
+                    >
                       <td className="py-3 px-4 font-mono text-xs text-primary">{leak.leakId}</td>
                       <td className="py-3 px-4 text-foreground">{leak.titleAr}</td>
                       <td className="py-3 px-4 text-muted-foreground">{leak.sectorAr}</td>
                       <td className="py-3 px-4 text-foreground font-medium">{leak.recordCount.toLocaleString()}</td>
                       <td className="py-3 px-4">
-                        <span className={`text-[10px] px-2 py-1 rounded border ${
-                          leak.severity === "critical" ? "text-red-400 bg-red-500/10 border-red-500/30" :
-                          leak.severity === "high" ? "text-amber-400 bg-amber-500/10 border-amber-500/30" :
-                          "text-yellow-400 bg-yellow-500/10 border-yellow-500/30"
-                        }`}>
-                          {leak.severity === "critical" ? "حرج" : leak.severity === "high" ? "عالي" : "متوسط"}
+                        <span className={`text-[10px] px-2 py-1 rounded border ${severityColor(leak.severity)}`}>
+                          {severityLabel(leak.severity)}
                         </span>
                       </td>
                       <td className="py-3 px-4 text-xs text-muted-foreground">
@@ -271,6 +303,255 @@ export default function TelegramMonitor() {
           </div>
         </CardContent>
       </Card>
+
+      {/* ═══ MODALS ═══ */}
+
+      {/* All Channels Modal */}
+      <DetailModal open={activeModal === "allChannels"} onClose={() => setActiveModal(null)} title="جميع القنوات المراقبة" icon={<Send className="w-5 h-5 text-cyan-400" />}>
+        <div className="space-y-3">
+          <p className="text-xs text-muted-foreground">{telegramChannels.length} قناة</p>
+          {telegramChannels.map(ch => (
+            <div
+              key={ch.id}
+              className="flex items-center gap-3 p-3 rounded-lg bg-secondary/30 border border-border/50 cursor-pointer hover:bg-secondary/50 transition-colors"
+              onClick={() => { setSelectedChannel(ch); setActiveModal("channelDetail"); }}
+            >
+              <div className="w-8 h-8 rounded-lg bg-cyan-500/10 flex items-center justify-center shrink-0">
+                <Send className="w-4 h-4 text-cyan-400" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-foreground">{ch.name}</p>
+                <p className="text-[10px] text-muted-foreground">{ch.channelId} • {(ch.subscribers ?? 0).toLocaleString()} مشترك</p>
+              </div>
+              <span className={`text-[10px] px-2 py-0.5 rounded border ${riskColor(ch.riskLevel)}`}>{riskLabel(ch.riskLevel)}</span>
+              <div className="flex items-center gap-1">
+                <span className={`w-2 h-2 rounded-full ${statusColor(ch.status)}`} />
+                <span className="text-[10px] text-muted-foreground">{statusLabel(ch.status)}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </DetailModal>
+
+      {/* Active Channels Modal */}
+      <DetailModal open={activeModal === "activeChannels"} onClose={() => setActiveModal(null)} title="القنوات النشطة" icon={<Eye className="w-5 h-5 text-emerald-400" />}>
+        <div className="space-y-3">
+          <p className="text-xs text-muted-foreground">{activeChannels.length} قناة نشطة</p>
+          {activeChannels.map(ch => (
+            <div
+              key={ch.id}
+              className="flex items-center gap-3 p-3 rounded-lg bg-secondary/30 border border-border/50 cursor-pointer hover:bg-secondary/50 transition-colors"
+              onClick={() => { setSelectedChannel(ch); setActiveModal("channelDetail"); }}
+            >
+              <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center shrink-0">
+                <Send className="w-4 h-4 text-emerald-400" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-foreground">{ch.name}</p>
+                <p className="text-[10px] text-muted-foreground">{ch.channelId} • {ch.leaksDetected ?? 0} تسريب مكتشف</p>
+              </div>
+              <span className={`text-[10px] px-2 py-0.5 rounded border ${riskColor(ch.riskLevel)}`}>{riskLabel(ch.riskLevel)}</span>
+            </div>
+          ))}
+        </div>
+      </DetailModal>
+
+      {/* Detected Leaks Modal */}
+      <DetailModal open={activeModal === "detectedLeaks"} onClose={() => setActiveModal(null)} title="التسريبات المكتشفة من تليجرام" icon={<AlertTriangle className="w-5 h-5 text-amber-400" />}>
+        <div className="space-y-3">
+          <p className="text-xs text-muted-foreground">{telegramLeaks.length} تسريب</p>
+          {telegramLeaks.map(leak => (
+            <div
+              key={leak.id}
+              className="flex items-center gap-3 p-3 rounded-lg bg-secondary/30 border border-border/50 cursor-pointer hover:bg-secondary/50 transition-colors"
+              onClick={() => { setSelectedLeak(leak); setActiveModal("leakDetail"); }}
+            >
+              <span className={`text-[10px] px-2 py-0.5 rounded border shrink-0 ${severityColor(leak.severity)}`}>{severityLabel(leak.severity)}</span>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-foreground truncate">{leak.titleAr}</p>
+                <p className="text-[10px] text-muted-foreground">{leak.leakId} • {leak.sectorAr} • {leak.recordCount.toLocaleString()} سجل</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </DetailModal>
+
+      {/* High Risk Channels Modal */}
+      <DetailModal open={activeModal === "highRisk"} onClose={() => setActiveModal(null)} title="القنوات عالية الخطورة" icon={<ShieldAlert className="w-5 h-5 text-red-400" />}>
+        <div className="space-y-3">
+          {highRiskChannels.length === 0 ? (
+            <p className="text-center text-muted-foreground text-sm py-8">لا توجد قنوات عالية الخطورة</p>
+          ) : (
+            <>
+              <div className="bg-red-500/5 rounded-xl p-3 border border-red-500/20">
+                <p className="text-xs text-red-400">{highRiskChannels.length} قناة مصنفة بخطورة عالية — تتطلب مراقبة مكثفة</p>
+              </div>
+              {highRiskChannels.map(ch => (
+                <div
+                  key={ch.id}
+                  className="flex items-center gap-3 p-3 rounded-lg bg-red-500/5 border border-red-500/20 cursor-pointer hover:bg-red-500/10 transition-colors"
+                  onClick={() => { setSelectedChannel(ch); setActiveModal("channelDetail"); }}
+                >
+                  <div className="w-8 h-8 rounded-lg bg-red-500/10 flex items-center justify-center shrink-0">
+                    <Send className="w-4 h-4 text-red-400" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-foreground">{ch.name}</p>
+                    <p className="text-[10px] text-muted-foreground">{(ch.subscribers ?? 0).toLocaleString()} مشترك • {ch.leaksDetected ?? 0} تسريب</p>
+                  </div>
+                </div>
+              ))}
+            </>
+          )}
+        </div>
+      </DetailModal>
+
+      {/* Channel Detail Modal */}
+      <DetailModal
+        open={activeModal === "channelDetail" && !!selectedChannel}
+        onClose={() => { setActiveModal(null); setSelectedChannel(null); }}
+        title={selectedChannel?.name ?? "تفاصيل القناة"}
+        icon={<Send className="w-5 h-5 text-cyan-400" />}
+      >
+        {selectedChannel && (
+          <div className="space-y-4">
+            {/* Channel info header */}
+            <div className="flex items-center gap-4 p-4 rounded-xl bg-secondary/30 border border-border/50">
+              <div className="w-14 h-14 rounded-xl bg-cyan-500/10 flex items-center justify-center">
+                <Send className="w-7 h-7 text-cyan-400" />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-lg font-bold text-foreground">{selectedChannel.name}</h3>
+                <p className="text-xs text-muted-foreground font-mono">{selectedChannel.channelId}</p>
+                <div className="flex items-center gap-2 mt-1">
+                  <span className={`w-2 h-2 rounded-full ${statusColor(selectedChannel.status)}`} />
+                  <span className="text-xs text-muted-foreground">{statusLabel(selectedChannel.status)}</span>
+                  <span className={`text-[10px] px-2 py-0.5 rounded border ${riskColor(selectedChannel.riskLevel)}`}>{riskLabel(selectedChannel.riskLevel)}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Stats grid */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <div className="bg-cyan-500/10 rounded-xl p-3 border border-cyan-500/20 text-center">
+                <Users className="w-5 h-5 text-cyan-400 mx-auto mb-1" />
+                <p className="text-xl font-bold text-cyan-400">{(selectedChannel.subscribers ?? 0).toLocaleString()}</p>
+                <p className="text-[10px] text-muted-foreground">مشترك</p>
+              </div>
+              <div className="bg-amber-500/10 rounded-xl p-3 border border-amber-500/20 text-center">
+                <AlertTriangle className="w-5 h-5 text-amber-400 mx-auto mb-1" />
+                <p className="text-xl font-bold text-amber-400">{selectedChannel.leaksDetected ?? 0}</p>
+                <p className="text-[10px] text-muted-foreground">تسريبات مكتشفة</p>
+              </div>
+              <div className="bg-secondary/50 rounded-xl p-3 border border-border/50 text-center">
+                <Clock className="w-5 h-5 text-muted-foreground mx-auto mb-1" />
+                <p className="text-sm font-bold text-foreground">
+                  {selectedChannel.lastActivity ? new Date(selectedChannel.lastActivity).toLocaleDateString("ar-SA") : "—"}
+                </p>
+                <p className="text-[10px] text-muted-foreground">آخر نشاط</p>
+              </div>
+              <div className="bg-secondary/50 rounded-xl p-3 border border-border/50 text-center">
+                <MessageSquare className="w-5 h-5 text-muted-foreground mx-auto mb-1" />
+                <p className="text-sm font-bold text-foreground">
+                  {selectedChannel.createdAt ? new Date(selectedChannel.createdAt).toLocaleDateString("ar-SA") : "—"}
+                </p>
+                <p className="text-[10px] text-muted-foreground">تاريخ الإضافة</p>
+              </div>
+            </div>
+
+            {/* Channel description */}
+            <div className="bg-secondary/30 rounded-xl p-4 border border-border/30">
+              <h4 className="text-xs font-semibold text-muted-foreground mb-2">وصف القناة</h4>
+              <p className="text-sm text-foreground leading-relaxed">
+                {selectedChannel.description || "قناة تليجرام مراقبة لنشاط مشبوه يتعلق ببيع أو مشاركة بيانات شخصية سعودية. يتم رصد الرسائل والملفات المشاركة بشكل آلي."}
+              </p>
+            </div>
+
+            {/* Related leaks */}
+            <div className="bg-secondary/30 rounded-xl p-4 border border-border/30">
+              <h4 className="text-xs font-semibold text-muted-foreground mb-3">التسريبات المرتبطة بهذه القناة</h4>
+              {telegramLeaks.length > 0 ? (
+                <div className="space-y-2">
+                  {telegramLeaks.slice(0, 5).map(leak => (
+                    <div key={leak.id} className="flex items-center gap-2 p-2 rounded bg-card/50 border border-border/20">
+                      <span className={`text-[9px] px-1.5 py-0.5 rounded border ${severityColor(leak.severity)}`}>{severityLabel(leak.severity)}</span>
+                      <span className="text-xs text-foreground truncate flex-1">{leak.titleAr}</span>
+                      <span className="text-[10px] text-muted-foreground">{leak.recordCount.toLocaleString()} سجل</span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-xs text-muted-foreground text-center py-4">لا توجد تسريبات مرتبطة</p>
+              )}
+            </div>
+
+            {/* Actions */}
+            <div className="flex gap-2">
+              <Button variant="outline" className="gap-2 flex-1" onClick={() => toast("تم إيقاف/تشغيل المراقبة")}>
+                {selectedChannel.status === "active" ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
+                {selectedChannel.status === "active" ? "إيقاف المراقبة" : "تشغيل المراقبة"}
+              </Button>
+              <Button variant="outline" className="gap-2 flex-1" onClick={() => toast("تم تعليم القناة")}>
+                <Flag className="w-4 h-4" />
+                تعليم القناة
+              </Button>
+            </div>
+          </div>
+        )}
+      </DetailModal>
+
+      {/* Leak Detail Modal */}
+      <DetailModal
+        open={activeModal === "leakDetail" && !!selectedLeak}
+        onClose={() => { setActiveModal(null); setSelectedLeak(null); }}
+        title={selectedLeak?.titleAr ?? "تفاصيل التسريب"}
+        icon={<ShieldAlert className="w-5 h-5 text-red-400" />}
+      >
+        {selectedLeak && (
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <div className="bg-secondary/50 rounded-xl p-3 border border-border/50 text-center">
+                <p className="text-xs text-muted-foreground">المعرّف</p>
+                <p className="text-sm font-mono font-bold text-primary mt-1">{selectedLeak.leakId}</p>
+              </div>
+              <div className="bg-secondary/50 rounded-xl p-3 border border-border/50 text-center">
+                <p className="text-xs text-muted-foreground">السجلات</p>
+                <p className="text-sm font-bold text-foreground mt-1">{selectedLeak.recordCount.toLocaleString()}</p>
+              </div>
+              <div className="bg-secondary/50 rounded-xl p-3 border border-border/50 text-center">
+                <p className="text-xs text-muted-foreground">الخطورة</p>
+                <p className={`text-sm font-bold mt-1 ${severityColor(selectedLeak.severity).split(" ")[0]}`}>{severityLabel(selectedLeak.severity)}</p>
+              </div>
+              <div className="bg-secondary/50 rounded-xl p-3 border border-border/50 text-center">
+                <p className="text-xs text-muted-foreground">القطاع</p>
+                <p className="text-sm font-bold text-foreground mt-1">{selectedLeak.sectorAr}</p>
+              </div>
+            </div>
+            {selectedLeak.descriptionAr && (
+              <div className="bg-secondary/30 rounded-xl p-4 border border-border/30">
+                <h4 className="text-xs font-semibold text-muted-foreground mb-2">الوصف</h4>
+                <p className="text-sm text-foreground leading-relaxed">{selectedLeak.descriptionAr}</p>
+              </div>
+            )}
+            {selectedLeak.piiTypes && (selectedLeak.piiTypes as string[]).length > 0 && (
+              <div className="bg-secondary/30 rounded-xl p-4 border border-border/30">
+                <h4 className="text-xs font-semibold text-muted-foreground mb-2">أنواع البيانات الشخصية</h4>
+                <div className="flex flex-wrap gap-1.5">
+                  {(selectedLeak.piiTypes as string[]).map((type: string) => (
+                    <Badge key={type} variant="outline" className="text-[10px]">{type}</Badge>
+                  ))}
+                </div>
+              </div>
+            )}
+            {selectedLeak.aiSummaryAr && (
+              <div className="bg-purple-500/5 rounded-xl p-4 border border-purple-500/20">
+                <h4 className="text-xs font-semibold text-purple-400 mb-2">ملخص الذكاء الاصطناعي</h4>
+                <p className="text-sm text-foreground leading-relaxed">{selectedLeak.aiSummaryAr}</p>
+              </div>
+            )}
+          </div>
+        )}
+      </DetailModal>
     </div>
   );
 }

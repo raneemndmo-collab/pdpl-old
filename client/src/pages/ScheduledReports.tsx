@@ -21,6 +21,7 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
 import { useNdmoAuth } from "@/hooks/useNdmoAuth";
+import { DetailModal } from "@/components/DetailModal";
 
 const frequencyLabels: Record<string, { ar: string; en: string }> = {
   weekly: { ar: "أسبوعي", en: "Weekly" },
@@ -59,6 +60,7 @@ export default function ScheduledReports() {
   });
 
   const [showCreate, setShowCreate] = useState(false);
+  const [activeModal, setActiveModal] = useState<string | null>(null);
   const [newReport, setNewReport] = useState({
     name: "",
     nameAr: "",
@@ -190,85 +192,130 @@ export default function ScheduledReports() {
           const lastRun = report.lastRunAt ? new Date(report.lastRunAt) : null;
 
           return (
-            <motion.div
-              key={report.id}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.05 }}
-              className={`bg-card/60 backdrop-blur-sm border rounded-xl p-5 ${
-                report.isEnabled ? "border-border/50" : "border-border/30 opacity-60"
-              }`}
-            >
-              <div className="flex items-start justify-between mb-3">
-                <div className="flex items-center gap-2">
-                  <span className="text-xl">{tmpl.icon}</span>
-                  <div>
-                    <h4 className="text-sm font-bold text-foreground">{report.nameAr || report.name}</h4>
-                    <p className="text-[10px] text-muted-foreground">{report.name}</p>
+            <div key={report.id}>
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.05 }}
+                className={`bg-card/60 backdrop-blur-sm border rounded-xl p-5 group cursor-pointer hover:scale-[1.02] transition-all ${
+                  report.isEnabled ? "border-border/50" : "border-border/30 opacity-60"
+                }`}
+                onClick={() => setActiveModal(`report-${report.id}`)}
+              >
+                <div className="flex items-start justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xl">{tmpl.icon}</span>
+                    <div>
+                      <h4 className="text-sm font-bold text-foreground">{report.nameAr || report.name}</h4>
+                      <p className="text-[10px] text-muted-foreground">{report.name}</p>
+                    </div>
+                  </div>
+                  <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${
+                    report.isEnabled ? "bg-emerald-500/20 text-emerald-400" : "bg-zinc-500/20 text-zinc-400"
+                  }`}>
+                    {report.isEnabled ? "نشط" : "متوقف"}
+                  </span>
+                </div>
+
+                <div className="space-y-2 mb-4">
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <CalendarClock className="w-3.5 h-3.5" />
+                    <span>التكرار: <span className="text-foreground">{freq.ar}</span></span>
+                  </div>
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <FileText className="w-3.5 h-3.5" />
+                    <span>القالب: <span className="text-foreground">{tmpl.ar}</span></span>
+                  </div>
+                  {lastRun && (
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                      <span>آخر تنفيذ: <span className="text-foreground">{lastRun.toLocaleDateString("ar-SA")}</span></span>
+                    </div>
+                  )}
+                  {nextRun && (
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <Clock className="w-3.5 h-3.5 text-cyan-400" />
+                      <span>التنفيذ القادم: <span className="text-foreground">{nextRun.toLocaleDateString("ar-SA")}</span></span>
+                    </div>
+                  )}
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <AlertCircle className="w-3.5 h-3.5" />
+                    <span>عدد التنفيذات: <span className="text-foreground font-bold">{report.totalRuns ?? 0}</span></span>
                   </div>
                 </div>
-                <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${
-                  report.isEnabled ? "bg-emerald-500/20 text-emerald-400" : "bg-zinc-500/20 text-zinc-400"
-                }`}>
-                  {report.isEnabled ? "نشط" : "متوقف"}
-                </span>
-              </div>
 
-              <div className="space-y-2 mb-4">
-                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <CalendarClock className="w-3.5 h-3.5" />
-                  <span>التكرار: <span className="text-foreground">{freq.ar}</span></span>
-                </div>
-                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <FileText className="w-3.5 h-3.5" />
-                  <span>القالب: <span className="text-foreground">{tmpl.ar}</span></span>
-                </div>
-                {lastRun && (
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-                    <span>آخر تنفيذ: <span className="text-foreground">{lastRun.toLocaleDateString("ar-SA")}</span></span>
+                <p className="text-[9px] text-primary/50 mt-4 opacity-0 group-hover:opacity-100 transition-opacity text-center">
+                  اضغط للتفاصيل ←
+                </p>
+
+                {isAdmin && (
+                  <div className="flex gap-2 pt-3 mt-3 border-t border-border/30">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="flex-1 gap-1.5 text-xs h-8"
+                      onClick={(e) => { e.stopPropagation(); updateMutation.mutate({ id: report.id, isEnabled: !report.isEnabled }); }}
+                      disabled={updateMutation.isPending}
+                    >
+                      {report.isEnabled ? <Pause className="w-3 h-3" /> : <Play className="w-3 h-3" />}
+                      {report.isEnabled ? "إيقاف" : "تفعيل"}
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="gap-1.5 text-xs h-8 text-red-400 hover:text-red-300"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (confirm("هل أنت متأكد من حذف هذا التقرير المجدول؟")) {
+                          deleteMutation.mutate({ id: report.id });
+                        }
+                      }}
+                      disabled={deleteMutation.isPending}
+                    >
+                      <Trash2 className="w-3 h-3" />
+                    </Button>
                   </div>
                 )}
-                {nextRun && (
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                    <Clock className="w-3.5 h-3.5 text-cyan-400" />
-                    <span>التنفيذ القادم: <span className="text-foreground">{nextRun.toLocaleDateString("ar-SA")}</span></span>
+              </motion.div>
+              <DetailModal
+                open={activeModal === `report-${report.id}`}
+                onClose={() => setActiveModal(null)}
+                title={report.nameAr || report.name}
+                icon={<span className="text-2xl">{tmpl.icon}</span>}
+              >
+                <div className="space-y-4 text-sm rtl">
+                  <p className="text-muted-foreground text-center -mt-2 mb-4">{report.name}</p>
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-3 bg-black/10 dark:bg-white/5 p-4 rounded-lg">
+                    <div className="font-semibold text-muted-foreground">الحالة</div>
+                    <div className={`font-bold ${report.isEnabled ? "text-emerald-400" : "text-zinc-400"}`}>
+                      {report.isEnabled ? "نشط" : "متوقف"}
+                    </div>
+                    <div className="font-semibold text-muted-foreground">التكرار</div>
+                    <div>{freq.ar} ({freq.en})</div>
+                    <div className="font-semibold text-muted-foreground">قالب التقرير</div>
+                    <div>{tmpl.ar}</div>
+                    <div className="font-semibold text-muted-foreground">إجمالي التنفيذات</div>
+                    <div className="font-mono font-bold text-lg">{report.totalRuns ?? 0}</div>
                   </div>
-                )}
-                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <AlertCircle className="w-3.5 h-3.5" />
-                  <span>عدد التنفيذات: <span className="text-foreground">{report.totalRuns ?? 0}</span></span>
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-3">
+                    <div className="font-semibold text-muted-foreground">تاريخ الإنشاء</div>
+                    <div>{new Date(report.createdAt).toLocaleString("ar-SA", { dateStyle: 'short', timeStyle: 'short' })}</div>
+                    {lastRun && (
+                      <>
+                        <div className="font-semibold text-muted-foreground">آخر تنفيذ</div>
+                        <div>{lastRun.toLocaleString("ar-SA", { dateStyle: 'short', timeStyle: 'short' })}</div>
+                      </>
+                    )}
+                    {nextRun && (
+                      <>
+                        <div className="font-semibold text-muted-foreground">التنفيذ القادم</div>
+                        <div>{nextRun.toLocaleString("ar-SA", { dateStyle: 'short', timeStyle: 'short' })}</div>
+                      </>
+                    )}
+                  </div>
                 </div>
-              </div>
-
-              {isAdmin && (
-                <div className="flex gap-2 pt-3 border-t border-border/30">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="flex-1 gap-1.5 text-xs h-8"
-                    onClick={() => updateMutation.mutate({ id: report.id, isEnabled: !report.isEnabled })}
-                    disabled={updateMutation.isPending}
-                  >
-                    {report.isEnabled ? <Pause className="w-3 h-3" /> : <Play className="w-3 h-3" />}
-                    {report.isEnabled ? "إيقاف" : "تفعيل"}
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="gap-1.5 text-xs h-8 text-red-400 hover:text-red-300"
-                    onClick={() => {
-                      if (confirm("هل أنت متأكد من حذف هذا التقرير المجدول؟")) {
-                        deleteMutation.mutate({ id: report.id });
-                      }
-                    }}
-                    disabled={deleteMutation.isPending}
-                  >
-                    <Trash2 className="w-3 h-3" />
-                  </Button>
-                </div>
-              )}
-            </motion.div>
+              </DetailModal>
+            </div>
           );
         })}
       </div>

@@ -15,6 +15,7 @@ import {
   RefreshCw,
 } from "lucide-react";
 import { toast } from "sonner";
+import { DetailModal } from "@/components/DetailModal";
 
 const entityIcons: Record<string, React.ReactNode> = {
   leaks: <Shield className="w-5 h-5 text-red-400" />,
@@ -26,6 +27,7 @@ const entityIcons: Record<string, React.ReactNode> = {
 
 export default function DataRetention() {
   const [executing, setExecuting] = useState(false);
+  const [activeModal, setActiveModal] = useState<string | null>(null);
 
   const { data: policies = [], refetch } = trpc.retention.list.useQuery();
   const updatePolicy = trpc.retention.update.useMutation({
@@ -53,19 +55,23 @@ export default function DataRetention() {
     <div className="space-y-6" dir="rtl">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-white flex items-center gap-3">
+        <div 
+          className="group cursor-pointer hover:scale-[1.02] transition-all"
+          onClick={() => setActiveModal("main_header")}
+        >
+          <h1 className="text-2xl font-bold text-foreground flex items-center gap-3">
             <div className="p-2 rounded-xl bg-gradient-to-br from-purple-500/20 to-indigo-500/20 border border-purple-500/30">
               <Archive className="w-6 h-6 text-purple-400" />
             </div>
             سياسات الاحتفاظ بالبيانات
           </h1>
-          <p className="text-gray-400 mt-1">إدارة قواعد الأرشفة التلقائية للحفاظ على أداء قاعدة البيانات والامتثال</p>
+          <p className="text-muted-foreground mt-1">إدارة قواعد الأرشفة التلقائية للحفاظ على أداء قاعدة البيانات والامتثال</p>
+          <p className="text-[9px] text-primary/50 mt-1 opacity-0 group-hover:opacity-100 transition-opacity">اضغط للتفاصيل ←</p>
         </div>
         <button
           onClick={handleExecute}
           disabled={executing}
-          className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white rounded-xl font-medium text-sm transition-all disabled:opacity-50"
+          className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-foreground rounded-xl font-medium text-sm transition-all disabled:opacity-50"
         >
           {executing ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
           تنفيذ السياسات الآن
@@ -89,8 +95,8 @@ export default function DataRetention() {
         {policies.map((policy) => (
           <div
             key={policy.id}
-            className={`bg-gray-800/60 backdrop-blur border rounded-xl p-6 transition-all ${
-              policy.isEnabled ? "border-purple-500/30 hover:border-purple-500/50" : "border-gray-700/50 hover:border-gray-600/50"
+            className={`bg-secondary/60 backdrop-blur border rounded-xl p-6 transition-all ${
+              policy.isEnabled ? "border-purple-500/30 hover:border-purple-500/50" : "border-border hover:border-border"
             }`}
           >
             <div className="flex items-start justify-between">
@@ -98,23 +104,29 @@ export default function DataRetention() {
                 <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
                   policy.isEnabled
                     ? "bg-gradient-to-br from-purple-500/20 to-indigo-500/20 border border-purple-500/30"
-                    : "bg-gray-700/30 border border-gray-600/50"
+                    : "bg-border/30 border border-border"
                 }`}>
-                  {entityIcons[policy.entity] || <Database className="w-5 h-5 text-gray-400" />}
+                  {entityIcons[policy.entity] || <Database className="w-5 h-5 text-muted-foreground" />}
                 </div>
                 <div>
-                  <h3 className="text-white font-semibold text-lg">{policy.entityLabelAr}</h3>
-                  <p className="text-gray-400 text-sm">{policy.entityLabel}</p>
+                  <div 
+                    className="group cursor-pointer hover:scale-[1.02] transition-all"
+                    onClick={() => setActiveModal(`policy_${policy.id}_title`)}
+                  >
+                    <h3 className="text-foreground font-semibold text-lg">{policy.entityLabelAr}</h3>
+                    <p className="text-muted-foreground text-sm">{policy.entityLabel}</p>
+                    <p className="text-[9px] text-primary/50 mt-1 opacity-0 group-hover:opacity-100 transition-opacity">اضغط للتفاصيل ←</p>
+                  </div>
 
                   <div className="flex items-center gap-4 mt-3">
                     {/* Retention Days */}
                     <div className="flex items-center gap-2">
-                      <Clock className="w-4 h-4 text-gray-500" />
-                      <span className="text-sm text-gray-300">فترة الاحتفاظ:</span>
+                      <Clock className="w-4 h-4 text-muted-foreground" />
+                      <span className="text-sm text-foreground">فترة الاحتفاظ:</span>
                       <select
                         value={policy.retentionDays}
                         onChange={(e) => updatePolicy.mutate({ id: policy.id, retentionDays: Number(e.target.value) })}
-                        className="bg-gray-700/50 border border-gray-600/50 rounded-lg px-2 py-1 text-sm text-white"
+                        className="bg-border/50 border border-border rounded-lg px-2 py-1 text-sm text-foreground"
                       >
                         <option value={30}>30 يوم</option>
                         <option value={90}>90 يوم</option>
@@ -132,11 +144,11 @@ export default function DataRetention() {
                       ) : (
                         <Archive className="w-4 h-4 text-blue-400" />
                       )}
-                      <span className="text-sm text-gray-300">الإجراء:</span>
+                      <span className="text-sm text-foreground">الإجراء:</span>
                       <select
                         value={policy.archiveAction}
                         onChange={(e) => updatePolicy.mutate({ id: policy.id, archiveAction: e.target.value as "delete" | "archive" })}
-                        className="bg-gray-700/50 border border-gray-600/50 rounded-lg px-2 py-1 text-sm text-white"
+                        className="bg-border/50 border border-border rounded-lg px-2 py-1 text-sm text-foreground"
                       >
                         <option value="archive">أرشفة</option>
                         <option value="delete">حذف</option>
@@ -145,17 +157,25 @@ export default function DataRetention() {
                   </div>
 
                   {/* Stats */}
-                  <div className="flex items-center gap-4 mt-3 text-xs text-gray-500">
+                  <div className="flex items-center gap-4 mt-3 text-xs text-muted-foreground">
                     {policy.lastRunAt && (
-                      <span className="flex items-center gap-1">
+                      <div 
+                        className="group cursor-pointer hover:scale-[1.02] transition-all flex items-center gap-1"
+                        onClick={() => setActiveModal(`policy_${policy.id}_lastrun`)}
+                      >
                         <CheckCircle className="w-3 h-3" />
                         آخر تنفيذ: {new Date(policy.lastRunAt).toLocaleString("ar-SA")}
-                      </span>
+                        <p className="text-[9px] text-primary/50 ml-2 opacity-0 group-hover:opacity-100 transition-opacity">اضغط للتفاصيل ←</p>
+                      </div>
                     )}
-                    <span className="flex items-center gap-1">
+                    <div 
+                      className="group cursor-pointer hover:scale-[1.02] transition-all flex items-center gap-1"
+                      onClick={() => setActiveModal(`policy_${policy.id}_records`)}
+                    >
                       <Database className="w-3 h-3" />
                       {policy.recordsArchived?.toLocaleString() ?? 0} سجل تمت معالجته
-                    </span>
+                      <p className="text-[9px] text-primary/50 ml-2 opacity-0 group-hover:opacity-100 transition-opacity">اضغط للتفاصيل ←</p>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -166,23 +186,60 @@ export default function DataRetention() {
                 className={`p-2 rounded-lg transition-all ${
                   policy.isEnabled
                     ? "text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20"
-                    : "text-gray-500 bg-gray-700/30 hover:bg-gray-700/50"
+                    : "text-muted-foreground bg-border/30 hover:bg-border/50"
                 }`}
                 title={policy.isEnabled ? "تعطيل" : "تفعيل"}
               >
                 {policy.isEnabled ? <ToggleRight className="w-6 h-6" /> : <ToggleLeft className="w-6 h-6" />}
               </button>
             </div>
+            <DetailModal
+              open={activeModal === `policy_${policy.id}_title`}
+              onClose={() => setActiveModal(null)}
+              title={`تفاصيل سياسة: ${policy.entityLabelAr}`}
+              icon={entityIcons[policy.entity] || <Database />}
+            >
+              <p>هذه السياسة تدير الاحتفاظ بالبيانات لنوع السجلات: {policy.entityLabelAr}.</p>
+              <p>الإعداد الحالي هو الاحتفاظ بالبيانات لمدة {policy.retentionDays} يومًا، ثم يتم {policy.archiveAction === "delete" ? "حذفها" : "أرشفتها"}.</p>
+            </DetailModal>
+            <DetailModal
+              open={activeModal === `policy_${policy.id}_lastrun`}
+              onClose={() => setActiveModal(null)}
+              title="تفاصيل آخر تنفيذ"
+              icon={<CheckCircle />}
+            >
+              <p>تم تنفيذ هذه السياسة آخر مرة في: {policy.lastRunAt ? new Date(policy.lastRunAt).toLocaleString("ar-SA") : "لم تنفذ بعد"}.</p>
+              <p>يقوم التنفيذ بمعالجة السجلات التي انتهت فترة احتفاظها.</p>
+            </DetailModal>
+            <DetailModal
+              open={activeModal === `policy_${policy.id}_records`}
+              onClose={() => setActiveModal(null)}
+              title="تفاصيل السجلات المعالجة"
+              icon={<Database />}
+            >
+              <p>مجموع السجلات التي تمت معالجتها بواسطة هذه السياسة هو: {policy.recordsArchived?.toLocaleString() ?? 0}.</p>
+              <p>هذا العدد يمثل إجمالي السجلات التي تم حذفها أو أرشفتها منذ إنشاء السياسة.</p>
+            </DetailModal>
           </div>
         ))}
       </div>
 
       {policies.length === 0 && (
-        <div className="text-center py-12 text-gray-500">
+        <div className="text-center py-12 text-muted-foreground">
           <Archive className="w-12 h-12 mx-auto mb-3 opacity-50" />
           <p>لا توجد سياسات احتفاظ بعد</p>
         </div>
       )}
+
+      <DetailModal
+        open={activeModal === "main_header"}
+        onClose={() => setActiveModal(null)}
+        title="حول سياسات الاحتفاظ بالبيانات"
+        icon={<Archive />}
+      >
+        <p>تساعد سياسات الاحتفاظ بالبيانات على إدارة دورة حياة بياناتك تلقائيًا. يمكنك تعيين قواعد لأرشفة أو حذف السجلات القديمة للحفاظ على أداء قاعدة البيانات والامتثال للوائح.</p>
+        <p>يمكنك تفعيل أو تعطيل كل سياسة على حدة، وتحديد فترة الاحتفاظ والإجراء المطلوب (حذف أو أرشفة).</p>
+      </DetailModal>
     </div>
   );
 }

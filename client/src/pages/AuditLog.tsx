@@ -19,10 +19,12 @@ import {
   Activity,
   Radio,
   Loader2,
+  Info,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
+import { DetailModal } from "@/components/DetailModal";
 
 const categoryConfig: Record<string, { label: string; labelEn: string; icon: React.ElementType; color: string }> = {
   auth: { label: "المصادقة", labelEn: "Auth", icon: LogIn, color: "text-blue-400 bg-blue-500/10" },
@@ -31,13 +33,14 @@ const categoryConfig: Record<string, { label: string; labelEn: string; icon: Rea
   pii: { label: "فحص PII", labelEn: "PII Scan", icon: ScanSearch, color: "text-purple-400 bg-purple-500/10" },
   user: { label: "المستخدمين", labelEn: "Users", icon: Users, color: "text-amber-400 bg-amber-500/10" },
   report: { label: "التقارير", labelEn: "Reports", icon: BarChart3, color: "text-cyan-400 bg-cyan-500/10" },
-  system: { label: "النظام", labelEn: "System", icon: Activity, color: "text-gray-400 bg-gray-500/10" },
+  system: { label: "النظام", labelEn: "System", icon: Activity, color: "text-zinc-500 bg-zinc-500/10" },
   monitoring: { label: "الرصد", labelEn: "Monitoring", icon: Radio, color: "text-teal-400 bg-teal-500/10" },
 };
 
 export default function AuditLog() {
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");
+  const [activeModal, setActiveModal] = useState<string | null>(null);
 
   const { data: auditLogs, isLoading } = trpc.audit.list.useQuery(
     { category: selectedCategory !== "all" ? selectedCategory : undefined, limit: 200 },
@@ -60,6 +63,12 @@ export default function AuditLog() {
         (log.userName?.toLowerCase().includes(q))
     );
   }, [auditLogs, searchQuery]);
+
+  const activeLog = useMemo(() => {
+    if (!activeModal || !activeModal.startsWith("log-")) return null;
+    const logId = activeModal.replace("log-", "");
+    return auditLogs?.find((log) => String(log.id) === logId);
+  }, [activeModal, auditLogs]);
 
   const handleExportCsv = async () => {
     try {
@@ -90,6 +99,13 @@ export default function AuditLog() {
       minute: "2-digit",
     });
   };
+
+  const stats = [
+    { key: "total", label: "إجمالي السجلات", value: auditLogs?.length ?? 0, color: "text-cyan-400" },
+    { key: "auth", label: "المصادقة", value: auditLogs?.filter((l) => l.category === "auth").length ?? 0, color: "text-blue-400" },
+    { key: "leak", label: "التسريبات", value: auditLogs?.filter((l) => l.category === "leak").length ?? 0, color: "text-red-400" },
+    { key: "export", label: "التصدير", value: auditLogs?.filter((l) => l.category === "export").length ?? 0, color: "text-emerald-400" },
+  ];
 
   return (
     <div className="space-y-6">
@@ -151,15 +167,17 @@ export default function AuditLog() {
 
       {/* Stats bar */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        {[
-          { label: "إجمالي السجلات", value: auditLogs?.length ?? 0, color: "text-cyan-400" },
-          { label: "المصادقة", value: auditLogs?.filter((l) => l.category === "auth").length ?? 0, color: "text-blue-400" },
-          { label: "التسريبات", value: auditLogs?.filter((l) => l.category === "leak").length ?? 0, color: "text-red-400" },
-          { label: "التصدير", value: auditLogs?.filter((l) => l.category === "export").length ?? 0, color: "text-emerald-400" },
-        ].map((stat, i) => (
-          <div key={i} className="glass-card rounded-lg p-3 text-center">
+        {stats.map((stat) => (
+          <div
+            key={stat.key}
+            onClick={() => setActiveModal(`stat-${stat.key}`)}
+            className="glass-card rounded-lg p-3 text-center cursor-pointer hover:scale-[1.02] transition-all group"
+          >
             <p className={`text-lg font-bold ${stat.color}`}>{stat.value}</p>
             <p className="text-[11px] text-muted-foreground">{stat.label}</p>
+            <p className="text-[9px] text-primary/50 mt-1 opacity-0 group-hover:opacity-100 transition-opacity">
+              اضغط للتفاصيل ←
+            </p>
           </div>
         ))}
       </div>
@@ -198,7 +216,8 @@ export default function AuditLog() {
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
                       transition={{ delay: idx * 0.02 }}
-                      className="border-b border-border/30 hover:bg-accent/20 transition-colors"
+                      onClick={() => setActiveModal(`log-${log.id}`)}
+                      className="border-b border-border/30 hover:bg-accent/20 transition-colors cursor-pointer group"
                     >
                       <td className="px-4 py-3 text-xs text-muted-foreground whitespace-nowrap">
                         {formatDate(log.createdAt)}
@@ -215,8 +234,9 @@ export default function AuditLog() {
                       <td className="px-4 py-3 text-xs text-foreground font-mono">
                         {log.action}
                       </td>
-                      <td className="px-4 py-3 text-xs text-muted-foreground max-w-[300px] truncate">
+                      <td className="px-4 py-3 text-xs text-muted-foreground max-w-[300px] truncate relative">
                         {log.details || "—"}
+                        <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[9px] text-primary/50 opacity-0 group-hover:opacity-100 transition-opacity">... اضغط للتفاصيل</span>
                       </td>
                     </motion.tr>
                   );
@@ -226,6 +246,61 @@ export default function AuditLog() {
           </div>
         )}
       </div>
+
+      {/* Modals */}
+      <DetailModal
+        open={activeModal === "stat-total"}
+        onClose={() => setActiveModal(null)}
+        title="تفاصيل إجمالي السجلات"
+        icon={<BarChart3 />}
+      >
+        <p className="text-sm text-muted-foreground">هذا الرقم يمثل العدد الإجمالي لجميع الإجراءات المسجلة في نظام المراقبة. ويشمل كل الفئات من مصادقة المستخدمين إلى أنشطة النظام.</p>
+      </DetailModal>
+      <DetailModal
+        open={activeModal === "stat-auth"}
+        onClose={() => setActiveModal(null)}
+        title="تفاصيل سجلات المصادقة"
+        icon={<LogIn />}
+      >
+        <p className="text-sm text-muted-foreground">هذا الرقم يتتبع جميع محاولات تسجيل الدخول والخروج. مراقبة هذا العدد تساعد في الكشف عن الأنشطة غير المصرح بها.</p>
+      </DetailModal>
+      <DetailModal
+        open={activeModal === "stat-leak"}
+        onClose={() => setActiveModal(null)}
+        title="تفاصيل سجلات التسريبات"
+        icon={<Shield />}
+      >
+        <p className="text-sm text-muted-foreground">يمثل هذا العدد جميع الأحداث المتعلقة بالكشف عن تسريبات البيانات المحتملة. كل سجل هنا يشير إلى تفعيل آليات الحماية.</p>
+      </DetailModal>
+      <DetailModal
+        open={activeModal === "stat-export"}
+        onClose={() => setActiveModal(null)}
+        title="تفاصيل سجلات التصدير"
+        icon={<FileOutput />}
+      >
+        <p className="text-sm text-muted-foreground">هذا الرقم يوضح عدد المرات التي تم فيها تصدير البيانات من النظام. من المهم تتبع عمليات التصدير لضمان الامتثال لسياسات البيانات.</p>
+      </DetailModal>
+
+      {activeLog && (
+        <DetailModal
+          open={!!activeLog}
+          onClose={() => setActiveModal(null)}
+          title={`تفاصيل السجل #${String(activeLog.id)}`}
+          icon={<Info />}
+          maxWidth="max-w-2xl"
+        >
+          <div className="space-y-3 text-sm font-mono dir-ltr text-left bg-muted/30 p-4 rounded-lg border border-border/50">
+            <p><span className="font-bold text-primary/80">Timestamp:</span> {formatDate(activeLog.createdAt)}</p>
+            <p><span className="font-bold text-primary/80">Category:</span> {activeLog.category}</p>
+            <p><span className="font-bold text-primary/80">User:</span> {activeLog.userName || `ID: ${activeLog.userId}` || "System"}</p>
+            <p><span className="font-bold text-primary/80">Action:</span> {activeLog.action}</p>
+            <div className="break-words whitespace-pre-wrap">
+              <p className="font-bold text-primary/80">Details:</p>
+              <p>{activeLog.details || "No details provided."}</p>
+            </div>
+          </div>
+        </DetailModal>
+      )}
     </div>
   );
 }

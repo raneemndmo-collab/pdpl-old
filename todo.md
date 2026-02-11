@@ -208,4 +208,23 @@
 - [x] Remove NCA references from Dashboard (Dashboard.tsx)
 - [x] Clean NCA references from all database records (0 remaining across all 6 tables)
 - [x] Ensure platform focuses ONLY on NDMO's role: monitoring personal data leaks
-- [ ] Run tests and checkpoint
+- [x] Run tests and checkpoint
+## Phase 23: Major Enhancement - Data Enrichment, Clickable Modals, Light Theme
+- [x] Upload Rasid logo and character images to S3
+- [x] Add light/dark theme toggle with proper light theme CSS
+- [x] Update branding with Rasid logo in sidebar and login page
+- [x] Enrich ALL leak records with full incident details (breach method, evidence, affected data types, forensic timeline)
+- [x] Make Dashboard KPI cards clickable with detail modals showing breakdown
+- [x] Make Dashboard chart sections clickable with detail modals
+- [x] Make Leaks page stats clickable with detail modals
+- [x] Make Telegram Monitor stats clickable with detail modals
+- [x] Make Dark Web Monitor stats clickable with detail modals
+- [x] Make all other page stats/cards clickable with detail modals
+- [x] Enrich 336 evidence_chain records with detailed metadata (file hashes, screenshots, forensic data)
+- [x] Create leaks.detail tRPC procedure returning leak + evidence chain
+- [x] Rewrite Leaks detail modal with tabs (overview, evidence, PII, timeline)
+- [x] Create shared DetailModal component for reuse across all pages
+- [x] Update all 21 pages with clickable stats and professional detail modals
+- [x] Fix all TypeScript errors (0 errors)
+- [x] Run tests (89/89 passed)
+- [x] Save checkpoint and deliver

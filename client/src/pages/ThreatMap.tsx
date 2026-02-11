@@ -1,7 +1,6 @@
 /**
  * ThreatMap — Interactive geographic visualization of leak origins
- * Shows threat distribution across Saudi Arabia regions
- * Uses SVG-based map with animated markers and region heatmap
+ * All stats, regions, and leak entries are clickable with detail modals
  */
 import { useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -14,11 +13,14 @@ import {
   Eye,
   Filter,
   Loader2,
+  Building2,
+  Globe,
+  Calendar,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { trpc } from "@/lib/trpc";
+import { DetailModal } from "@/components/DetailModal";
 
-// Saudi Arabia regions with approximate SVG positions (0-100 coordinate system)
 const REGION_POSITIONS: Record<string, { x: number; y: number }> = {
   "Riyadh": { x: 55, y: 52 },
   "Eastern Province": { x: 72, y: 48 },
@@ -42,11 +44,16 @@ const severityColors = {
   low: { bg: "bg-emerald-500", text: "text-emerald-400", ring: "ring-emerald-500/30", fill: "#10b981", glow: "rgba(16,185,129,0.4)" },
 };
 
+const sevLabels: Record<string, string> = { critical: "حرج", high: "عالي", medium: "متوسط", low: "منخفض" };
+
 export default function ThreatMap() {
   const { data, isLoading } = trpc.threatMap.data.useQuery();
   const [selectedRegion, setSelectedRegion] = useState<string | null>(null);
   const [severityFilter, setSeverityFilter] = useState<string>("all");
   const [hoveredLeak, setHoveredLeak] = useState<number | null>(null);
+  const [activeModal, setActiveModal] = useState<string | null>(null);
+  const [selectedLeak, setSelectedLeak] = useState<any>(null);
+  const [selectedRegionDetail, setSelectedRegionDetail] = useState<any>(null);
 
   const filteredLeaks = useMemo(() => {
     if (!data?.leaks) return [];
@@ -80,23 +87,24 @@ export default function ThreatMap() {
 
   return (
     <div className="space-y-6">
-      {/* Header Stats */}
+      {/* Header Stats — clickable */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          { label: "إجمالي التسريبات", labelEn: "Total Leaks", value: totalLeaks, icon: Shield, color: "text-cyan-400" },
-          { label: "تسريبات حرجة", labelEn: "Critical", value: criticalCount, icon: AlertTriangle, color: "text-red-400" },
-          { label: "المناطق المتأثرة", labelEn: "Regions Affected", value: regionsAffected, icon: MapPin, color: "text-amber-400" },
-          { label: "السجلات المتأثرة", labelEn: "Records Affected", value: totalRecords.toLocaleString(), icon: Activity, color: "text-emerald-400" },
+          { key: "totalLeaks", label: "إجمالي التسريبات", value: totalLeaks, icon: Shield, color: "text-cyan-400", borderColor: "border-cyan-500/20", bgColor: "bg-cyan-500/5" },
+          { key: "critical", label: "تسريبات حرجة", value: criticalCount, icon: AlertTriangle, color: "text-red-400", borderColor: "border-red-500/20", bgColor: "bg-red-500/5" },
+          { key: "regions", label: "المناطق المتأثرة", value: regionsAffected, icon: MapPin, color: "text-amber-400", borderColor: "border-amber-500/20", bgColor: "bg-amber-500/5" },
+          { key: "records", label: "السجلات المتأثرة", value: totalRecords.toLocaleString(), icon: Activity, color: "text-emerald-400", borderColor: "border-emerald-500/20", bgColor: "bg-emerald-500/5" },
         ].map((stat, i) => (
           <motion.div
-            key={i}
+            key={stat.key}
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: i * 0.1 }}
-            className="bg-card/60 backdrop-blur-sm border border-border/50 rounded-xl p-4"
+            className={`${stat.bgColor} border ${stat.borderColor} rounded-xl p-4 cursor-pointer hover:scale-[1.02] transition-all group`}
+            onClick={() => setActiveModal(stat.key)}
           >
             <div className="flex items-center gap-3">
-              <div className={`w-10 h-10 rounded-lg bg-card flex items-center justify-center ${stat.color}`}>
+              <div className={`w-10 h-10 rounded-lg bg-secondary flex items-center justify-center ${stat.color}`}>
                 <stat.icon className="w-5 h-5" />
               </div>
               <div>
@@ -104,6 +112,7 @@ export default function ThreatMap() {
                 <p className="text-xs text-muted-foreground">{stat.label}</p>
               </div>
             </div>
+            <p className="text-[9px] text-primary/50 mt-2 opacity-0 group-hover:opacity-100 transition-opacity">اضغط للتفاصيل ←</p>
           </motion.div>
         ))}
       </div>
@@ -120,16 +129,11 @@ export default function ThreatMap() {
             className="text-xs h-7"
             onClick={() => setSeverityFilter(sev)}
           >
-            {sev === "all" ? "الكل" : sev === "critical" ? "حرج" : sev === "high" ? "عالي" : sev === "medium" ? "متوسط" : "منخفض"}
+            {sev === "all" ? "الكل" : sevLabels[sev]}
           </Button>
         ))}
         {selectedRegion && (
-          <Button
-            variant="ghost"
-            size="sm"
-            className="text-xs h-7 text-primary"
-            onClick={() => setSelectedRegion(null)}
-          >
+          <Button variant="ghost" size="sm" className="text-xs h-7 text-primary" onClick={() => setSelectedRegion(null)}>
             إلغاء تحديد المنطقة ✕
           </Button>
         )}
@@ -143,22 +147,14 @@ export default function ThreatMap() {
             خريطة التهديدات — المملكة العربية السعودية
           </h3>
 
-          {/* SVG Map */}
           <div className="relative w-full" style={{ paddingBottom: "80%" }}>
-            <svg
-              viewBox="0 0 100 100"
-              className="absolute inset-0 w-full h-full"
-              style={{ filter: "drop-shadow(0 0 20px rgba(6,182,212,0.1))" }}
-            >
-              {/* Saudi Arabia simplified outline */}
+            <svg viewBox="0 0 100 100" className="absolute inset-0 w-full h-full" style={{ filter: "drop-shadow(0 0 20px rgba(6,182,212,0.1))" }}>
               <path
                 d="M 15 25 L 35 15 L 55 18 L 75 22 L 80 30 L 78 45 L 75 55 L 70 60 L 65 55 L 60 58 L 55 65 L 50 75 L 45 80 L 35 85 L 25 80 L 20 70 L 22 60 L 25 55 L 20 45 L 15 35 Z"
                 fill="rgba(6,182,212,0.05)"
                 stroke="rgba(6,182,212,0.3)"
                 strokeWidth="0.5"
               />
-
-              {/* Grid lines for depth */}
               {[20, 30, 40, 50, 60, 70, 80].map((y) => (
                 <line key={`h${y}`} x1="10" y1={y} x2="85" y2={y} stroke="rgba(6,182,212,0.05)" strokeWidth="0.2" />
               ))}
@@ -166,7 +162,6 @@ export default function ThreatMap() {
                 <line key={`v${x}`} x1={x} y1="10" x2={x} y2="90" stroke="rgba(6,182,212,0.05)" strokeWidth="0.2" />
               ))}
 
-              {/* Region markers */}
               {regionStats.map((region) => {
                 const pos = REGION_POSITIONS[region.region];
                 if (!pos) return null;
@@ -176,82 +171,25 @@ export default function ThreatMap() {
                 const size = Math.max(2, Math.min(5, region.count * 1.5));
 
                 return (
-                  <g
-                    key={region.region}
-                    className="cursor-pointer"
-                    onClick={() => setSelectedRegion(isSelected ? null : region.region)}
-                  >
-                    {/* Pulse ring */}
-                    <circle
-                      cx={pos.x}
-                      cy={pos.y}
-                      r={size + 2}
-                      fill="none"
-                      stroke={colors.fill}
-                      strokeWidth="0.3"
-                      opacity={isSelected ? 0.8 : 0.4}
-                    >
-                      <animate
-                        attributeName="r"
-                        values={`${size + 1};${size + 4};${size + 1}`}
-                        dur="3s"
-                        repeatCount="indefinite"
-                      />
-                      <animate
-                        attributeName="opacity"
-                        values="0.6;0.1;0.6"
-                        dur="3s"
-                        repeatCount="indefinite"
-                      />
+                  <g key={region.region} className="cursor-pointer" onClick={() => { setSelectedRegionDetail(region); setActiveModal("regionDetail"); }}>
+                    <circle cx={pos.x} cy={pos.y} r={size + 2} fill="none" stroke={colors.fill} strokeWidth="0.3" opacity={isSelected ? 0.8 : 0.4}>
+                      <animate attributeName="r" values={`${size + 1};${size + 4};${size + 1}`} dur="3s" repeatCount="indefinite" />
+                      <animate attributeName="opacity" values="0.6;0.1;0.6" dur="3s" repeatCount="indefinite" />
                     </circle>
-
-                    {/* Main circle */}
-                    <circle
-                      cx={pos.x}
-                      cy={pos.y}
-                      r={size}
-                      fill={colors.fill}
-                      opacity={isSelected ? 0.9 : 0.6}
-                      stroke={isSelected ? "#fff" : colors.fill}
-                      strokeWidth={isSelected ? 0.5 : 0.2}
-                    />
-
-                    {/* Count label */}
-                    <text
-                      x={pos.x}
-                      y={pos.y + 0.8}
-                      textAnchor="middle"
-                      fill="white"
-                      fontSize="2.5"
-                      fontWeight="bold"
-                    >
-                      {region.count}
-                    </text>
-
-                    {/* Region name */}
-                    <text
-                      x={pos.x}
-                      y={pos.y - size - 1.5}
-                      textAnchor="middle"
-                      fill="rgba(255,255,255,0.7)"
-                      fontSize="2"
-                    >
-                      {region.regionAr}
-                    </text>
+                    <circle cx={pos.x} cy={pos.y} r={size} fill={colors.fill} opacity={isSelected ? 0.9 : 0.6} stroke={isSelected ? "#fff" : colors.fill} strokeWidth={isSelected ? 0.5 : 0.2} />
+                    <text x={pos.x} y={pos.y + 0.8} textAnchor="middle" fill="white" fontSize="2.5" fontWeight="bold">{region.count}</text>
+                    <text x={pos.x} y={pos.y - size - 1.5} textAnchor="middle" fill="rgba(255,255,255,0.7)" fontSize="2">{region.regionAr}</text>
                   </g>
                 );
               })}
             </svg>
           </div>
 
-          {/* Legend */}
           <div className="flex items-center gap-4 mt-4 justify-center flex-wrap">
             {(["critical", "high", "medium", "low"] as const).map((sev) => (
               <div key={sev} className="flex items-center gap-1.5">
                 <span className={`w-3 h-3 rounded-full ${severityColors[sev].bg}`} />
-                <span className="text-xs text-muted-foreground">
-                  {sev === "critical" ? "حرج" : sev === "high" ? "عالي" : sev === "medium" ? "متوسط" : "منخفض"}
-                </span>
+                <span className="text-xs text-muted-foreground">{sevLabels[sev]}</span>
               </div>
             ))}
           </div>
@@ -259,7 +197,6 @@ export default function ThreatMap() {
 
         {/* Region Details Panel */}
         <div className="space-y-4">
-          {/* Region Rankings */}
           <div className="bg-card/60 backdrop-blur-sm border border-border/50 rounded-xl p-4">
             <h3 className="text-sm font-bold text-foreground mb-3 flex items-center gap-2">
               <TrendingUp className="w-4 h-4 text-primary" />
@@ -275,11 +212,10 @@ export default function ThreatMap() {
                     key={region.region}
                     initial={{ opacity: 0, x: 10 }}
                     animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: i * 0.05 }}
                     className={`p-2 rounded-lg cursor-pointer transition-colors ${
                       isSelected ? "bg-primary/15 border border-primary/30" : "hover:bg-accent/30"
                     }`}
-                    onClick={() => setSelectedRegion(isSelected ? null : region.region)}
+                    onClick={() => { setSelectedRegionDetail(region); setActiveModal("regionDetail"); }}
                   >
                     <div className="flex items-center justify-between mb-1">
                       <span className="text-xs font-medium text-foreground">{region.regionAr}</span>
@@ -296,15 +232,9 @@ export default function ThreatMap() {
                       />
                     </div>
                     <div className="flex gap-2 mt-1">
-                      {region.critical > 0 && (
-                        <span className="text-[10px] text-red-400">{region.critical} حرج</span>
-                      )}
-                      {region.high > 0 && (
-                        <span className="text-[10px] text-amber-400">{region.high} عالي</span>
-                      )}
-                      {region.medium > 0 && (
-                        <span className="text-[10px] text-cyan-400">{region.medium} متوسط</span>
-                      )}
+                      {region.critical > 0 && <span className="text-[10px] text-red-400">{region.critical} حرج</span>}
+                      {region.high > 0 && <span className="text-[10px] text-amber-400">{region.high} عالي</span>}
+                      {region.medium > 0 && <span className="text-[10px] text-cyan-400">{region.medium} متوسط</span>}
                     </div>
                   </motion.div>
                 );
@@ -312,7 +242,6 @@ export default function ThreatMap() {
             </div>
           </div>
 
-          {/* Selected Region Leaks */}
           <div className="bg-card/60 backdrop-blur-sm border border-border/50 rounded-xl p-4">
             <h3 className="text-sm font-bold text-foreground mb-3 flex items-center gap-2">
               <Eye className="w-4 h-4 text-primary" />
@@ -329,11 +258,12 @@ export default function ThreatMap() {
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     transition={{ delay: i * 0.05 }}
-                    className={`p-2.5 rounded-lg border transition-colors ${
+                    className={`p-2.5 rounded-lg border transition-colors cursor-pointer ${
                       hoveredLeak === i ? "border-primary/40 bg-primary/5" : "border-border/30 bg-background/50"
                     }`}
                     onMouseEnter={() => setHoveredLeak(i)}
                     onMouseLeave={() => setHoveredLeak(null)}
+                    onClick={() => { setSelectedLeak(leak); setActiveModal("leakDetail"); }}
                   >
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex-1 min-w-0">
@@ -343,7 +273,7 @@ export default function ThreatMap() {
                         </p>
                       </div>
                       <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${colors.bg}/20 ${colors.text} font-medium flex-shrink-0`}>
-                        {leak.severity === "critical" ? "حرج" : leak.severity === "high" ? "عالي" : leak.severity === "medium" ? "متوسط" : "منخفض"}
+                        {sevLabels[leak.severity] || leak.severity}
                       </span>
                     </div>
                   </motion.div>
@@ -356,6 +286,173 @@ export default function ThreatMap() {
           </div>
         </div>
       </div>
+
+      {/* ═══ MODALS ═══ */}
+
+      {/* Total Leaks Modal */}
+      <DetailModal open={activeModal === "totalLeaks"} onClose={() => setActiveModal(null)} title="إجمالي التسريبات على الخريطة" icon={<Shield className="w-5 h-5 text-cyan-400" />}>
+        <div className="space-y-3">
+          <div className="bg-cyan-500/10 rounded-xl p-3 border border-cyan-500/20 text-center">
+            <p className="text-2xl font-bold text-cyan-400">{totalLeaks}</p>
+            <p className="text-xs text-muted-foreground">تسريب مرصود جغرافياً</p>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            {(["critical", "high", "medium", "low"] as const).map(sev => (
+              <div key={sev} className={`rounded-xl p-3 border text-center ${severityColors[sev].bg}/10 ${severityColors[sev].text} border-current/20`}>
+                <p className="text-xl font-bold">{data?.leaks?.filter(l => l.severity === sev).length || 0}</p>
+                <p className="text-[10px]">{sevLabels[sev]}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </DetailModal>
+
+      {/* Critical Leaks Modal */}
+      <DetailModal open={activeModal === "critical"} onClose={() => setActiveModal(null)} title="التسريبات الحرجة" icon={<AlertTriangle className="w-5 h-5 text-red-400" />}>
+        <div className="space-y-3">
+          <div className="bg-red-500/10 rounded-xl p-3 border border-red-500/20 text-center">
+            <p className="text-2xl font-bold text-red-400">{criticalCount}</p>
+            <p className="text-xs text-muted-foreground">تسريب حرج</p>
+          </div>
+          {data?.leaks?.filter(l => l.severity === "critical").map(leak => (
+            <div key={leak.leakId} className="p-3 rounded-lg bg-red-500/5 border border-red-500/20 cursor-pointer hover:bg-red-500/10 transition-colors" onClick={() => { setSelectedLeak(leak); setActiveModal("leakDetail"); }}>
+              <p className="text-sm font-medium text-foreground">{leak.titleAr}</p>
+              <p className="text-[10px] text-muted-foreground">{leak.cityAr} • {leak.sectorAr} • {leak.recordCount?.toLocaleString()} سجل</p>
+            </div>
+          ))}
+        </div>
+      </DetailModal>
+
+      {/* Regions Affected Modal */}
+      <DetailModal open={activeModal === "regions"} onClose={() => setActiveModal(null)} title="المناطق المتأثرة" icon={<MapPin className="w-5 h-5 text-amber-400" />}>
+        <div className="space-y-3">
+          <div className="bg-amber-500/10 rounded-xl p-3 border border-amber-500/20 text-center">
+            <p className="text-2xl font-bold text-amber-400">{regionsAffected}</p>
+            <p className="text-xs text-muted-foreground">منطقة متأثرة</p>
+          </div>
+          {regionStats.map(region => (
+            <div key={region.region} className="p-3 rounded-lg bg-secondary/30 border border-border/50 cursor-pointer hover:bg-secondary/50 transition-colors" onClick={() => { setSelectedRegionDetail(region); setActiveModal("regionDetail"); }}>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-foreground">{region.regionAr}</span>
+                <span className="text-sm font-bold text-foreground">{region.count}</span>
+              </div>
+              <div className="flex gap-2 mt-1">
+                {region.critical > 0 && <span className="text-[10px] text-red-400">{region.critical} حرج</span>}
+                {region.high > 0 && <span className="text-[10px] text-amber-400">{region.high} عالي</span>}
+                {region.medium > 0 && <span className="text-[10px] text-cyan-400">{region.medium} متوسط</span>}
+              </div>
+            </div>
+          ))}
+        </div>
+      </DetailModal>
+
+      {/* Records Affected Modal */}
+      <DetailModal open={activeModal === "records"} onClose={() => setActiveModal(null)} title="السجلات المتأثرة" icon={<Activity className="w-5 h-5 text-emerald-400" />}>
+        <div className="space-y-3">
+          <div className="bg-emerald-500/10 rounded-xl p-3 border border-emerald-500/20 text-center">
+            <p className="text-2xl font-bold text-emerald-400">{totalRecords.toLocaleString()}</p>
+            <p className="text-xs text-muted-foreground">سجل متأثر</p>
+          </div>
+          {data?.leaks?.sort((a, b) => b.recordCount - a.recordCount).slice(0, 10).map(leak => (
+            <div key={leak.leakId} className="p-3 rounded-lg bg-secondary/30 border border-border/50 flex items-center justify-between cursor-pointer hover:bg-secondary/50 transition-colors" onClick={() => { setSelectedLeak(leak); setActiveModal("leakDetail"); }}>
+              <div>
+                <p className="text-sm text-foreground">{leak.titleAr}</p>
+                <p className="text-[10px] text-muted-foreground">{leak.cityAr} • {leak.sectorAr}</p>
+              </div>
+              <span className="text-lg font-bold text-emerald-400">{leak.recordCount.toLocaleString()}</span>
+            </div>
+          ))}
+        </div>
+      </DetailModal>
+
+      {/* Region Detail Modal */}
+      <DetailModal
+        open={activeModal === "regionDetail" && !!selectedRegionDetail}
+        onClose={() => { setActiveModal(null); setSelectedRegionDetail(null); }}
+        title={`منطقة ${selectedRegionDetail?.regionAr || ""}`}
+        icon={<MapPin className="w-5 h-5 text-primary" />}
+        maxWidth="max-w-2xl"
+      >
+        {selectedRegionDetail && (
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <div className="bg-secondary/50 rounded-xl p-3 border border-border/50 text-center">
+                <p className="text-xs text-muted-foreground">إجمالي التسريبات</p>
+                <p className="text-xl font-bold text-foreground mt-1">{selectedRegionDetail.count}</p>
+              </div>
+              <div className="bg-red-500/10 rounded-xl p-3 border border-red-500/20 text-center">
+                <p className="text-xs text-muted-foreground">حرج</p>
+                <p className="text-xl font-bold text-red-400 mt-1">{selectedRegionDetail.critical || 0}</p>
+              </div>
+              <div className="bg-amber-500/10 rounded-xl p-3 border border-amber-500/20 text-center">
+                <p className="text-xs text-muted-foreground">عالي</p>
+                <p className="text-xl font-bold text-amber-400 mt-1">{selectedRegionDetail.high || 0}</p>
+              </div>
+              <div className="bg-cyan-500/10 rounded-xl p-3 border border-cyan-500/20 text-center">
+                <p className="text-xs text-muted-foreground">متوسط</p>
+                <p className="text-xl font-bold text-cyan-400 mt-1">{selectedRegionDetail.medium || 0}</p>
+              </div>
+            </div>
+            <div className="bg-secondary/30 rounded-xl p-4 border border-border/30">
+              <h4 className="text-xs font-semibold text-muted-foreground mb-2">التسريبات في هذه المنطقة</h4>
+              <div className="space-y-2 max-h-[300px] overflow-y-auto">
+                {data?.leaks?.filter(l => l.region === selectedRegionDetail.region).map(leak => {
+                  const colors = severityColors[leak.severity as keyof typeof severityColors] || severityColors.medium;
+                  return (
+                    <div key={leak.leakId} className="p-2.5 rounded-lg border border-border/30 bg-background/50 cursor-pointer hover:bg-primary/5 transition-colors" onClick={() => { setSelectedLeak(leak); setActiveModal("leakDetail"); }}>
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <p className="text-xs font-medium text-foreground">{leak.titleAr}</p>
+                          <p className="text-[10px] text-muted-foreground">{leak.cityAr} • {leak.sectorAr} • {leak.recordCount?.toLocaleString()} سجل</p>
+                        </div>
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${colors.bg}/20 ${colors.text}`}>{sevLabels[leak.severity]}</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        )}
+      </DetailModal>
+
+      {/* Leak Detail Modal */}
+      <DetailModal
+        open={activeModal === "leakDetail" && !!selectedLeak}
+        onClose={() => { setActiveModal(null); setSelectedLeak(null); }}
+        title={selectedLeak?.titleAr || "تفاصيل التسريب"}
+        icon={<Shield className="w-5 h-5 text-primary" />}
+        maxWidth="max-w-2xl"
+      >
+        {selectedLeak && (
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <div className="bg-secondary/50 rounded-xl p-3 border border-border/50 text-center">
+                <p className="text-xs text-muted-foreground">الخطورة</p>
+                <span className={`text-sm font-bold mt-1 inline-block px-2 py-0.5 rounded ${severityColors[selectedLeak.severity as keyof typeof severityColors]?.bg}/20 ${severityColors[selectedLeak.severity as keyof typeof severityColors]?.text}`}>
+                  {sevLabels[selectedLeak.severity]}
+                </span>
+              </div>
+              <div className="bg-secondary/50 rounded-xl p-3 border border-border/50 text-center">
+                <p className="text-xs text-muted-foreground">السجلات</p>
+                <p className="text-lg font-bold text-foreground mt-1">{selectedLeak.recordCount?.toLocaleString()}</p>
+              </div>
+              <div className="bg-secondary/50 rounded-xl p-3 border border-border/50 text-center">
+                <p className="text-xs text-muted-foreground flex items-center justify-center gap-1"><MapPin className="w-3 h-3" /> المنطقة</p>
+                <p className="text-sm font-bold text-foreground mt-1">{selectedLeak.cityAr}</p>
+              </div>
+              <div className="bg-secondary/50 rounded-xl p-3 border border-border/50 text-center">
+                <p className="text-xs text-muted-foreground flex items-center justify-center gap-1"><Building2 className="w-3 h-3" /> القطاع</p>
+                <p className="text-sm font-bold text-foreground mt-1">{selectedLeak.sectorAr}</p>
+              </div>
+            </div>
+            <div className="bg-secondary/30 rounded-xl p-4 border border-border/30">
+              <h4 className="text-xs font-semibold text-muted-foreground mb-1">معرّف التسريب</h4>
+              <p className="text-sm text-primary font-mono">{selectedLeak.leakId}</p>
+            </div>
+          </div>
+        )}
+      </DetailModal>
     </div>
   );
 }

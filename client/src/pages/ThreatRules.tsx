@@ -31,6 +31,7 @@ import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
+import { DetailModal } from "@/components/DetailModal";
 
 const categoryConfig: Record<string, { label: string; icon: React.ElementType; color: string }> = {
   data_leak: { label: "تسريب بيانات", icon: Database, color: "text-red-400" },
@@ -55,6 +56,7 @@ const severityColors: Record<string, string> = {
 export default function ThreatRules() {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterCategory, setFilterCategory] = useState("all");
+  const [activeModal, setActiveModal] = useState<string | null>(null);
 
   const { data: rules, isLoading } = trpc.threatRules.list.useQuery();
 
@@ -72,6 +74,13 @@ export default function ThreatRules() {
     critical: rules?.filter(r => r.severity === "critical").length || 0,
     totalMatches: rules?.reduce((sum, r) => sum + (r.matchCount || 0), 0) || 0,
   };
+
+  const statItems = [
+    { key: "total_rules", label: "إجمالي القواعد", value: stats.total, icon: Crosshair, color: "text-primary", description: "إجمالي القواعد يمثل العدد الكلي لقواعد الصيد والكشف عن التهديدات المتاحة في النظام. هذه القواعد مصممة لتحديد الأنشطة المشبوهة وتسريب البيانات والتهديدات الأمنية الأخرى." },
+    { key: "enabled_rules", label: "قواعد نشطة", value: stats.enabled, icon: CheckCircle2, color: "text-emerald-400", description: "القواعد النشطة هي القواعد التي يتم تطبيقها حاليًا للمراقبة والتحليل. يمكن تمكين أو تعطيل القواعد بناءً على احتياجات الأمان والأداء." },
+    { key: "critical_rules", label: "قواعد حرجة", value: stats.critical, icon: AlertTriangle, color: "text-red-400", description: "القواعد الحرجة هي القواعد ذات الأولوية القصوى والتي تشير إلى تهديدات خطيرة تتطلب استجابة فورية. يتم تصنيفها بناءً على التأثير المحتمل للتهديد." },
+    { key: "total_matches", label: "إجمالي التطابقات", value: stats.totalMatches.toLocaleString(), icon: Zap, color: "text-amber-400", description: "إجمالي التطابقات يمثل عدد المرات التي تم فيها تفعيل قواعد الكشف نتيجة تطابقها مع بيانات أو أنشطة محددة. هذا الرقم يساعد في قياس فعالية القواعد وتحديد حجم التهديدات." },
+  ];
 
   return (
     <div className="space-y-6">
@@ -100,25 +109,23 @@ export default function ThreatRules() {
 
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {[
-          { label: "إجمالي القواعد", value: stats.total, icon: Crosshair, color: "text-primary" },
-          { label: "قواعد نشطة", value: stats.enabled, icon: CheckCircle2, color: "text-emerald-400" },
-          { label: "قواعد حرجة", value: stats.critical, icon: AlertTriangle, color: "text-red-400" },
-          { label: "إجمالي التطابقات", value: stats.totalMatches.toLocaleString(), icon: Zap, color: "text-amber-400" },
-        ].map((stat) => (
-          <Card key={stat.label} className="border-border">
-            <CardContent className="p-4">
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-lg bg-secondary flex items-center justify-center">
-                  <stat.icon className={`w-4 h-4 ${stat.color}`} />
+        {statItems.map((stat) => (
+          <div key={stat.key} onClick={() => setActiveModal(stat.key)} className="cursor-pointer hover:scale-[1.02] transition-all group">
+            <Card className="border-border h-full">
+              <CardContent className="p-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-lg bg-secondary flex items-center justify-center">
+                    <stat.icon className={`w-4 h-4 ${stat.color}`} />
+                  </div>
+                  <div>
+                    <p className="text-lg font-bold text-foreground">{stat.value}</p>
+                    <p className="text-[10px] text-muted-foreground">{stat.label}</p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-lg font-bold text-foreground">{stat.value}</p>
-                  <p className="text-[10px] text-muted-foreground">{stat.label}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+            <p className="text-[9px] text-primary/50 mt-1 opacity-0 group-hover:opacity-100 transition-opacity">اضغط للتفاصيل ←</p>
+          </div>
         ))}
       </div>
 
@@ -180,9 +187,11 @@ export default function ThreatRules() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.03 }}
+                onClick={() => setActiveModal(`rule_${rule.id}`)}
+                className="cursor-pointer hover:scale-[1.02] transition-all group h-full"
               >
-                <Card className={`border-border hover:border-primary/30 transition-colors ${!rule.isEnabled ? "opacity-50" : ""}`}>
-                  <CardContent className="p-4">
+                <Card className={`border-border hover:border-primary/30 transition-colors h-full ${!rule.isEnabled ? "opacity-50" : ""}`}>
+                  <CardContent className="p-4 flex flex-col h-full">
                     <div className="flex items-start justify-between mb-3">
                       <div className="flex items-center gap-3">
                         <div className="w-9 h-9 rounded-lg bg-secondary flex items-center justify-center">
@@ -206,7 +215,7 @@ export default function ThreatRules() {
                     </div>
 
                     {rule.descriptionAr && (
-                      <p className="text-xs text-muted-foreground mb-3 line-clamp-2">{rule.descriptionAr}</p>
+                      <p className="text-xs text-muted-foreground mb-3 line-clamp-2 flex-grow">{rule.descriptionAr}</p>
                     )}
 
                     {/* Patterns */}
@@ -239,7 +248,7 @@ export default function ThreatRules() {
                     )}
 
                     {/* Footer */}
-                    <div className="flex items-center justify-between pt-2 border-t border-border">
+                    <div className="flex items-center justify-between pt-2 border-t border-border mt-auto">
                       <div className="flex items-center gap-2">
                         <Badge variant="outline" className="text-[10px] bg-secondary/30">
                           {catConfig.label}
@@ -250,6 +259,7 @@ export default function ThreatRules() {
                       </div>
                       <span className="text-[10px] text-muted-foreground font-mono">{rule.ruleId}</span>
                     </div>
+                     <p className="text-[9px] text-primary/50 mt-1 opacity-0 group-hover:opacity-100 transition-opacity">اضغط للتفاصيل ←</p>
                   </CardContent>
                 </Card>
               </motion.div>
@@ -257,6 +267,68 @@ export default function ThreatRules() {
           })}
         </div>
       )}
+
+      {/* Modals */}
+      {statItems.map(stat => (
+        <DetailModal
+          key={stat.key}
+          open={activeModal === stat.key}
+          onClose={() => setActiveModal(null)}
+          title={stat.label}
+          icon={<stat.icon className={`w-6 h-6 ${stat.color}`} />}
+        >
+          <p className="text-sm text-muted-foreground leading-relaxed">{stat.description}</p>
+        </DetailModal>
+      ))}
+
+      {filteredRules.map(rule => {
+        const catConfig = categoryConfig[rule.category] || categoryConfig.data_leak;
+        return (
+          <DetailModal
+            key={`modal_${rule.id}`}
+            open={activeModal === `rule_${rule.id}`}
+            onClose={() => setActiveModal(null)}
+            title={rule.nameAr}
+            icon={<catConfig.icon className={`w-6 h-6 ${catConfig.color}`} />}
+            maxWidth="max-w-2xl"
+          >
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground leading-relaxed">{rule.descriptionAr}</p>
+              <div>
+                <h4 className="font-semibold mb-2">تفاصيل القاعدة:</h4>
+                <div className="text-xs space-y-1 text-muted-foreground">
+                  <p><strong className="text-foreground">المعرّف:</strong> <span className="font-mono">{rule.ruleId}</span></p>
+                  <p><strong className="text-foreground">الحالة:</strong> {rule.isEnabled ? <span className="text-emerald-400">نشطة</span> : <span>معطلة</span>}</p>
+                  <p><strong className="text-foreground">الخطورة:</strong> <span className={severityColors[rule.severity]}>{rule.severity}</span></p>
+                  <p><strong className="text-foreground">الفئة:</strong> {catConfig.label}</p>
+                </div>
+              </div>
+              <div>
+                <h4 className="font-semibold mb-2">أنماط الكشف:</h4>
+                <div className="flex flex-wrap gap-2">
+                  {(rule.patterns as string[] || []).map((pattern, pi) => (
+                    <code key={pi} className="text-xs font-mono bg-black/30 text-primary/80 px-2 py-1 rounded border border-border" dir="ltr">
+                      {pattern}
+                    </code>
+                  ))}
+                </div>
+              </div>
+              {rule.keywords && (rule.keywords as string[]).length > 0 && (
+                <div>
+                  <h4 className="font-semibold mb-2">كلمات مفتاحية:</h4>
+                  <div className="flex flex-wrap gap-2">
+                    {(rule.keywords as string[]).map((kw, ki) => (
+                      <Badge key={ki} variant="secondary" className="text-xs">
+                        {kw}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </DetailModal>
+        )
+      })}
     </div>
   );
 }

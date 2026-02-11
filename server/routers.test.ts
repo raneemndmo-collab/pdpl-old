@@ -1133,3 +1133,58 @@ describe("knowledgeGraph", () => {
     expect(nodeTypes.size).toBeGreaterThan(0);
   });
 });
+
+// ─── Leaks Detail (with evidence) ────────────────────────────
+describe("leaks.detail", () => {
+  it("returns leak details with evidence chain", async () => {
+    const ctx = createPublicContext();
+    const caller = appRouter.createCaller(ctx);
+
+    // First get a leak ID from the list
+    const leaks = await caller.leaks.list();
+    expect(leaks.length).toBeGreaterThan(0);
+
+    const firstLeak = leaks[0];
+    const detail = await caller.leaks.detail({ leakId: firstLeak.leakId });
+
+    expect(detail).toBeDefined();
+    expect(detail).not.toBeNull();
+    if (detail) {
+      expect(detail.leakId).toBe(firstLeak.leakId);
+      expect(detail.title).toBeDefined();
+      expect(detail.source).toBeDefined();
+      expect(detail.severity).toBeDefined();
+      expect(Array.isArray(detail.evidence)).toBe(true);
+    }
+  });
+
+  it("returns null for non-existent leak", async () => {
+    const ctx = createPublicContext();
+    const caller = appRouter.createCaller(ctx);
+
+    const detail = await caller.leaks.detail({ leakId: "NON-EXISTENT-LEAK" });
+
+    expect(detail).toBeNull();
+  });
+
+  it("evidence entries have required fields when present", async () => {
+    const ctx = createPublicContext();
+    const caller = appRouter.createCaller(ctx);
+
+    const leaks = await caller.leaks.list();
+    // Find a leak that likely has evidence
+    let foundEvidence = false;
+    for (const leak of leaks.slice(0, 10)) {
+      const detail = await caller.leaks.detail({ leakId: leak.leakId });
+      if (detail && detail.evidence.length > 0) {
+        foundEvidence = true;
+        const ev = detail.evidence[0];
+        expect(ev.evidenceId).toBeDefined();
+        expect(ev.leakId).toBe(leak.leakId);
+        expect(ev.evidenceType).toBeDefined();
+        break;
+      }
+    }
+    expect(foundEvidence).toBe(true);
+  });
+});

@@ -1,9 +1,11 @@
+
 import { useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { DetailModal } from "@/components/DetailModal";
 import {
   Dialog,
   DialogContent,
@@ -35,6 +37,7 @@ import {
   XCircle,
   Clock,
   Search,
+  Info,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -44,12 +47,12 @@ const ROLE_LABELS: Record<string, { ar: string; en: string; icon: typeof Shield;
   vice_president: { ar: "نائب الرئيس", en: "Vice President", icon: Shield, color: "text-blue-400 bg-blue-500/10 border-blue-500/20" },
   manager: { ar: "مدير", en: "Manager", icon: UserCog, color: "text-purple-400 bg-purple-500/10 border-purple-500/20" },
   analyst: { ar: "محلل", en: "Analyst", icon: Eye, color: "text-cyan-400 bg-cyan-500/10 border-cyan-500/20" },
-  viewer: { ar: "مشاهد", en: "Viewer", icon: Eye, color: "text-slate-400 bg-slate-500/10 border-slate-500/20" },
+  viewer: { ar: "مشاهد", en: "Viewer", icon: Eye, color: "text-muted-foreground bg-muted border-border" },
 };
 
 const STATUS_LABELS: Record<string, { ar: string; icon: typeof CheckCircle; color: string }> = {
   active: { ar: "نشط", icon: CheckCircle, color: "text-emerald-400" },
-  inactive: { ar: "غير نشط", icon: XCircle, color: "text-slate-400" },
+  inactive: { ar: "غير نشط", icon: XCircle, color: "text-muted-foreground" },
   suspended: { ar: "معلق", icon: UserX, color: "text-red-400" },
 };
 
@@ -60,6 +63,7 @@ export default function UserManagement() {
   const [editingUser, setEditingUser] = useState<any>(null);
   const [resetPasswordUser, setResetPasswordUser] = useState<any>(null);
   const [newPassword, setNewPassword] = useState("");
+  const [activeModal, setActiveModal] = useState<string | null>(null);
 
   // Form state
   const [form, setForm] = useState({
@@ -122,16 +126,20 @@ export default function UserManagement() {
     u.email?.toLowerCase().includes(search.toLowerCase())
   );
 
+  const activeUsers = users.filter((u: any) => u.status === 'active').length;
+  const rootAdmins = users.filter((u: any) => u.platformRole === 'root_admin').length;
+  const mfaUsers = users.filter((u: any) => u.mfaEnabled).length;
+
   return (
     <div className="space-y-6" dir="rtl">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white flex items-center gap-3">
+          <h1 className="text-2xl font-bold text-foreground flex items-center gap-3">
             <Users className="w-7 h-7 text-emerald-400" />
             إدارة المستخدمين
           </h1>
-          <p className="text-slate-400 mt-1">إدارة حسابات المستخدمين والصلاحيات</p>
+          <p className="text-muted-foreground mt-1">إدارة حسابات المستخدمين والصلاحيات</p>
         </div>
         <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
           <DialogTrigger asChild>
@@ -140,7 +148,7 @@ export default function UserManagement() {
               إضافة مستخدم
             </Button>
           </DialogTrigger>
-          <DialogContent className="bg-slate-900 border-slate-700 text-white max-w-lg" dir="rtl">
+          <DialogContent className="bg-card border-border text-foreground max-w-lg" dir="rtl">
             <DialogHeader>
               <DialogTitle>إضافة مستخدم جديد</DialogTitle>
             </DialogHeader>
@@ -161,22 +169,22 @@ export default function UserManagement() {
             >
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <label className="text-sm text-slate-300">اسم المستخدم (User ID) *</label>
+                  <label className="text-sm text-foreground">اسم المستخدم (User ID) *</label>
                   <Input
                     value={form.userId}
                     onChange={(e) => setForm({ ...form, userId: e.target.value })}
-                    className="bg-slate-800 border-slate-600 text-white"
+                    className="bg-secondary border-border text-foreground"
                     dir="ltr"
                     required
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-sm text-slate-300">كلمة المرور *</label>
+                  <label className="text-sm text-foreground">كلمة المرور *</label>
                   <Input
                     type="password"
                     value={form.password}
                     onChange={(e) => setForm({ ...form, password: e.target.value })}
-                    className="bg-slate-800 border-slate-600 text-white"
+                    className="bg-secondary border-border text-foreground"
                     dir="ltr"
                     required
                     minLength={6}
@@ -185,54 +193,54 @@ export default function UserManagement() {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <label className="text-sm text-slate-300">الاسم الكامل *</label>
+                  <label className="text-sm text-foreground">الاسم الكامل *</label>
                   <Input
                     value={form.name}
                     onChange={(e) => setForm({ ...form, name: e.target.value })}
-                    className="bg-slate-800 border-slate-600 text-white"
+                    className="bg-secondary border-border text-foreground"
                     required
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-sm text-slate-300">الاسم المعروض *</label>
+                  <label className="text-sm text-foreground">الاسم المعروض *</label>
                   <Input
                     value={form.displayName}
                     onChange={(e) => setForm({ ...form, displayName: e.target.value })}
-                    className="bg-slate-800 border-slate-600 text-white"
+                    className="bg-secondary border-border text-foreground"
                     required
                   />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <label className="text-sm text-slate-300">البريد الإلكتروني</label>
+                  <label className="text-sm text-foreground">البريد الإلكتروني</label>
                   <Input
                     type="email"
                     value={form.email}
                     onChange={(e) => setForm({ ...form, email: e.target.value })}
-                    className="bg-slate-800 border-slate-600 text-white"
+                    className="bg-secondary border-border text-foreground"
                     dir="ltr"
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-sm text-slate-300">الجوال</label>
+                  <label className="text-sm text-foreground">الجوال</label>
                   <Input
                     value={form.mobile}
                     onChange={(e) => setForm({ ...form, mobile: e.target.value })}
-                    className="bg-slate-800 border-slate-600 text-white"
+                    className="bg-secondary border-border text-foreground"
                     dir="ltr"
                   />
                 </div>
               </div>
               <div className="space-y-1">
-                <label className="text-sm text-slate-300">الدور/الصلاحية *</label>
+                <label className="text-sm text-foreground">الدور/الصلاحية *</label>
                 <Select value={form.platformRole} onValueChange={(v) => setForm({ ...form, platformRole: v })}>
-                  <SelectTrigger className="bg-slate-800 border-slate-600 text-white">
+                  <SelectTrigger className="bg-secondary border-border text-foreground">
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent className="bg-slate-800 border-slate-600">
+                  <SelectContent className="bg-secondary border-border">
                     {Object.entries(ROLE_LABELS).map(([key, val]) => (
-                      <SelectItem key={key} value={key} className="text-white">
+                      <SelectItem key={key} value={key} className="text-foreground">
                         {val.ar} ({val.en})
                       </SelectItem>
                     ))}
@@ -244,7 +252,7 @@ export default function UserManagement() {
                   {createMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin ml-2" /> : null}
                   إنشاء المستخدم
                 </Button>
-                <Button type="button" variant="outline" onClick={() => setShowCreateDialog(false)} className="border-slate-600 text-slate-300">
+                <Button type="button" variant="outline" onClick={() => setShowCreateDialog(false)} className="border-border text-foreground">
                   إلغاء
                 </Button>
               </div>
@@ -255,272 +263,249 @@ export default function UserManagement() {
 
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card className="bg-slate-800/50 border-slate-700/50">
-          <CardContent className="p-4 text-center">
-            <p className="text-2xl font-bold text-white">{users.length}</p>
-            <p className="text-sm text-slate-400">إجمالي المستخدمين</p>
-          </CardContent>
-        </Card>
-        <Card className="bg-slate-800/50 border-slate-700/50">
-          <CardContent className="p-4 text-center">
-            <p className="text-2xl font-bold text-emerald-400">{users.filter((u: any) => u.status === "active").length}</p>
-            <p className="text-sm text-slate-400">نشط</p>
-          </CardContent>
-        </Card>
-        <Card className="bg-slate-800/50 border-slate-700/50">
-          <CardContent className="p-4 text-center">
-            <p className="text-2xl font-bold text-amber-400">{users.filter((u: any) => ["root_admin", "director"].includes(u.platformRole)).length}</p>
-            <p className="text-sm text-slate-400">مسؤولون</p>
-          </CardContent>
-        </Card>
-        <Card className="bg-slate-800/50 border-slate-700/50">
-          <CardContent className="p-4 text-center">
-            <p className="text-2xl font-bold text-blue-400">{users.filter((u: any) => u.lastLoginAt).length}</p>
-            <p className="text-sm text-slate-400">سجلوا دخولاً</p>
-          </CardContent>
-        </Card>
+        <div className="group cursor-pointer hover:scale-[1.02] transition-all" onClick={() => setActiveModal('total_users')}>
+          <Card className="bg-secondary/50 border-border">
+            <CardContent className="p-4 text-center">
+              <p className="text-2xl font-bold text-foreground">{users.length}</p>
+              <p className="text-sm text-muted-foreground">إجمالي المستخدمين</p>
+              <p className="text-[9px] text-primary/50 mt-1 opacity-0 group-hover:opacity-100 transition-opacity">اضغط للتفاصيل ←</p>
+            </CardContent>
+          </Card>
+        </div>
+        <div className="group cursor-pointer hover:scale-[1.02] transition-all" onClick={() => setActiveModal('active_users')}>
+          <Card className="bg-secondary/50 border-border">
+            <CardContent className="p-4 text-center">
+              <p className="text-2xl font-bold text-emerald-400">{activeUsers}</p>
+              <p className="text-sm text-muted-foreground">المستخدمون النشطون</p>
+              <p className="text-[9px] text-primary/50 mt-1 opacity-0 group-hover:opacity-100 transition-opacity">اضغط للتفاصيل ←</p>
+            </CardContent>
+          </Card>
+        </div>
+        <div className="group cursor-pointer hover:scale-[1.02] transition-all" onClick={() => setActiveModal('root_admins')}>
+          <Card className="bg-secondary/50 border-border">
+            <CardContent className="p-4 text-center">
+              <p className="text-2xl font-bold text-amber-400">{rootAdmins}</p>
+              <p className="text-sm text-muted-foreground">مدراء النظام</p>
+              <p className="text-[9px] text-primary/50 mt-1 opacity-0 group-hover:opacity-100 transition-opacity">اضغط للتفاصيل ←</p>
+            </CardContent>
+          </Card>
+        </div>
+        <div className="group cursor-pointer hover:scale-[1.02] transition-all" onClick={() => setActiveModal('mfa_users')}>
+          <Card className="bg-secondary/50 border-border">
+            <CardContent className="p-4 text-center">
+              <p className="text-2xl font-bold text-blue-400">{mfaUsers}</p>
+              <p className="text-sm text-muted-foreground">مستخدمو MFA</p>
+              <p className="text-[9px] text-primary/50 mt-1 opacity-0 group-hover:opacity-100 transition-opacity">اضغط للتفاصيل ←</p>
+            </CardContent>
+          </Card>
+        </div>
       </div>
 
-      {/* Search */}
-      <div className="relative">
-        <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-        <Input
-          placeholder="بحث بالاسم أو معرف المستخدم أو البريد..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="bg-slate-800/50 border-slate-700/50 text-white pr-10"
-        />
-      </div>
-
-      {/* Users Table */}
-      <Card className="bg-slate-800/50 border-slate-700/50">
+      {/* Search and Table */}
+      <Card className="bg-secondary/50 border-border">
         <CardHeader>
-          <CardTitle className="text-white text-lg">قائمة المستخدمين</CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-lg">قائمة المستخدمين</CardTitle>
+            <div className="relative w-64">
+              <Input
+                placeholder="بحث..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="bg-background border-border pl-10"
+              />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
-          {isLoading ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="w-8 h-8 animate-spin text-emerald-400" />
-            </div>
-          ) : filteredUsers.length === 0 ? (
-            <div className="text-center py-12 text-slate-400">
-              <Users className="w-12 h-12 mx-auto mb-3 opacity-50" />
-              <p>لا يوجد مستخدمون</p>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-slate-700/50">
-                    <th className="text-right text-sm font-medium text-slate-400 py-3 px-3">المستخدم</th>
-                    <th className="text-right text-sm font-medium text-slate-400 py-3 px-3">User ID</th>
-                    <th className="text-right text-sm font-medium text-slate-400 py-3 px-3">البريد</th>
-                    <th className="text-right text-sm font-medium text-slate-400 py-3 px-3">الجوال</th>
-                    <th className="text-right text-sm font-medium text-slate-400 py-3 px-3">الدور</th>
-                    <th className="text-right text-sm font-medium text-slate-400 py-3 px-3">الحالة</th>
-                    <th className="text-right text-sm font-medium text-slate-400 py-3 px-3">آخر دخول</th>
-                    <th className="text-right text-sm font-medium text-slate-400 py-3 px-3">الإجراءات</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredUsers.map((u: any) => {
-                    const role = ROLE_LABELS[u.platformRole] || ROLE_LABELS.viewer;
-                    const status = STATUS_LABELS[u.status] || STATUS_LABELS.active;
-                    const RoleIcon = role.icon;
-                    const StatusIcon = status.icon;
-                    return (
-                      <tr key={u.id} className="border-b border-slate-700/30 hover:bg-slate-700/20 transition-colors">
-                        <td className="py-3 px-3">
-                          <div>
-                            <p className="text-white font-medium text-sm">{u.name}</p>
-                            <p className="text-slate-400 text-xs">{u.displayName}</p>
-                          </div>
-                        </td>
-                        <td className="py-3 px-3">
-                          <code className="text-emerald-400 text-sm bg-emerald-500/10 px-2 py-0.5 rounded" dir="ltr">{u.userId}</code>
-                        </td>
-                        <td className="py-3 px-3 text-sm text-slate-300" dir="ltr">{u.email || "—"}</td>
-                        <td className="py-3 px-3 text-sm text-slate-300" dir="ltr">{u.mobile || "—"}</td>
-                        <td className="py-3 px-3">
-                          <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border ${role.color}`}>
-                            <RoleIcon className="w-3 h-3" />
-                            {role.ar}
-                          </span>
-                        </td>
-                        <td className="py-3 px-3">
-                          <span className={`inline-flex items-center gap-1 text-sm ${status.color}`}>
-                            <StatusIcon className="w-3.5 h-3.5" />
-                            {status.ar}
-                          </span>
-                        </td>
-                        <td className="py-3 px-3 text-sm text-slate-400">
-                          {u.lastLoginAt ? (
-                            <span className="flex items-center gap-1">
-                              <Clock className="w-3 h-3" />
-                              {new Date(u.lastLoginAt).toLocaleDateString("ar-SA")}
-                            </span>
-                          ) : "لم يسجل دخولاً"}
-                        </td>
-                        <td className="py-3 px-3">
-                          <div className="flex items-center gap-1">
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className="h-8 w-8 p-0 text-slate-400 hover:text-blue-400"
-                              onClick={() => setEditingUser(u)}
-                              title="تعديل"
-                            >
-                              <Edit className="w-3.5 h-3.5" />
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className="h-8 w-8 p-0 text-slate-400 hover:text-amber-400"
-                              onClick={() => { setResetPasswordUser(u); setNewPassword(""); }}
-                              title="إعادة تعيين كلمة المرور"
-                            >
-                              <Key className="w-3.5 h-3.5" />
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className="h-8 w-8 p-0 text-slate-400 hover:text-red-400"
-                              onClick={() => {
-                                if (confirm(`هل أنت متأكد من حذف المستخدم ${u.name}؟`)) {
-                                  deleteMutation.mutate({ id: u.id });
-                                }
-                              }}
-                              title="حذف"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </Button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
+          <div className="space-y-4">
+            {isLoading ? (
+              <div className="flex justify-center items-center p-8">
+                <Loader2 className="w-8 h-8 animate-spin text-primary" />
+              </div>
+            ) : (
+              filteredUsers.map((u: any) => (
+                <div key={u.id} className="group cursor-pointer hover:scale-[1.01] transition-all bg-background/50 hover:bg-background rounded-lg p-4 flex items-center justify-between" onClick={() => setActiveModal(`user_${u.id}`)}>
+                  <div className="flex items-center gap-4">
+                    <div>
+                      <p className="font-bold text-foreground">{u.name}</p>
+                      <p className="text-sm text-muted-foreground">{u.displayName} ({u.userId})</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-6">
+                    <div className="text-center">
+                      <p className={`font-semibold text-sm flex items-center gap-2 px-3 py-1 rounded-full ${ROLE_LABELS[u.platformRole]?.color || ROLE_LABELS.viewer.color}`}>
+                        {ROLE_LABELS[u.platformRole]?.icon}
+                        {ROLE_LABELS[u.platformRole]?.ar || u.platformRole}
+                      </p>
+                    </div>
+                    <div className="text-center">
+                      <p className={`font-semibold text-sm flex items-center gap-2 ${STATUS_LABELS[u.status]?.color || "text-muted-foreground"}`}>
+                        {STATUS_LABELS[u.status]?.icon}
+                        {STATUS_LABELS[u.status]?.ar || u.status}
+                      </p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-sm text-muted-foreground">آخر نشاط</p>
+                      <p className="font-semibold text-sm text-foreground">{u.lastActive ? new Date(u.lastActive).toLocaleString('ar-SA') : 'غير معروف'}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); setEditingUser(u); }}><Edit className="w-4 h-4 text-blue-400" /></Button>
+                    <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); setResetPasswordUser(u); }}><Key className="w-4 h-4 text-amber-400" /></Button>
+                    <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); deleteMutation.mutate({ id: u.id }); }}><Trash2 className="w-4 h-4 text-red-400" /></Button>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
         </CardContent>
       </Card>
 
+      {/* Modals */}
+      <DetailModal open={activeModal === 'total_users'} onClose={() => setActiveModal(null)} title="إجمالي المستخدمين" icon={<Users />}>
+        <p>هذا هو العدد الإجمالي لجميع حسابات المستخدمين المسجلة في النظام، بما في ذلك الحسابات النشطة وغير النشطة والمعلقة.</p>
+      </DetailModal>
+      <DetailModal open={activeModal === 'active_users'} onClose={() => setActiveModal(null)} title="المستخدمون النشطون" icon={<CheckCircle />}>
+        <p>يمثل هذا الرقم عدد المستخدمين الذين لديهم حالة "نشط" ويمكنهم تسجيل الدخول واستخدام النظام حاليًا.</p>
+      </DetailModal>
+      <DetailModal open={activeModal === 'root_admins'} onClose={() => setActiveModal(null)} title="مدراء النظام" icon={<Crown />}>
+        <p>هؤلاء هم المستخدمون الذين لديهم صلاحيات "مدير النظام الرئيسي"، وهي أعلى صلاحية في النظام وتسمح بالوصول الكامل والتحكم.</p>
+      </DetailModal>
+      <DetailModal open={activeModal === 'mfa_users'} onClose={() => setActiveModal(null)} title="مستخدمو MFA" icon={<ShieldCheck />}>
+        <p>هذا هو عدد المستخدمين الذين قاموا بتمكين المصادقة متعددة العوامل (MFA) على حساباتهم لزيادة الأمان.</p>
+      </DetailModal>
+
+      {filteredUsers.map((u: any) => (
+        <DetailModal key={`modal_${u.id}`} open={activeModal === `user_${u.id}`} onClose={() => setActiveModal(null)} title={`تفاصيل المستخدم: ${u.displayName}`} icon={<Info />}>
+            <div className="space-y-2" dir="rtl">
+                <p><strong>الاسم الكامل:</strong> {u.name}</p>
+                <p><strong>اسم المستخدم:</strong> {u.userId}</p>
+                <p><strong>البريد الإلكتروني:</strong> {u.email || 'غير متوفر'}</p>
+                <p><strong>الجوال:</strong> {u.mobile || 'غير متوفر'}</p>
+                <p><strong>الدور:</strong> {ROLE_LABELS[u.platformRole]?.ar || u.platformRole}</p>
+                <p><strong>الحالة:</strong> {STATUS_LABELS[u.status]?.ar || u.status}</p>
+                <p><strong>آخر نشاط:</strong> {u.lastActive ? new Date(u.lastActive).toLocaleString('ar-SA') : 'غير معروف'}</p>
+                <p><strong>MFA مفعل:</strong> {u.mfaEnabled ? 'نعم' : 'لا'}</p>
+            </div>
+        </DetailModal>
+      ))}
+
       {/* Edit User Dialog */}
       <Dialog open={!!editingUser} onOpenChange={(open) => !open && setEditingUser(null)}>
-        <DialogContent className="bg-slate-900 border-slate-700 text-white max-w-lg" dir="rtl">
+        <DialogContent className="bg-card border-border text-foreground max-w-lg" dir="rtl">
           <DialogHeader>
             <DialogTitle>تعديل المستخدم: {editingUser?.name}</DialogTitle>
           </DialogHeader>
-          {editingUser && (
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                const formData = new FormData(e.currentTarget);
-                updateMutation.mutate({
-                  id: editingUser.id,
-                  name: formData.get("name") as string,
-                  displayName: formData.get("displayName") as string,
-                  email: formData.get("email") as string,
-                  mobile: formData.get("mobile") as string,
-                  platformRole: formData.get("platformRole") as any,
-                  status: formData.get("status") as any,
-                });
-              }}
-              className="space-y-4"
-            >
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <label className="text-sm text-slate-300">الاسم الكامل</label>
-                  <Input name="name" defaultValue={editingUser.name} className="bg-slate-800 border-slate-600 text-white" />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-sm text-slate-300">الاسم المعروض</label>
-                  <Input name="displayName" defaultValue={editingUser.displayName} className="bg-slate-800 border-slate-600 text-white" />
-                </div>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              updateMutation.mutate({ id: editingUser.id, ...editingUser });
+            }}
+            className="space-y-4"
+          >
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <label className="text-sm text-foreground">الاسم الكامل</label>
+                <Input
+                  value={editingUser?.name || ''}
+                  onChange={(e) => setEditingUser({ ...editingUser, name: e.target.value })}
+                  className="bg-secondary border-border text-foreground"
+                />
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <label className="text-sm text-slate-300">البريد الإلكتروني</label>
-                  <Input name="email" defaultValue={editingUser.email || ""} className="bg-slate-800 border-slate-600 text-white" dir="ltr" />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-sm text-slate-300">الجوال</label>
-                  <Input name="mobile" defaultValue={editingUser.mobile || ""} className="bg-slate-800 border-slate-600 text-white" dir="ltr" />
-                </div>
+              <div className="space-y-1">
+                <label className="text-sm text-foreground">الاسم المعروض</label>
+                <Input
+                  value={editingUser?.displayName || ''}
+                  onChange={(e) => setEditingUser({ ...editingUser, displayName: e.target.value })}
+                  className="bg-secondary border-border text-foreground"
+                />
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <label className="text-sm text-slate-300">الدور</label>
-                  <select name="platformRole" defaultValue={editingUser.platformRole} className="w-full h-10 rounded-md bg-slate-800 border border-slate-600 text-white px-3 text-sm">
-                    {Object.entries(ROLE_LABELS).map(([key, val]) => (
-                      <option key={key} value={key}>{val.ar}</option>
-                    ))}
-                  </select>
-                </div>
-                <div className="space-y-1">
-                  <label className="text-sm text-slate-300">الحالة</label>
-                  <select name="status" defaultValue={editingUser.status} className="w-full h-10 rounded-md bg-slate-800 border border-slate-600 text-white px-3 text-sm">
-                    <option value="active">نشط</option>
-                    <option value="inactive">غير نشط</option>
-                    <option value="suspended">معلق</option>
-                  </select>
-                </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <label className="text-sm text-foreground">البريد الإلكتروني</label>
+                <Input
+                  type="email"
+                  value={editingUser?.email || ''}
+                  onChange={(e) => setEditingUser({ ...editingUser, email: e.target.value })}
+                  className="bg-secondary border-border text-foreground"
+                  dir="ltr"
+                />
               </div>
-              <div className="flex gap-2 pt-2">
-                <Button type="submit" disabled={updateMutation.isPending} className="bg-blue-600 hover:bg-blue-500 flex-1">
-                  {updateMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin ml-2" /> : null}
-                  حفظ التعديلات
-                </Button>
-                <Button type="button" variant="outline" onClick={() => setEditingUser(null)} className="border-slate-600 text-slate-300">
-                  إلغاء
-                </Button>
+              <div className="space-y-1">
+                <label className="text-sm text-foreground">الجوال</label>
+                <Input
+                  value={editingUser?.mobile || ''}
+                  onChange={(e) => setEditingUser({ ...editingUser, mobile: e.target.value })}
+                  className="bg-secondary border-border text-foreground"
+                  dir="ltr"
+                />
               </div>
-            </form>
-          )}
+            </div>
+            <div className="space-y-1">
+              <label className="text-sm text-foreground">الدور/الصلاحية</label>
+              <Select value={editingUser?.platformRole} onValueChange={(v) => setEditingUser({ ...editingUser, platformRole: v })}>
+                <SelectTrigger className="bg-secondary border-border text-foreground">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="bg-secondary border-border">
+                  {Object.entries(ROLE_LABELS).map(([key, val]) => (
+                    <SelectItem key={key} value={key} className="text-foreground">
+                      {val.ar} ({val.en})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex gap-2 pt-2">
+              <Button type="submit" disabled={updateMutation.isPending} className="bg-blue-600 hover:bg-blue-500 flex-1">
+                {updateMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin ml-2" /> : null}
+                حفظ التغييرات
+              </Button>
+              <Button type="button" variant="outline" onClick={() => setEditingUser(null)} className="border-border text-foreground">
+                إلغاء
+              </Button>
+            </div>
+          </form>
         </DialogContent>
       </Dialog>
 
       {/* Reset Password Dialog */}
       <Dialog open={!!resetPasswordUser} onOpenChange={(open) => !open && setResetPasswordUser(null)}>
-        <DialogContent className="bg-slate-900 border-slate-700 text-white max-w-sm" dir="rtl">
+        <DialogContent className="bg-card border-border text-foreground max-w-md" dir="rtl">
           <DialogHeader>
-            <DialogTitle>إعادة تعيين كلمة المرور</DialogTitle>
+            <DialogTitle>إعادة تعيين كلمة المرور لـ {resetPasswordUser?.name}</DialogTitle>
           </DialogHeader>
-          {resetPasswordUser && (
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                resetPasswordMutation.mutate({ id: resetPasswordUser.id, newPassword });
-              }}
-              className="space-y-4"
-            >
-              <p className="text-sm text-slate-400">
-                إعادة تعيين كلمة المرور للمستخدم: <strong className="text-white">{resetPasswordUser.name}</strong>
-              </p>
-              <div className="space-y-1">
-                <label className="text-sm text-slate-300">كلمة المرور الجديدة</label>
-                <Input
-                  type="password"
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  className="bg-slate-800 border-slate-600 text-white"
-                  dir="ltr"
-                  required
-                  minLength={6}
-                />
-              </div>
-              <div className="flex gap-2">
-                <Button type="submit" disabled={resetPasswordMutation.isPending} className="bg-amber-600 hover:bg-amber-500 flex-1">
-                  {resetPasswordMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin ml-2" /> : null}
-                  إعادة التعيين
-                </Button>
-                <Button type="button" variant="outline" onClick={() => setResetPasswordUser(null)} className="border-slate-600 text-slate-300">
-                  إلغاء
-                </Button>
-              </div>
-            </form>
-          )}
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              resetPasswordMutation.mutate({ id: resetPasswordUser.id, newPassword });
+            }}
+            className="space-y-4"
+          >
+            <div className="space-y-1">
+              <label className="text-sm text-foreground">كلمة المرور الجديدة</label>
+              <Input
+                type="password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                className="bg-secondary border-border text-foreground"
+                dir="ltr"
+                minLength={6}
+                required
+              />
+            </div>
+            <div className="flex gap-2 pt-2">
+              <Button type="submit" disabled={resetPasswordMutation.isPending} className="bg-amber-600 hover:bg-amber-500 flex-1">
+                {resetPasswordMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin ml-2" /> : null}
+                إعادة التعيين
+              </Button>
+              <Button type="button" variant="outline" onClick={() => setResetPasswordUser(null)} className="border-border text-foreground">
+                إلغاء
+              </Button>
+            </div>
+          </form>
         </DialogContent>
       </Dialog>
     </div>

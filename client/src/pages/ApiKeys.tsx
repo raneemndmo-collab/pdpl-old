@@ -2,7 +2,7 @@
  * ApiKeys — API Key Management for external SIEM/SOC integrations
  * Admin-only page for creating, managing, and revoking API keys
  */
-import { useState } from "react";
+import { useState, ReactNode } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   KeyRound,
@@ -19,13 +19,20 @@ import {
   Loader2,
   Code2,
   Terminal,
+  Info,
+  Fingerprint,
+  CalendarDays,
+  Zap,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
+import { DetailModal } from "@/components/DetailModal";
 
 export default function ApiKeys() {
-  const { data: keys, isLoading, refetch } = trpc.apiKeys.list.useQuery();
+  const { data, isLoading, refetch } = trpc.apiKeys.list.useQuery();
+  const keys = Array.isArray(data) ? data : (data as any)?.keys ?? [];
+  const stats = Array.isArray(data) ? null : (data as any)?.stats;
   const { data: permissions } = trpc.apiKeys.permissions.useQuery();
   const createMutation = trpc.apiKeys.create.useMutation({
     onSuccess: (data) => {
@@ -37,17 +44,24 @@ export default function ApiKeys() {
     onError: (e) => toast.error(e.message),
   });
   const updateMutation = trpc.apiKeys.update.useMutation({
-    onSuccess: () => { refetch(); toast.success("تم تحديث المفتاح"); },
+    onSuccess: () => {
+      refetch();
+      toast.success("تم تحديث المفتاح");
+    },
     onError: (e) => toast.error(e.message),
   });
   const deleteMutation = trpc.apiKeys.delete.useMutation({
-    onSuccess: () => { refetch(); toast.success("تم حذف المفتاح"); },
+    onSuccess: () => {
+      refetch();
+      toast.success("تم حذف المفتاح");
+    },
     onError: (e) => toast.error(e.message),
   });
 
   const [showCreate, setShowCreate] = useState(false);
   const [newKey, setNewKey] = useState<string | null>(null);
   const [showDocs, setShowDocs] = useState(false);
+  const [activeModal, setActiveModal] = useState<string | null>(null);
   const [form, setForm] = useState({
     name: "",
     permissions: [] as string[],
@@ -102,7 +116,35 @@ export default function ApiKeys() {
         </div>
       </div>
 
-      {/* New Key Display (shown once after creation) */}
+      {/* Stats */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <StatCard
+          title="المفاتيح النشطة"
+          value={stats?.activeKeys ?? 0}
+          icon={<CheckCircle2 className="w-5 h-5 text-green-500" />}
+          onClick={() => setActiveModal("activeKeys")}
+        />
+        <StatCard
+          title="المفاتيح المعطلة"
+          value={stats?.disabledKeys ?? 0}
+          icon={<AlertTriangle className="w-5 h-5 text-red-500" />}
+          onClick={() => setActiveModal("disabledKeys")}
+        />
+        <StatCard
+          title="إجمالي الطلبات (24 ساعة)"
+          value={stats?.totalRequests24h ?? 0}
+          icon={<Activity className="w-5 h-5 text-blue-500" />}
+          onClick={() => setActiveModal("totalRequests")}
+        />
+        <StatCard
+          title="متوسط الصلاحيات"
+          value={`${(stats?.avgPermissionsPerKey ?? 0).toFixed(1)}`}
+          icon={<Shield className="w-5 h-5 text-amber-500" />}
+          onClick={() => setActiveModal("avgPermissions")}
+        />
+      </div>
+
+      {/* New Key Display */}
       <AnimatePresence>
         {newKey && (
           <motion.div
@@ -173,33 +215,6 @@ export default function ApiKeys() {
 {`GET /api/v1/leaks
 GET /api/v1/leaks?severity=critical
 GET /api/v1/leaks?source=telegram`}
-                </pre>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground mb-2">إنشاء تسريب جديد (SIEM integration):</p>
-                <pre className="bg-background rounded-lg p-3 text-xs text-cyan-400 font-mono overflow-x-auto" dir="ltr">
-{`POST /api/v1/leaks
-Content-Type: application/json
-
-{
-  "title": "New Leak from SIEM",
-  "source": "telegram",
-  "severity": "high",
-  "sector": "Banking",
-  "recordCount": 5000,
-  "piiTypes": ["National ID", "IBAN"]
-}`}
-                </pre>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground mb-2">فحص PII:</p>
-                <pre className="bg-background rounded-lg p-3 text-xs text-cyan-400 font-mono overflow-x-auto" dir="ltr">
-{`POST /api/v1/pii/scan
-Content-Type: application/json
-
-{
-  "text": "National ID: 1234567890, Phone: +966501234567"
-}`}
                 </pre>
               </div>
             </div>
@@ -292,114 +307,172 @@ Content-Type: application/json
         )}
       </AnimatePresence>
 
-      {/* Keys List */}
-      <div className="space-y-3">
-        {keys?.map((key, i) => (
-          <motion.div
+      {/* API Keys List */}
+      <div className="space-y-4">
+        {keys?.map((key: any) => (
+          <ApiKeyCard
             key={key.id}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: i * 0.05 }}
-            className={`bg-card/60 backdrop-blur-sm border rounded-xl p-5 ${
-              key.isActive ? "border-border/50" : "border-red-500/20 opacity-60"
-            }`}
-          >
-            <div className="flex items-start justify-between gap-4 flex-wrap">
-              <div className="flex items-center gap-3">
-                <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                  key.isActive ? "bg-primary/10" : "bg-red-500/10"
-                }`}>
-                  <KeyRound className={`w-5 h-5 ${key.isActive ? "text-primary" : "text-red-400"}`} />
-                </div>
-                <div>
-                  <h4 className="text-sm font-bold text-foreground">{key.name}</h4>
-                  <p className="text-xs text-muted-foreground font-mono">{key.keyPrefix}••••••••</p>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${
-                  key.isActive ? "bg-emerald-500/20 text-emerald-400" : "bg-red-500/20 text-red-400"
-                }`}>
-                  {key.isActive ? "نشط" : "معطل"}
-                </span>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4">
-              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                <Shield className="w-3.5 h-3.5" />
-                <span>{(key.permissions as string[] | null)?.length ?? 0} صلاحية</span>
-              </div>
-              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                <Activity className="w-3.5 h-3.5" />
-                <span>{key.requestsToday}/{key.rateLimit} طلب/يوم</span>
-              </div>
-              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                <Clock className="w-3.5 h-3.5" />
-                <span>
-                  {key.lastUsedAt
-                    ? `آخر استخدام: ${new Date(key.lastUsedAt).toLocaleDateString("ar-SA")}`
-                    : "لم يُستخدم بعد"}
-                </span>
-              </div>
-              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                <Clock className="w-3.5 h-3.5" />
-                <span>
-                  {key.expiresAt
-                    ? `ينتهي: ${new Date(key.expiresAt).toLocaleDateString("ar-SA")}`
-                    : "بدون انتهاء"}
-                </span>
-              </div>
-            </div>
-
-            {/* Permissions tags */}
-            <div className="flex flex-wrap gap-1 mt-3">
-              {(key.permissions as string[] | null)?.map((perm) => (
-                <span key={perm} className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary/80">
-                  {perm}
-                </span>
-              ))}
-            </div>
-
-            {/* Actions */}
-            <div className="flex gap-2 mt-4 pt-3 border-t border-border/30">
-              <Button
-                variant="ghost"
-                size="sm"
-                className="gap-1.5 text-xs h-8"
-                onClick={() => updateMutation.mutate({ id: key.id, isActive: !key.isActive })}
-                disabled={updateMutation.isPending}
-              >
-                {key.isActive ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
-                {key.isActive ? "تعطيل" : "تفعيل"}
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="gap-1.5 text-xs h-8 text-red-400 hover:text-red-300"
-                onClick={() => {
-                  if (confirm("هل أنت متأكد من حذف هذا المفتاح؟ لن يمكن التراجع عن هذا الإجراء.")) {
-                    deleteMutation.mutate({ id: key.id });
-                  }
-                }}
-                disabled={deleteMutation.isPending}
-              >
-                <Trash2 className="w-3 h-3" />
-                حذف
-              </Button>
-            </div>
-          </motion.div>
+            apiKey={key}
+            onUpdate={updateMutation.mutate}
+            onDelete={deleteMutation.mutate}
+            onViewDetails={() => setActiveModal(`key_${key.id}`)}
+          />
         ))}
       </div>
 
-      {(!keys || keys.length === 0) && !showCreate && (
-        <div className="text-center py-12">
-          <KeyRound className="w-12 h-12 text-muted-foreground mx-auto mb-3 opacity-50" />
-          <p className="text-sm text-muted-foreground">لا توجد مفاتيح API</p>
-          <p className="text-xs text-muted-foreground mt-1">أنشئ مفتاحاً للتكامل مع أنظمة SIEM/SOC الخارجية</p>
+      {/* Modals */}
+      <DetailModal
+        open={activeModal === "activeKeys"}
+        onClose={() => setActiveModal(null)}
+        title="المفاتيح النشطة"
+        icon={<CheckCircle2 className="w-6 h-6 text-green-500" />}
+      >
+        <p className="text-sm text-muted-foreground">هذه هي عدد مفاتيح API التي تم تفعيلها حاليًا ويمكنها الوصول إلى النظام. المفاتيح النشطة قادرة على إجراء طلبات API وفقًا للصلاحيات الممنوحة لها.</p>
+      </DetailModal>
+      <DetailModal
+        open={activeModal === "disabledKeys"}
+        onClose={() => setActiveModal(null)}
+        title="المفاتيح المعطلة"
+        icon={<AlertTriangle className="w-6 h-6 text-red-500" />}
+      >
+        <p className="text-sm text-muted-foreground">هذه هي عدد مفاتيح API التي تم تعطيلها. لا يمكن للمفاتيح المعطلة إجراء أي طلبات API حتى يتم إعادة تفعيلها.</p>
+      </DetailModal>
+      <DetailModal
+        open={activeModal === "totalRequests"}
+        onClose={() => setActiveModal(null)}
+        title="إجمالي الطلبات (24 ساعة)"
+        icon={<Activity className="w-6 h-6 text-blue-500" />}
+      >
+        <p className="text-sm text-muted-foreground">يمثل هذا العدد الإجمالي لطلبات API التي تم إجراؤها بواسطة جميع المفاتيح خلال الـ 24 ساعة الماضية. يساعد هذا المقياس في مراقبة استخدام النظام واكتشاف أي نشاط غير عادي.</p>
+      </DetailModal>
+      <DetailModal
+        open={activeModal === "avgPermissions"}
+        onClose={() => setActiveModal(null)}
+        title="متوسط الصلاحيات لكل مفتاح"
+        icon={<Shield className="w-6 h-6 text-amber-500" />}
+      >
+        <p className="text-sm text-muted-foreground">هذا هو متوسط عدد الصلاحيات الممنوحة لكل مفتاح API. يمكن أن يشير الرقم الأعلى إلى أن المفاتيح لديها صلاحيات واسعة، مما قد يستدعي مراجعة أمنية لضمان تطبيق مبدأ الامتياز الأقل.</p>
+      </DetailModal>
+
+      {keys?.map((key: any) => (
+        <DetailModal
+          key={`modal_${key.id}`}
+          open={activeModal === `key_${key.id}`}
+          onClose={() => setActiveModal(null)}
+          title={`تفاصيل المفتاح: ${key.name}`}
+          icon={<KeyRound className="w-6 h-6 text-primary" />}
+          maxWidth="max-w-2xl"
+        >
+          <div className="space-y-4 text-sm">
+            <div className="flex items-center gap-2">
+              <Fingerprint className="w-4 h-4 text-muted-foreground" />
+              <span className="font-medium">معرف المفتاح:</span>
+              <span className="font-mono text-xs">{key.id}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <CalendarDays className="w-4 h-4 text-muted-foreground" />
+              <span className="font-medium">تاريخ الإنشاء:</span>
+              <span>{new Date(key.createdAt).toLocaleDateString('ar-SA')}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Zap className="w-4 h-4 text-muted-foreground" />
+              <span className="font-medium">آخر استخدام:</span>
+              <span>{key.lastUsed ? new Date(key.lastUsed).toLocaleString('ar-SA') : 'لم يستخدم بعد'}</span>
+            </div>
+            <div>
+              <h4 className="font-medium mb-2 flex items-center gap-2"><Shield className="w-4 h-4 text-muted-foreground" /> الصلاحيات الممنوحة:</h4>
+              <div className="flex flex-wrap gap-2">
+                {key.permissions.map((p: string) => <span key={p} className="bg-primary/10 text-primary text-xs font-medium px-2 py-1 rounded-full">{p}</span>)}
+              </div>
+            </div>
+          </div>
+        </DetailModal>
+      ))}
+    </div>
+  );
+}
+
+function StatCard({ title, value, icon, onClick }: { title: string; value: string | number; icon: ReactNode; onClick: () => void; }) {
+  return (
+    <div 
+      className="bg-card/50 border border-border/50 rounded-xl p-4 group cursor-pointer hover:scale-[1.02] transition-all"
+      onClick={onClick}
+    >
+      <div className="flex items-center justify-between mb-1">
+        <p className="text-xs text-muted-foreground">{title}</p>
+        {icon}
+      </div>
+      <p className="text-2xl font-bold text-foreground">{value}</p>
+      <p className="text-[9px] text-primary/50 mt-1 opacity-0 group-hover:opacity-100 transition-opacity">اضغط للتفاصيل ←</p>
+    </div>
+  );
+}
+
+function ApiKeyCard({ apiKey, onUpdate, onDelete, onViewDetails }: {
+  apiKey: any;
+  onUpdate: (args: { id: number, enabled: boolean }) => void;
+  onDelete: (args: { id: number }) => void;
+  onViewDetails: () => void;
+}) {
+  const [revealed, setRevealed] = useState(false);
+
+  return (
+    <div 
+      className="bg-card/50 border border-border/50 rounded-xl p-4 space-y-4 group cursor-pointer hover:border-primary/40 transition-colors"
+      onClick={onViewDetails}
+    >
+      {/* Card Header */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className={`w-2 h-2 rounded-full ${apiKey.enabled ? 'bg-green-500' : 'bg-red-500'}`}></div>
+          <p className="font-mono text-sm text-foreground">{apiKey.name}</p>
         </div>
-      )}
+        <div className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
+          <Button
+            variant={apiKey.enabled ? "outline" : "default"}
+            size="sm"
+            className="text-xs h-8"
+            onClick={() => onUpdate({ id: apiKey.id, enabled: !apiKey.enabled })}
+          >
+            {apiKey.enabled ? "تعطيل" : "تفعيل"}
+          </Button>
+          <Button
+            variant="destructive"
+            size="sm"
+            className="text-xs h-8"
+            onClick={() => onDelete({ id: apiKey.id })}
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+          </Button>
+        </div>
+      </div>
+
+      {/* Key Value */}
+      <div className="flex items-center gap-2 bg-background/80 rounded-lg p-3 font-mono text-xs text-muted-foreground" onClick={e => e.stopPropagation()}>
+        <code className="flex-1">
+          {revealed ? apiKey.id : `${apiKey.id.substring(0, 4)}****************${apiKey.id.substring(apiKey.id.length - 4)}`}
+        </code>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-7 w-7 p-0"
+          onClick={() => setRevealed(!revealed)}
+        >
+          {revealed ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-7 w-7 p-0"
+          onClick={() => {
+            navigator.clipboard.writeText(apiKey.id);
+            toast.success("تم نسخ المعرف");
+          }}
+        >
+          <Copy className="w-3.5 h-3.5" />
+        </Button>
+      </div>
+      <p className="text-[9px] text-primary/50 mt-1 opacity-0 group-hover:opacity-100 transition-opacity text-left">اضغط لعرض التفاصيل ←</p>
     </div>
   );
 }

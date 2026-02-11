@@ -24,6 +24,7 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
+import { DetailModal } from "@/components/DetailModal";
 
 const typeConfig: Record<string, { label: string; icon: React.ElementType; color: string }> = {
   google_dork: { label: "Google Dork", icon: Search, color: "text-blue-400" },
@@ -35,6 +36,7 @@ const typeConfig: Record<string, { label: string; icon: React.ElementType; color
 export default function OsintTools() {
   const [searchTerm, setSearchTerm] = useState("");
   const [activeType, setActiveType] = useState("all");
+  const [activeModal, setActiveModal] = useState<string | null>(null);
 
   const { data: queries, isLoading } = trpc.osint.list.useQuery(
     activeType !== "all" ? { queryType: activeType } : undefined
@@ -58,6 +60,13 @@ export default function OsintTools() {
     navigator.clipboard.writeText(query);
     toast.success("تم نسخ الاستعلام");
   };
+
+  const statCards = [
+    { label: "إجمالي الاستعلامات", value: stats.total, icon: Database, color: "text-primary", description: "مجموع كل استعلامات OSINT المتوفرة في النظام." },
+    { label: "Google Dorks", value: stats.google, icon: Search, color: "text-blue-400", description: "استعلامات بحث متقدمة للعثور على معلومات محددة باستخدام جوجل." },
+    { label: "Shodan", value: stats.shodan, icon: Server, color: "text-red-400", description: "استعلامات للبحث عن أجهزة وخوادم متصلة بالإنترنت بناءً على خصائصها." },
+    { label: "Recon", value: stats.recon, icon: Radar, color: "text-emerald-400", description: "خطط وإجراءات استطلاعية لجمع معلومات استخباراتية أولية." },
+  ];
 
   return (
     <div className="space-y-6">
@@ -86,13 +95,12 @@ export default function OsintTools() {
 
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {[
-          { label: "إجمالي الاستعلامات", value: stats.total, icon: Database, color: "text-primary" },
-          { label: "Google Dorks", value: stats.google, icon: Search, color: "text-blue-400" },
-          { label: "Shodan", value: stats.shodan, icon: Server, color: "text-red-400" },
-          { label: "Recon", value: stats.recon, icon: Radar, color: "text-emerald-400" },
-        ].map((stat) => (
-          <Card key={stat.label} className="border-border">
+        {statCards.map((stat) => (
+          <Card
+            key={stat.label}
+            className="border-border cursor-pointer hover:scale-[1.02] transition-all group"
+            onClick={() => setActiveModal(`stat-${stat.label}`)}
+          >
             <CardContent className="p-4">
               <div className="flex items-center gap-3">
                 <div className="w-9 h-9 rounded-lg bg-secondary flex items-center justify-center">
@@ -103,6 +111,7 @@ export default function OsintTools() {
                   <p className="text-[10px] text-muted-foreground">{stat.label}</p>
                 </div>
               </div>
+              <p className="text-[9px] text-primary/50 mt-1 opacity-0 group-hover:opacity-100 transition-opacity">اضغط للتفاصيل ←</p>
             </CardContent>
           </Card>
         ))}
@@ -160,7 +169,10 @@ export default function OsintTools() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.02 }}
               >
-                <Card className="border-border hover:border-primary/30 transition-colors">
+                <Card 
+                  className="border-border hover:border-primary/30 transition-colors cursor-pointer group"
+                  onClick={() => setActiveModal(String(query.id))}
+                >
                   <CardContent className="p-4">
                     <div className="flex items-start justify-between mb-2">
                       <div className="flex items-center gap-3">
@@ -185,13 +197,13 @@ export default function OsintTools() {
                     )}
 
                     {/* Query box */}
-                    <div className="relative p-3 rounded-lg bg-black/30 border border-border group">
+                    <div className="relative p-3 rounded-lg bg-black/30 border border-border group/query">
                       <code className="text-xs font-mono text-primary break-all" dir="ltr">{query.query}</code>
                       <Button
                         size="sm"
                         variant="ghost"
-                        className="absolute top-2 left-2 h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                        onClick={() => copyQuery(query.query)}
+                        className="absolute top-2 left-2 h-6 w-6 p-0 opacity-0 group-hover/query:opacity-100 transition-opacity"
+                        onClick={(e) => { e.stopPropagation(); copyQuery(query.query); }}
                       >
                         <Copy className="w-3 h-3" />
                       </Button>
@@ -203,6 +215,7 @@ export default function OsintTools() {
                         <span className="text-[10px] text-muted-foreground">{query.resultsCount} نتيجة</span>
                       )}
                     </div>
+                    <p className="text-[9px] text-primary/50 mt-1 opacity-0 group-hover:opacity-100 transition-opacity">اضغط للتفاصيل ←</p>
                   </CardContent>
                 </Card>
               </motion.div>
@@ -210,6 +223,56 @@ export default function OsintTools() {
           })}
         </div>
       )}
+
+      {/* Modals */}
+      {statCards.map(stat => (
+        <DetailModal
+          key={`modal-stat-${stat.label}`}
+          open={activeModal === `stat-${stat.label}`}
+          onClose={() => setActiveModal(null)}
+          title={stat.label}
+          icon={<stat.icon className={`w-5 h-5 ${stat.color}`} />}
+        >
+          <div className="p-4 text-center">
+            <p className="text-4xl font-bold">{stat.value}</p>
+            <p className="text-sm text-muted-foreground mt-2">{stat.description}</p>
+          </div>
+        </DetailModal>
+      ))}
+
+      {filteredQueries.map(query => {
+        const config = typeConfig[query.queryType] || typeConfig.google_dork;
+        return (
+          <DetailModal
+            key={`modal-query-${query.id}`}
+            open={activeModal === String(query.id)}
+            onClose={() => setActiveModal(null)}
+            title={query.nameAr}
+            icon={<config.icon className={`w-5 h-5 ${config.color}`} />}
+            maxWidth="max-w-2xl"
+          >
+            <div className="p-4 space-y-4">
+              <p className="text-sm text-muted-foreground">{query.descriptionAr}</p>
+              <div className="relative p-3 rounded-lg bg-black/30 border border-border group">
+                <code className="text-sm font-mono text-primary break-all" dir="ltr">{query.query}</code>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="absolute top-2 left-2 h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                  onClick={() => copyQuery(query.query)}
+                >
+                  <Copy className="w-3 h-3" />
+                </Button>
+              </div>
+              <div className="flex justify-between items-center text-xs text-muted-foreground">
+                <span>ID: {query.queryId}</span>
+                <span>النوع: {config.label}</span>
+                {query.categoryAr && <span>الفئة: {query.categoryAr}</span>}
+              </div>
+            </div>
+          </DetailModal>
+        )
+      })}
     </div>
   );
 }

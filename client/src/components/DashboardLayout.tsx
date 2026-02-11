@@ -1,8 +1,8 @@
 /**
- * DashboardLayout — Dark Observatory Theme
- * RTL-first sidebar layout with NDMO branding
+ * DashboardLayout — Rasid Platform
+ * RTL-first sidebar layout with Rasid branding
  * Collapsible sidebar with icon+label navigation
- * Integrated auth, role-based nav, user profile, real-time notifications
+ * Integrated auth, role-based nav, user profile, theme toggle, real-time notifications
  */
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
@@ -39,12 +39,18 @@ import {
   Radar,
   Brain,
   Network,
+  Sun,
+  Moon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { useNdmoAuth } from "@/hooks/useNdmoAuth";
 import { getLoginUrl } from "@/const";
 import NotificationBell from "./NotificationBell";
+import { useTheme } from "@/contexts/ThemeContext";
+
+// Rasid calligraphy logo with gold outline
+const RASID_LOGO = "https://files.manuscdn.com/user_upload_by_module/session_file/310519663296955420/ziWPuMClYqvYmkJG.png";
 
 interface NavItem {
   label: string;
@@ -91,6 +97,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const { user, isAuthenticated, loading, logout, isAdmin, ndmoRole } = useNdmoAuth();
+  const { theme, toggleTheme, switchable } = useTheme();
 
   const currentPage = navItems.find((item) => item.path === location);
 
@@ -129,10 +136,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           right-0 lg:right-auto
         `}
       >
-        {/* Logo area */}
+        {/* Logo area with Rasid branding */}
         <div className="flex items-center gap-3 px-4 h-16 border-b border-sidebar-border">
-          <div className="w-9 h-9 rounded-lg bg-primary/20 flex items-center justify-center flex-shrink-0">
-            <Shield className="w-5 h-5 text-primary" />
+          <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden">
+            <img
+              src={RASID_LOGO}
+              alt="راصد"
+              className="w-9 h-9 object-contain"
+            />
           </div>
           {!collapsed && (
             <motion.div
@@ -141,8 +152,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               exit={{ opacity: 0, width: 0 }}
               className="overflow-hidden"
             >
-              <h1 className="text-sm font-bold text-foreground whitespace-nowrap">NDMO</h1>
-              <p className="text-[10px] text-muted-foreground whitespace-nowrap">رصد تسريبات البيانات</p>
+              <h1 className="text-sm font-bold text-foreground whitespace-nowrap">منصة راصد</h1>
+              <p className="text-[10px] text-muted-foreground whitespace-nowrap">رصد تسريبات البيانات الشخصية</p>
             </motion.div>
           )}
         </div>
@@ -278,6 +289,19 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </div>
 
           <div className="flex items-center gap-2">
+            {/* Theme Toggle */}
+            {switchable && toggleTheme && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="text-muted-foreground hover:text-foreground"
+                onClick={toggleTheme}
+                title={theme === "dark" ? "الوضع الفاتح" : "الوضع الداكن"}
+              >
+                {theme === "dark" ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+              </Button>
+            )}
+
             {/* Search */}
             <Button
               variant="ghost"
@@ -294,7 +318,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             {/* Status indicator */}
             <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20">
               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse-glow" />
-              <span className="text-xs text-emerald-400 font-medium">نشط</span>
+              <span className="text-xs text-emerald-600 dark:text-emerald-400 font-medium">نشط</span>
             </div>
           </div>
         </header>
