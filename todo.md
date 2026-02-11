@@ -185,3 +185,11 @@
 - [x] Add user profile display in sidebar
 - [x] Test login flow and user management (86/86 tests passed)
 - [x] Checkpoint and deliver
+
+## Phase 21: Fix AI Enrichment & Add Detailed Evidence
+- [x] Fix: AI enrichment button causes logout (fixed useUtils hook call + pre-enriched all 93 leaks)
+- [x] Update enrichment procedure to work with platform auth
+- [x] Add detailed incident descriptions to all 93 leak records (Arabic + English)
+- [x] Add evidence details (URLs, screenshots, hashes, forensic data) to leak records
+- [x] Enhance leak detail panel to show full evidence chain and incident timeline
+- [x] Run tests and checkpoint (86/86 passed)

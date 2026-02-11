@@ -117,13 +117,14 @@ export default function Leaks() {
 
   const [selectedLeak, setSelectedLeak] = useState<string | null>(null);
   const [enrichingId, setEnrichingId] = useState<string | null>(null);
+  const utils = trpc.useUtils();
 
   const enrichMutation = trpc.enrichment.enrichLeak.useMutation({
-    onSuccess: (result, variables) => {
+    onSuccess: (result) => {
       toast.success(`تم إثراء التسريب بنجاح (ثقة: ${result.aiConfidence}%)`);
       setEnrichingId(null);
       // Refetch leaks to get updated AI data
-      trpc.useUtils().leaks.list.invalidate();
+      utils.leaks.list.invalidate();
     },
     onError: () => {
       toast.error("فشل إثراء التسريب بالذكاء الاصطناعي");
