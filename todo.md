@@ -363,3 +363,6 @@
 - [x] Smooth transitions and loading animations
 - [x] All 120 tests passing (4 test files)
 - [x] Checkpoint saved
+
+## Phase 28 Bug Fixes
+- [x] Fix file upload button not working on /public/verify page

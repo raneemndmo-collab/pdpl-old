@@ -1,9 +1,9 @@
 /**
  * PublicVerify — Public document verification page
  * No login required — accessible via /public/verify
- * Allows anyone to verify document authenticity via code or QR scan
+ * Allows anyone to verify document authenticity via code, QR scan, or file upload
  */
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { useRoute } from "wouter";
 import {
   Shield,
@@ -16,6 +16,9 @@ import {
   Upload,
   ArrowLeft,
   Fingerprint,
+  Camera,
+  Image as ImageIcon,
+  X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -64,6 +67,13 @@ const scanPhases = [
   { label: "إنهاء عملية التحقق...", icon: "✅", progress: 100 },
 ];
 
+// Extract NDMO verification code from text
+function extractVerificationCode(text: string): string | null {
+  // Match patterns like NDMO-DOC-2026-XXXX
+  const match = text.match(/NDMO-DOC-\d{4}-[A-Z0-9]+/i);
+  return match ? match[0].toUpperCase() : null;
+}
+
 export default function PublicVerify() {
   const [, params] = useRoute("/public/verify/:code");
   const [code, setCode] = useState(params?.code || "");
@@ -71,6 +81,14 @@ export default function PublicVerify() {
   const [scanPhaseIndex, setScanPhaseIndex] = useState(0);
   const [result, setResult] = useState<any>(null);
   const [error, setError] = useState("");
+  const [showQrScanner, setShowQrScanner] = useState(false);
+  const [uploadStatus, setUploadStatus] = useState<"idle" | "processing" | "error">("idle");
+  const [uploadError, setUploadError] = useState("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const scanIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Auto-verify if code in URL
   useEffect(() => {
@@ -80,9 +98,31 @@ export default function PublicVerify() {
     }
   }, [params?.code]);
 
+  // Cleanup camera stream on unmount
+  useEffect(() => {
+    return () => {
+      stopCamera();
+    };
+  }, []);
+
+  const stopCamera = useCallback(() => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((track) => track.stop());
+      streamRef.current = null;
+    }
+    if (scanIntervalRef.current) {
+      clearInterval(scanIntervalRef.current);
+      scanIntervalRef.current = null;
+    }
+  }, []);
+
   const handleVerify = async (verifyCode?: string) => {
     const codeToVerify = verifyCode || code.trim();
     if (!codeToVerify) return;
+
+    // Close camera if open
+    stopCamera();
+    setShowQrScanner(false);
 
     setState("scanning");
     setScanPhaseIndex(0);
@@ -114,6 +154,190 @@ export default function PublicVerify() {
     }
   };
 
+  // ─── File Upload Handler ───────────────────────────
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploadStatus("processing");
+    setUploadError("");
+
+    try {
+      // Check if it's an image file (for QR code extraction)
+      if (file.type.startsWith("image/")) {
+        // Create an image element to read the QR code
+        const img = document.createElement("img");
+        const reader = new FileReader();
+
+        reader.onload = async (ev) => {
+          img.onload = async () => {
+            // Use canvas to process the image
+            const canvas = document.createElement("canvas");
+            canvas.width = img.width;
+            canvas.height = img.height;
+            const ctx = canvas.getContext("2d");
+            if (!ctx) {
+              setUploadStatus("error");
+              setUploadError("فشل في معالجة الصورة");
+              return;
+            }
+            ctx.drawImage(img, 0, 0);
+            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+
+            // Try to detect QR code using the BarcodeDetector API (if available)
+            if ("BarcodeDetector" in window) {
+              try {
+                const barcodeDetector = new (window as any).BarcodeDetector({ formats: ["qr_code"] });
+                const barcodes = await barcodeDetector.detect(img);
+                if (barcodes.length > 0) {
+                  const qrValue = barcodes[0].rawValue;
+                  // Extract verification code from QR content
+                  const extractedCode = extractVerificationCode(qrValue);
+                  if (extractedCode) {
+                    setCode(extractedCode);
+                    setUploadStatus("idle");
+                    handleVerify(extractedCode);
+                    return;
+                  }
+                  // If QR contains a URL with the code
+                  const urlMatch = qrValue.match(/verify\/([A-Z0-9-]+)/i);
+                  if (urlMatch) {
+                    setCode(urlMatch[1]);
+                    setUploadStatus("idle");
+                    handleVerify(urlMatch[1]);
+                    return;
+                  }
+                  // Use the raw QR value as the code
+                  setCode(qrValue);
+                  setUploadStatus("idle");
+                  handleVerify(qrValue);
+                  return;
+                }
+              } catch (barcodeErr) {
+                console.log("BarcodeDetector failed, trying fallback");
+              }
+            }
+
+            // Fallback: Try to extract text from the image using OCR-like pattern matching
+            // Look for NDMO-DOC pattern in the file name
+            const fileNameCode = extractVerificationCode(file.name);
+            if (fileNameCode) {
+              setCode(fileNameCode);
+              setUploadStatus("idle");
+              handleVerify(fileNameCode);
+              return;
+            }
+
+            // If no QR code found, show error with helpful message
+            setUploadStatus("error");
+            setUploadError(
+              "لم يتم العثور على رمز QR في الصورة. يرجى التأكد من أن الصورة تحتوي على رمز QR واضح، أو أدخل كود التوثيق يدوياً."
+            );
+          };
+          img.src = ev.target?.result as string;
+        };
+        reader.readAsDataURL(file);
+      } else if (file.type === "application/pdf") {
+        // For PDF files, try to extract text and find the verification code
+        setUploadStatus("error");
+        setUploadError(
+          "لقراءة ملفات PDF، يرجى فتح الملف واستخراج كود التوثيق (NDMO-DOC-XXXX-XXXX) ثم إدخاله يدوياً في الحقل أعلاه."
+        );
+      } else {
+        setUploadStatus("error");
+        setUploadError("نوع الملف غير مدعوم. يرجى رفع صورة (PNG, JPG) تحتوي على رمز QR.");
+      }
+    } catch (err) {
+      setUploadStatus("error");
+      setUploadError("حدث خطأ أثناء معالجة الملف");
+    }
+
+    // Reset file input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
+
+  // ─── QR Camera Scanner ───────────────────────────
+  const startQrScanner = async () => {
+    setShowQrScanner(true);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: "environment", width: { ideal: 640 }, height: { ideal: 480 } },
+      });
+      streamRef.current = stream;
+
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        videoRef.current.play();
+      }
+
+      // Start scanning for QR codes
+      scanIntervalRef.current = setInterval(async () => {
+        if (!videoRef.current || !canvasRef.current) return;
+        const video = videoRef.current;
+        const canvas = canvasRef.current;
+
+        if (video.readyState !== video.HAVE_ENOUGH_DATA) return;
+
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) return;
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+        // Use BarcodeDetector if available
+        if ("BarcodeDetector" in window) {
+          try {
+            const barcodeDetector = new (window as any).BarcodeDetector({ formats: ["qr_code"] });
+            const barcodes = await barcodeDetector.detect(canvas);
+            if (barcodes.length > 0) {
+              const qrValue = barcodes[0].rawValue;
+              const extractedCode = extractVerificationCode(qrValue);
+              if (extractedCode) {
+                stopCamera();
+                setShowQrScanner(false);
+                setCode(extractedCode);
+                handleVerify(extractedCode);
+                return;
+              }
+              // Try URL pattern
+              const urlMatch = qrValue.match(/verify\/([A-Z0-9-]+)/i);
+              if (urlMatch) {
+                stopCamera();
+                setShowQrScanner(false);
+                setCode(urlMatch[1]);
+                handleVerify(urlMatch[1]);
+                return;
+              }
+              // Use raw value
+              stopCamera();
+              setShowQrScanner(false);
+              setCode(qrValue);
+              handleVerify(qrValue);
+            }
+          } catch (err) {
+            // BarcodeDetector not supported, continue scanning
+          }
+        }
+      }, 500);
+    } catch (err: any) {
+      setShowQrScanner(false);
+      if (err.name === "NotAllowedError") {
+        setUploadError("تم رفض إذن الكاميرا. يرجى السماح بالوصول إلى الكاميرا من إعدادات المتصفح.");
+      } else if (err.name === "NotFoundError") {
+        setUploadError("لم يتم العثور على كاميرا. يرجى التأكد من توصيل الكاميرا.");
+      } else {
+        setUploadError("فشل في تشغيل الكاميرا. يرجى استخدام خيار رفع الملف بدلاً من ذلك.");
+      }
+    }
+  };
+
+  const closeQrScanner = () => {
+    stopCamera();
+    setShowQrScanner(false);
+  };
+
   return (
     <div
       className="min-h-screen relative overflow-hidden"
@@ -123,6 +347,18 @@ export default function PublicVerify() {
       }}
     >
       <FloatingBubbles />
+
+      {/* Hidden file input */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*,.pdf"
+        className="hidden"
+        onChange={handleFileUpload}
+      />
+
+      {/* Hidden canvas for QR scanning */}
+      <canvas ref={canvasRef} className="hidden" />
 
       {/* Header */}
       <div className="relative z-10 flex items-center justify-between px-6 py-4">
@@ -152,6 +388,53 @@ export default function PublicVerify() {
                 أدخل كود التوثيق المطبوع على الخطاب أو امسح رمز QR للتحقق من صحة ومصداقية الوثيقة
               </p>
             </div>
+
+            {/* QR Scanner Modal */}
+            {showQrScanner && (
+              <div
+                className="rounded-2xl p-4 relative overflow-hidden"
+                style={{
+                  background: "rgba(15, 30, 60, 0.85)",
+                  backdropFilter: "blur(20px)",
+                  border: "1px solid rgba(59, 130, 246, 0.2)",
+                }}
+              >
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-sm font-medium text-blue-200">مسح رمز QR بالكاميرا</h3>
+                  <button
+                    onClick={closeQrScanner}
+                    className="w-8 h-8 rounded-lg flex items-center justify-center bg-red-500/10 hover:bg-red-500/20 transition-colors"
+                  >
+                    <X className="w-4 h-4 text-red-400" />
+                  </button>
+                </div>
+                <div className="relative rounded-xl overflow-hidden bg-black/50 aspect-video">
+                  <video
+                    ref={videoRef}
+                    className="w-full h-full object-cover"
+                    playsInline
+                    muted
+                  />
+                  {/* Scanning overlay */}
+                  <div className="absolute inset-0 pointer-events-none">
+                    <div className="absolute inset-0 border-2 border-blue-400/30 rounded-xl" />
+                    {/* Corner markers */}
+                    <div className="absolute top-3 right-3 w-8 h-8 border-t-2 border-r-2 border-blue-400 rounded-tr-lg" />
+                    <div className="absolute top-3 left-3 w-8 h-8 border-t-2 border-l-2 border-blue-400 rounded-tl-lg" />
+                    <div className="absolute bottom-3 right-3 w-8 h-8 border-b-2 border-r-2 border-blue-400 rounded-br-lg" />
+                    <div className="absolute bottom-3 left-3 w-8 h-8 border-b-2 border-l-2 border-blue-400 rounded-bl-lg" />
+                    {/* Scan line */}
+                    <div
+                      className="absolute left-4 right-4 h-0.5 bg-gradient-to-r from-transparent via-blue-400 to-transparent"
+                      style={{ animation: "qr-scan-line 2s ease-in-out infinite" }}
+                    />
+                  </div>
+                </div>
+                <p className="text-xs text-blue-300/50 mt-2 text-center">
+                  وجّه الكاميرا نحو رمز QR المطبوع على الوثيقة
+                </p>
+              </div>
+            )}
 
             <div
               className="rounded-2xl p-6 space-y-4"
@@ -195,20 +478,41 @@ export default function PublicVerify() {
                 <Button
                   variant="outline"
                   className="h-11 border-blue-500/20 text-blue-300 hover:bg-blue-500/10 bg-transparent"
-                  onClick={() => {}}
+                  onClick={startQrScanner}
                 >
-                  <QrCode className="w-4 h-4 ml-2" />
+                  <Camera className="w-4 h-4 ml-2" />
                   مسح QR
                 </Button>
                 <Button
                   variant="outline"
                   className="h-11 border-blue-500/20 text-blue-300 hover:bg-blue-500/10 bg-transparent"
-                  onClick={() => {}}
+                  onClick={() => fileInputRef.current?.click()}
                 >
                   <Upload className="w-4 h-4 ml-2" />
                   رفع ملف
                 </Button>
               </div>
+
+              {/* Upload processing status */}
+              {uploadStatus === "processing" && (
+                <div className="flex items-center justify-center gap-2 p-3 rounded-lg bg-blue-500/10 border border-blue-500/20">
+                  <Loader2 className="w-4 h-4 text-blue-400 animate-spin" />
+                  <span className="text-sm text-blue-300">جارٍ معالجة الملف واستخراج رمز QR...</span>
+                </div>
+              )}
+
+              {/* Upload/Camera error message */}
+              {(uploadStatus === "error" || uploadError) && (
+                <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 text-right">
+                  <p className="text-sm text-amber-300">{uploadError || uploadError}</p>
+                  <button
+                    onClick={() => { setUploadStatus("idle"); setUploadError(""); }}
+                    className="text-xs text-blue-400 hover:underline mt-1"
+                  >
+                    إغلاق
+                  </button>
+                </div>
+              )}
             </div>
 
             <p className="text-blue-300/30 text-xs">
@@ -386,6 +690,19 @@ export default function PublicVerify() {
         @keyframes spin {
           from { transform: rotate(0deg); }
           to { transform: rotate(360deg); }
+        }
+        @keyframes pulse-glow {
+          0%, 100% { opacity: 0.4; transform: scale(1); }
+          50% { opacity: 1; transform: scale(1.1); }
+        }
+        @keyframes qr-scan-line {
+          0% { top: 10%; }
+          50% { top: 85%; }
+          100% { top: 10%; }
+        }
+        @keyframes float-bubble {
+          0%, 100% { transform: translateY(0) scale(1); }
+          50% { transform: translateY(-20px) scale(1.05); }
         }
       `}</style>
     </div>
