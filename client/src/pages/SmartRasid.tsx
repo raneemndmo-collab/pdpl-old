@@ -60,6 +60,8 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
+import { soundManager } from "@/lib/soundManager";
+import { Save, Trash2, FolderOpen, Download, X, MessageCircle, Archive } from "lucide-react";
 
 // ═══ CONSTANTS ═══
 const RASID_CHARACTER_URL = "https://files.manuscdn.com/user_upload_by_module/session_file/310519663296955420/EcTxzqTDBTbCBkgA.png";
@@ -329,6 +331,26 @@ export default function SmartRasid() {
   const [ratingHover, setRatingHover] = useState<{ msgId: string; star: number } | null>(null);
   const [expandedThinking, setExpandedThinking] = useState<Record<string, boolean>>({});
   const [loadingSteps, setLoadingSteps] = useState<ThinkingStep[]>([]);
+  const [isMuted, setIsMuted] = useState(soundManager.muted);
+  const [showHistory, setShowHistory] = useState(false);
+  const [conversationId] = useState(() => `conv-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
+
+  // Chat history queries/mutations
+  const historyQuery = trpc.chatHistory.list.useQuery(undefined, { enabled: showHistory });
+  const saveMutation = trpc.chatHistory.save.useMutation();
+  const deleteMutation = trpc.chatHistory.delete.useMutation();
+  const loadConvQuery = trpc.chatHistory.get.useQuery(
+    { conversationId: "" },
+    { enabled: false }
+  );
+
+  // Sound preference sync
+  useEffect(() => {
+    const unsub = soundManager.onChange(() => setIsMuted(soundManager.muted));
+    return () => { unsub(); };
+  }, []);
 
   const rateMutation = trpc.aiRatings.rate.useMutation();
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -403,6 +425,7 @@ export default function SmartRasid() {
     setShowSuggestions(false);
     setSuggestions([]);
     setIsLoading(true);
+    soundManager.playSend();
 
     setLoadingSteps([
       {
@@ -427,6 +450,7 @@ export default function SmartRasid() {
       });
 
       setLoadingSteps([]);
+      soundManager.playMessageReceived();
 
       const assistantMessage: ChatMessage = {
         id: `assistant-${Date.now()}`,
@@ -441,6 +465,7 @@ export default function SmartRasid() {
       setMessages(prev => [...prev, assistantMessage]);
     } catch (err: any) {
       setLoadingSteps([]);
+      soundManager.playError();
       const errorMessage: ChatMessage = {
         id: `error-${Date.now()}`,
         role: "assistant",
@@ -459,6 +484,134 @@ export default function SmartRasid() {
     setInputValue("");
     setExpandedThinking({});
     inputRef.current?.focus();
+  };
+
+  // Save current conversation
+  const saveConversation = async () => {
+    if (messages.length === 0) {
+      toast.error("لا توجد رسائل لحفظها");
+      return;
+    }
+    setIsSaving(true);
+    try {
+      const firstUserMsg = messages.find(m => m.role === "user");
+      const title = firstUserMsg?.content.slice(0, 100) || "محادثة جديدة";
+      await saveMutation.mutateAsync({
+        conversationId,
+        title,
+        messages: messages.map(m => ({
+          messageId: m.id,
+          role: m.role,
+          content: m.content,
+          toolsUsed: m.toolsUsed || [],
+          thinkingSteps: m.thinkingSteps || [],
+          rating: m.rating,
+        })),
+      });
+      soundManager.playSuccess();
+      toast.success("تم حفظ المحادثة بنجاح");
+      historyQuery.refetch();
+    } catch {
+      toast.error("فشل في حفظ المحادثة");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Load a saved conversation
+  const loadConversation = async (convId: string) => {
+    try {
+      const res = await fetch(`/api/trpc/chatHistory.get?input=${encodeURIComponent(JSON.stringify({ conversationId: convId }))}`);
+      const data = await res.json();
+      const result = data?.result?.data;
+      if (result?.messages) {
+        setMessages(result.messages.map((m: any) => ({
+          id: m.messageId,
+          role: m.role,
+          content: m.content,
+          timestamp: new Date(m.createdAt),
+          toolsUsed: m.toolsUsed,
+          thinkingSteps: m.thinkingSteps,
+          rating: m.rating,
+        })));
+        setShowHistory(false);
+        soundManager.playMessageReceived();
+        toast.success("تم تحميل المحادثة");
+      }
+    } catch {
+      toast.error("فشل في تحميل المحادثة");
+    }
+  };
+
+  // Delete a saved conversation
+  const deleteConversation = async (convId: string) => {
+    try {
+      await deleteMutation.mutateAsync({ conversationId: convId });
+      toast.success("تم حذف المحادثة");
+      historyQuery.refetch();
+    } catch {
+      toast.error("فشل في حذف المحادثة");
+    }
+  };
+
+  // Export conversation as text report
+  const exportConversation = () => {
+    if (messages.length === 0) {
+      toast.error("لا توجد رسائل للتصدير");
+      return;
+    }
+    setIsExporting(true);
+    try {
+      const lines: string[] = [
+        "═══════════════════════════════════════════════════",
+        "  تقرير محادثة راصد الذكي",
+        "  Smart Rasid AI Conversation Report",
+        "═══════════════════════════════════════════════════",
+        "",
+        `التاريخ: ${new Date().toLocaleDateString("ar-SA")}`,
+        `الوقت: ${new Date().toLocaleTimeString("ar-SA")}`,
+        `عدد الرسائل: ${messages.length}`,
+        "",
+        "───────────────────────────────────────────────────",
+        "",
+      ];
+
+      messages.forEach((m, i) => {
+        const time = m.timestamp ? new Date(m.timestamp).toLocaleTimeString("ar-SA") : "";
+        const role = m.role === "user" ? "👤 المستخدم" : "🤖 راصد الذكي";
+        lines.push(`[${time}] ${role}:`);
+        lines.push(m.content);
+        if (m.toolsUsed && m.toolsUsed.length > 0) {
+          lines.push(`  الأدوات المستخدمة: ${m.toolsUsed.join("، ")}`);
+        }
+        if (m.rating) {
+          lines.push(`  التقييم: ${"⭐".repeat(m.rating)}`);
+        }
+        lines.push("");
+        if (i < messages.length - 1) {
+          lines.push("- - - - - - - - - - - - - - - - - - - - - - - - -");
+          lines.push("");
+        }
+      });
+
+      lines.push("═══════════════════════════════════════════════════");
+      lines.push("  نهاية التقرير — منصة راصد");
+      lines.push("═══════════════════════════════════════════════════");
+
+      const blob = new Blob([lines.join("\n")], { type: "text/plain;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `rasid-chat-${new Date().toISOString().slice(0, 10)}.txt`;
+      a.click();
+      URL.revokeObjectURL(url);
+      soundManager.playSuccess();
+      toast.success("تم تصدير المحادثة بنجاح");
+    } catch {
+      toast.error("فشل في تصدير المحادثة");
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   const handleRating = async (msg: ChatMessage, star: number) => {
@@ -557,6 +710,67 @@ export default function SmartRasid() {
               <span className="text-cyan-500/30">|</span>
               <span className="text-cyan-400/50">{Object.keys(toolLabels).length} أداة</span>
             </div>
+
+            {/* Sound Toggle */}
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => {
+                const newMuted = soundManager.toggleMute();
+                toast.info(newMuted ? "تم كتم الصوت" : "تم تفعيل الصوت");
+              }}
+              className={`flex items-center gap-1 px-2.5 py-2 rounded-lg border text-xs transition-all font-mono ${
+                isMuted
+                  ? "bg-red-500/10 border-red-500/20 text-red-400"
+                  : "bg-emerald-500/10 border-emerald-500/20 text-emerald-400"
+              }`}
+              title={isMuted ? "تفعيل الصوت" : "كتم الصوت"}
+            >
+              {isMuted ? (
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>
+              ) : (
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+              )}
+            </motion.button>
+
+            {/* Save Conversation */}
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={saveConversation}
+              disabled={isSaving || messages.length === 0}
+              className="flex items-center gap-1 px-2.5 py-2 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20 hover:border-emerald-500/40 text-emerald-400 text-xs transition-all font-mono disabled:opacity-30"
+              title="حفظ المحادثة"
+            >
+              {isSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+            </motion.button>
+
+            {/* Export */}
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={exportConversation}
+              disabled={messages.length === 0}
+              className="flex items-center gap-1 px-2.5 py-2 rounded-lg bg-violet-500/10 hover:bg-violet-500/20 border border-violet-500/20 hover:border-violet-500/40 text-violet-400 text-xs transition-all font-mono disabled:opacity-30"
+              title="تصدير المحادثة"
+            >
+              <Download className="w-3.5 h-3.5" />
+            </motion.button>
+
+            {/* History */}
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => setShowHistory(!showHistory)}
+              className={`flex items-center gap-1 px-2.5 py-2 rounded-lg border text-xs transition-all font-mono ${
+                showHistory
+                  ? "bg-cyan-500/20 border-cyan-500/40 text-cyan-300"
+                  : "bg-cyan-500/10 border-cyan-500/20 text-cyan-400 hover:bg-cyan-500/20"
+              }`}
+              title="سجل المحادثات"
+            >
+              <Archive className="w-3.5 h-3.5" />
+            </motion.button>
 
             <motion.button
               whileHover={{ scale: 1.05 }}
@@ -1064,6 +1278,95 @@ export default function SmartRasid() {
           </div>
         </div>
       </div>
+
+      {/* ═══ HISTORY SIDEBAR PANEL ═══ */}
+      <AnimatePresence>
+        {showHistory && (
+          <motion.div
+            initial={{ x: 300, opacity: 0 }}
+            animate={{ x: 0, opacity: 1 }}
+            exit={{ x: 300, opacity: 0 }}
+            transition={{ type: "spring", damping: 25, stiffness: 300 }}
+            className="fixed top-0 left-0 bottom-0 w-80 bg-[#0a1628]/95 backdrop-blur-2xl border-l border-cyan-500/20 z-50 flex flex-col shadow-2xl shadow-cyan-500/5"
+            dir="rtl"
+          >
+            {/* History Header */}
+            <div className="flex items-center justify-between px-4 py-3 border-b border-cyan-500/15">
+              <div className="flex items-center gap-2">
+                <Archive className="w-4 h-4 text-cyan-400" />
+                <h3 className="text-sm font-bold text-white font-[Tajawal]">سجل المحادثات</h3>
+              </div>
+              <motion.button
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.9 }}
+                onClick={() => setShowHistory(false)}
+                className="w-7 h-7 rounded-lg bg-red-500/10 border border-red-500/20 flex items-center justify-center text-red-400 hover:bg-red-500/20 transition-all"
+              >
+                <X className="w-3.5 h-3.5" />
+              </motion.button>
+            </div>
+
+            {/* History List */}
+            <div className="flex-1 overflow-y-auto p-3 space-y-2">
+              {historyQuery.isLoading ? (
+                <div className="flex items-center justify-center py-10">
+                  <Loader2 className="w-5 h-5 text-cyan-400 animate-spin" />
+                </div>
+              ) : !historyQuery.data || historyQuery.data.length === 0 ? (
+                <div className="text-center py-10">
+                  <MessageCircle className="w-8 h-8 text-cyan-500/20 mx-auto mb-3" />
+                  <p className="text-xs text-slate-500 font-[Tajawal]">لا توجد محادثات محفوظة</p>
+                </div>
+              ) : (
+                historyQuery.data.map((conv: any) => (
+                  <motion.div
+                    key={conv.conversationId}
+                    initial={{ opacity: 0, y: 5 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="group p-3 rounded-xl bg-[#060d1b]/60 border border-cyan-500/10 hover:border-cyan-500/25 transition-all cursor-pointer"
+                    onClick={() => loadConversation(conv.conversationId)}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-medium text-white truncate font-[Tajawal]">
+                          {conv.title}
+                        </p>
+                        <div className="flex items-center gap-2 mt-1.5">
+                          <span className="text-[10px] text-cyan-400/50 font-mono">
+                            {conv.messageCount} رسالة
+                          </span>
+                          <span className="text-cyan-500/20">·</span>
+                          <span className="text-[10px] text-cyan-400/50 font-mono">
+                            {new Date(conv.createdAt).toLocaleDateString("ar-SA")}
+                          </span>
+                        </div>
+                      </div>
+                      <motion.button
+                        whileHover={{ scale: 1.1 }}
+                        whileTap={{ scale: 0.9 }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          deleteConversation(conv.conversationId);
+                        }}
+                        className="w-6 h-6 rounded-md bg-red-500/10 border border-red-500/20 flex items-center justify-center text-red-400 opacity-0 group-hover:opacity-100 transition-all hover:bg-red-500/20 flex-shrink-0"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </motion.button>
+                    </div>
+                  </motion.div>
+                ))
+              )}
+            </div>
+
+            {/* History Footer */}
+            <div className="px-4 py-3 border-t border-cyan-500/15">
+              <p className="text-[10px] text-cyan-500/40 font-mono text-center">
+                CHAT_ARCHIVE // {historyQuery.data?.length || 0} SAVED
+              </p>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Leak Detail Drilldown */}
       <LeakDetailDrilldown

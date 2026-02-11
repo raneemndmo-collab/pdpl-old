@@ -701,3 +701,40 @@ export const userSessions = mysqlTable("user_sessions", {
 });
 export type UserSession = typeof userSessions.$inferSelect;
 export type InsertUserSession = typeof userSessions.$inferInsert;
+
+
+/**
+ * Chat Conversations — stores Smart Rasid AI conversation sessions
+ */
+export const chatConversations = mysqlTable("chat_conversations", {
+  id: int("id").autoincrement().primaryKey(),
+  conversationId: varchar("ccConversationId", { length: 64 }).notNull().unique(),
+  userId: varchar("ccUserId", { length: 64 }).notNull(),
+  userName: varchar("ccUserName", { length: 255 }),
+  title: varchar("ccTitle", { length: 500 }).notNull(),
+  summary: text("ccSummary"),
+  messageCount: int("ccMessageCount").default(0).notNull(),
+  totalToolsUsed: int("ccTotalToolsUsed").default(0).notNull(),
+  status: mysqlEnum("ccStatus", ["active", "archived", "exported"]).default("active").notNull(),
+  createdAt: timestamp("ccCreatedAt").defaultNow().notNull(),
+  updatedAt: timestamp("ccUpdatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type ChatConversation = typeof chatConversations.$inferSelect;
+export type InsertChatConversation = typeof chatConversations.$inferInsert;
+
+/**
+ * Chat Messages — individual messages within a conversation
+ */
+export const chatMessages = mysqlTable("chat_messages", {
+  id: int("id").autoincrement().primaryKey(),
+  conversationId: varchar("cmConversationId", { length: 64 }).notNull(),
+  messageId: varchar("cmMessageId", { length: 64 }).notNull(),
+  role: mysqlEnum("cmRole", ["user", "assistant"]).notNull(),
+  content: text("cmContent").notNull(),
+  toolsUsed: json("cmToolsUsed"),
+  thinkingSteps: json("cmThinkingSteps"),
+  rating: int("cmRating"),
+  createdAt: timestamp("cmCreatedAt").defaultNow().notNull(),
+});
+export type ChatMessage = typeof chatMessages.$inferSelect;
+export type InsertChatMessage = typeof chatMessages.$inferInsert;

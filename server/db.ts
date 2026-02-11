@@ -24,6 +24,10 @@ import {
   platformUsers,
   type InsertPlatformUser,
   type PlatformUser,
+  chatConversations,
+  chatMessages,
+  type InsertChatConversation,
+  type InsertChatMessage,
 } from "../drizzle/schema";
 import { ENV } from "./_core/env";
 
@@ -1233,4 +1237,82 @@ export async function checkLeaderMention(message: string): Promise<string | null
   }
 
   return null;
+}
+
+
+// ═══════════════════════════════════════════════════════════════
+// Chat Conversations & Messages
+// ═══════════════════════════════════════════════════════════════
+
+export async function createConversation(data: InsertChatConversation) {
+  const db = await getDb();
+  if (!db) return null;
+  await db.insert(chatConversations).values(data);
+  return data.conversationId;
+}
+
+export async function getUserConversations(userId: string, limit = 50) {
+  const db = await getDb();
+  if (!db) return [];
+  return db
+    .select()
+    .from(chatConversations)
+    .where(eq(chatConversations.userId, userId))
+    .orderBy(desc(chatConversations.updatedAt))
+    .limit(limit);
+}
+
+export async function getConversationById(conversationId: string) {
+  const db = await getDb();
+  if (!db) return null;
+  const rows = await db
+    .select()
+    .from(chatConversations)
+    .where(eq(chatConversations.conversationId, conversationId))
+    .limit(1);
+  return rows[0] || null;
+}
+
+export async function updateConversation(
+  conversationId: string,
+  data: Partial<Pick<InsertChatConversation, "title" | "summary" | "messageCount" | "totalToolsUsed" | "status">>
+) {
+  const db = await getDb();
+  if (!db) return;
+  await db
+    .update(chatConversations)
+    .set(data)
+    .where(eq(chatConversations.conversationId, conversationId));
+}
+
+export async function deleteConversation(conversationId: string) {
+  const db = await getDb();
+  if (!db) return;
+  await db.delete(chatMessages).where(eq(chatMessages.conversationId, conversationId));
+  await db.delete(chatConversations).where(eq(chatConversations.conversationId, conversationId));
+}
+
+export async function addChatMessage(data: InsertChatMessage) {
+  const db = await getDb();
+  if (!db) return;
+  await db.insert(chatMessages).values(data);
+  // Update conversation message count
+  const conv = await getConversationById(data.conversationId);
+  if (conv) {
+    const toolCount = Array.isArray(data.toolsUsed) ? (data.toolsUsed as string[]).length : 0;
+    await updateConversation(data.conversationId, {
+      messageCount: conv.messageCount + 1,
+      totalToolsUsed: conv.totalToolsUsed + toolCount,
+    });
+  }
+}
+
+export async function getConversationMessages(conversationId: string) {
+  const db = await getDb();
+  if (!db) return [];
+  return db
+    .select()
+    .from(chatMessages)
+    .where(eq(chatMessages.conversationId, conversationId))
+    .orderBy(chatMessages.createdAt);
 }

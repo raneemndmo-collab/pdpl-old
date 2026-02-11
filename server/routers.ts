@@ -117,6 +117,13 @@ import {
   deletePersonalityScenario,
   getGreetingForUser,
   checkLeaderMention,
+  createConversation,
+  getUserConversations,
+  getConversationById,
+  updateConversation,
+  deleteConversation,
+  addChatMessage,
+  getConversationMessages,
 } from "./db";
 
 // Helper to get current user info from either auth source
@@ -1620,6 +1627,153 @@ export const appRouter = router({
         );
         return session;
       }),
+    saveAsLeak: protectedProcedure
+      .input(z.object({
+        scanResult: z.object({
+          id: z.string(),
+          source: z.string(),
+          type: z.string(),
+          severity: z.string(),
+          title: z.string(),
+          description: z.string(),
+          details: z.any().optional(),
+          url: z.string().optional(),
+          affectedRecords: z.number().optional(),
+          dataTypes: z.array(z.string()).optional(),
+        }),
+        targetValue: z.string(),
+        targetType: z.string(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const who = getAuthUser(ctx);
+        const { scanResult, targetValue, targetType } = input;
+        
+        // Map scan source to leak source
+        const sourceMap: Record<string, "telegram" | "darkweb" | "paste"> = {
+          xposedornot: "darkweb",
+          breachdirectory: "darkweb",
+          crtsh: "paste",
+          psbdmp: "paste",
+          googledork: "paste",
+        };
+        const leakSource = sourceMap[scanResult.source.toLowerCase()] || "darkweb";
+        
+        // Map severity
+        const sevMap: Record<string, "critical" | "high" | "medium" | "low"> = {
+          critical: "critical",
+          high: "high",
+          medium: "medium",
+          low: "low",
+          info: "low",
+        };
+        const leakSeverity = sevMap[scanResult.severity] || "medium";
+        
+        // Generate unique leakId
+        const leakId = `SCAN-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
+        
+        await createLeak({
+          leakId,
+          title: scanResult.title,
+          titleAr: scanResult.title,
+          source: leakSource,
+          severity: leakSeverity,
+          sector: "عام",
+          sectorAr: "عام",
+          piiTypes: scanResult.dataTypes || ["بيانات شخصية"],
+          recordCount: scanResult.affectedRecords || 0,
+          status: "new",
+          description: `${scanResult.description}\n\nTarget: ${targetType}:${targetValue}\nSource: ${scanResult.source}`,
+          descriptionAr: scanResult.description,
+          sourceUrl: scanResult.url || null,
+          sourcePlatform: scanResult.source,
+          breachMethod: scanResult.type,
+          breachMethodAr: scanResult.type === "breach" ? "اختراق" : scanResult.type === "paste" ? "تسريب لصق" : scanResult.type === "certificate" ? "شهادة مكشوفة" : scanResult.type === "exposure" ? "تعرض" : "دارك ويب",
+        });
+        
+        await logAudit(
+          who.id,
+          "liveScan.saveAsLeak",
+          `Saved scan result as leak incident: ${leakId} — ${scanResult.title}`,
+          "leak",
+          who.name
+        );
+        
+        return { leakId, success: true };
+      }),
+
+    saveAllAsLeaks: protectedProcedure
+      .input(z.object({
+        scanResults: z.array(z.object({
+          id: z.string(),
+          source: z.string(),
+          type: z.string(),
+          severity: z.string(),
+          title: z.string(),
+          description: z.string(),
+          details: z.any().optional(),
+          url: z.string().optional(),
+          affectedRecords: z.number().optional(),
+          dataTypes: z.array(z.string()).optional(),
+        })),
+        targetValue: z.string(),
+        targetType: z.string(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const who = getAuthUser(ctx);
+        const saved: string[] = [];
+        
+        const sourceMap: Record<string, "telegram" | "darkweb" | "paste"> = {
+          xposedornot: "darkweb",
+          breachdirectory: "darkweb",
+          crtsh: "paste",
+          psbdmp: "paste",
+          googledork: "paste",
+        };
+        const sevMap: Record<string, "critical" | "high" | "medium" | "low"> = {
+          critical: "critical",
+          high: "high",
+          medium: "medium",
+          low: "low",
+          info: "low",
+        };
+        
+        for (const sr of input.scanResults) {
+          const leakId = `SCAN-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
+          try {
+            await createLeak({
+              leakId,
+              title: sr.title,
+              titleAr: sr.title,
+              source: sourceMap[sr.source.toLowerCase()] || "darkweb",
+              severity: sevMap[sr.severity] || "medium",
+              sector: "عام",
+              sectorAr: "عام",
+              piiTypes: sr.dataTypes || ["بيانات شخصية"],
+              recordCount: sr.affectedRecords || 0,
+              status: "new",
+              description: `${sr.description}\n\nTarget: ${input.targetType}:${input.targetValue}\nSource: ${sr.source}`,
+              descriptionAr: sr.description,
+              sourceUrl: sr.url || null,
+              sourcePlatform: sr.source,
+              breachMethod: sr.type,
+              breachMethodAr: sr.type === "breach" ? "اختراق" : sr.type === "paste" ? "تسريب لصق" : sr.type === "certificate" ? "شهادة مكشوفة" : sr.type === "exposure" ? "تعرض" : "دارك ويب",
+            });
+            saved.push(leakId);
+          } catch (e) {
+            // skip duplicates
+          }
+        }
+        
+        await logAudit(
+          who.id,
+          "liveScan.saveAllAsLeaks",
+          `Bulk saved ${saved.length} scan results as leak incidents`,
+          "leak",
+          who.name
+        );
+        
+        return { savedCount: saved.length, leakIds: saved };
+      }),
   }),
 
   // ─── Personality Scenarios Management ────────────────────
@@ -1685,6 +1839,95 @@ export const appRouter = router({
           return { success: true };
         }),
     }),
+  }),
+
+  // ─── Chat History ─────────────────────────────────────────
+  chatHistory: router({
+    list: protectedProcedure.query(async ({ ctx }) => {
+      const who = getAuthUser(ctx);
+      return getUserConversations(String(who.id));
+    }),
+
+    get: protectedProcedure
+      .input(z.object({ conversationId: z.string() }))
+      .query(async ({ ctx, input }) => {
+        const who = getAuthUser(ctx);
+        const conv = await getConversationById(input.conversationId);
+        if (!conv || conv.userId !== String(who.id)) return null;
+        const messages = await getConversationMessages(input.conversationId);
+        return { conversation: conv, messages };
+      }),
+
+    save: protectedProcedure
+      .input(z.object({
+        conversationId: z.string(),
+        title: z.string(),
+        messages: z.array(z.object({
+          messageId: z.string(),
+          role: z.enum(["user", "assistant"]),
+          content: z.string(),
+          toolsUsed: z.any().optional(),
+          thinkingSteps: z.any().optional(),
+          rating: z.number().optional(),
+        })),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const who = getAuthUser(ctx);
+        const existing = await getConversationById(input.conversationId);
+        
+        if (!existing) {
+          await createConversation({
+            conversationId: input.conversationId,
+            userId: String(who.id),
+            userName: who.name,
+            title: input.title,
+            messageCount: input.messages.length,
+            totalToolsUsed: input.messages.reduce((sum, m) => sum + (Array.isArray(m.toolsUsed) ? m.toolsUsed.length : 0), 0),
+          });
+        } else {
+          await updateConversation(input.conversationId, {
+            title: input.title,
+            messageCount: input.messages.length,
+          });
+        }
+
+        // Save each message
+        for (const msg of input.messages) {
+          await addChatMessage({
+            conversationId: input.conversationId,
+            messageId: msg.messageId,
+            role: msg.role,
+            content: msg.content,
+            toolsUsed: msg.toolsUsed || null,
+            thinkingSteps: msg.thinkingSteps || null,
+            rating: msg.rating || null,
+          });
+        }
+
+        await logAudit(who.id, "chatHistory.save", `Saved conversation: ${input.title}`, "system", who.name);
+        return { success: true };
+      }),
+
+    delete: protectedProcedure
+      .input(z.object({ conversationId: z.string() }))
+      .mutation(async ({ ctx, input }) => {
+        const who = getAuthUser(ctx);
+        const conv = await getConversationById(input.conversationId);
+        if (!conv || conv.userId !== String(who.id)) {
+          throw new Error("Conversation not found or access denied");
+        }
+        await deleteConversation(input.conversationId);
+        await logAudit(who.id, "chatHistory.delete", `Deleted conversation: ${conv.title}`, "system", who.name);
+        return { success: true };
+      }),
+
+    updateTitle: protectedProcedure
+      .input(z.object({ conversationId: z.string(), title: z.string() }))
+      .mutation(async ({ ctx, input }) => {
+        const who = getAuthUser(ctx);
+        await updateConversation(input.conversationId, { title: input.title });
+        return { success: true };
+      }),
   }),
 });
 export type AppRouter = typeof appRouter;

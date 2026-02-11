@@ -32,6 +32,9 @@ import {
   Activity,
   Target,
   Eye,
+  Save,
+  Download,
+  CheckCheck,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -125,6 +128,71 @@ export default function LiveScan() {
 
   const executeMutation = trpc.liveScan.execute.useMutation();
   const quickMutation = trpc.liveScan.quick.useMutation();
+  const saveAsLeakMutation = trpc.liveScan.saveAsLeak.useMutation();
+  const saveAllMutation = trpc.liveScan.saveAllAsLeaks.useMutation();
+  const [savedResults, setSavedResults] = useState<Set<string>>(new Set());
+  const [savingAll, setSavingAll] = useState(false);
+
+  const saveResultAsLeak = async (result: ScanResult) => {
+    try {
+      const res = await saveAsLeakMutation.mutateAsync({
+        scanResult: {
+          id: result.id,
+          source: result.source,
+          type: result.type,
+          severity: result.severity,
+          title: result.title,
+          description: result.description,
+          details: result.details,
+          url: result.url,
+          affectedRecords: result.affectedRecords,
+          dataTypes: result.dataTypes,
+        },
+        targetValue,
+        targetType,
+      });
+      setSavedResults(prev => new Set(prev).add(result.id));
+      toast.success(`\u062a\u0645 \u062d\u0641\u0638 \u0627\u0644\u062d\u0627\u062f\u062b\u0629: ${res.leakId}`);
+    } catch (e: any) {
+      toast.error(`\u062e\u0637\u0623 \u0641\u064a \u0627\u0644\u062d\u0641\u0638: ${e.message}`);
+    }
+  };
+
+  const saveAllResults = async () => {
+    if (scanResults.length === 0) return;
+    setSavingAll(true);
+    try {
+      const unsaved = scanResults.filter(r => !savedResults.has(r.id));
+      if (unsaved.length === 0) {
+        toast.info("\u062c\u0645\u064a\u0639 \u0627\u0644\u0646\u062a\u0627\u0626\u062c \u0645\u062d\u0641\u0648\u0638\u0629 \u0628\u0627\u0644\u0641\u0639\u0644");
+        return;
+      }
+      const res = await saveAllMutation.mutateAsync({
+        scanResults: unsaved.map(r => ({
+          id: r.id,
+          source: r.source,
+          type: r.type,
+          severity: r.severity,
+          title: r.title,
+          description: r.description,
+          details: r.details,
+          url: r.url,
+          affectedRecords: r.affectedRecords,
+          dataTypes: r.dataTypes,
+        })),
+        targetValue,
+        targetType,
+      });
+      const newSaved = new Set(savedResults);
+      unsaved.forEach(r => newSaved.add(r.id));
+      setSavedResults(newSaved);
+      toast.success(`\u062a\u0645 \u062d\u0641\u0638 ${res.savedCount} \u062d\u0627\u062f\u062b\u0629 \u062a\u0633\u0631\u064a\u0628 \u0641\u064a \u0642\u0627\u0639\u062f\u0629 \u0627\u0644\u0628\u064a\u0627\u0646\u0627\u062a`);
+    } catch (e: any) {
+      toast.error(`\u062e\u0637\u0623: ${e.message}`);
+    } finally {
+      setSavingAll(false);
+    }
+  };
 
   const toggleSource = (sourceId: string) => {
     setEnabledSources((prev) => (prev.includes(sourceId) ? prev.filter((s) => s !== sourceId) : [...prev, sourceId]));
@@ -524,10 +592,30 @@ export default function LiveScan() {
 
               {/* Results List */}
               <div className="space-y-3">
+                <div className="flex items-center justify-between">
                 <h3 className="text-lg font-semibold text-white flex items-center gap-2">
                   <Eye className="w-5 h-5 text-purple-400" />
                   النتائج المفصّلة ({scanResults.length})
                 </h3>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="border-green-500/30 text-green-300 hover:bg-green-500/20"
+                  onClick={saveAllResults}
+                  disabled={savingAll || scanResults.length === 0 || savedResults.size === scanResults.length}
+                >
+                  {savingAll ? (
+                    <Loader2 className="w-4 h-4 ml-1 animate-spin" />
+                  ) : savedResults.size === scanResults.length && scanResults.length > 0 ? (
+                    <CheckCheck className="w-4 h-4 ml-1" />
+                  ) : (
+                    <Download className="w-4 h-4 ml-1" />
+                  )}
+                  {savedResults.size === scanResults.length && scanResults.length > 0
+                    ? "تم حفظ الكل"
+                    : `حفظ الكل كحوادث (${scanResults.length - savedResults.size})`}
+                </Button>
+              </div>
 
                 {scanResults.map((result) => {
                   const isExpanded = expandedResults.has(result.id);
@@ -620,6 +708,26 @@ export default function LiveScan() {
                             >
                               <Copy className="w-3 h-3 ml-1" />
                               نسخ
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className={`text-xs ${
+                                savedResults.has(result.id)
+                                  ? "border-green-500/30 text-green-300 bg-green-500/10"
+                                  : "border-amber-500/30 text-amber-300 hover:bg-amber-500/10"
+                              }`}
+                              onClick={() => saveResultAsLeak(result)}
+                              disabled={savedResults.has(result.id) || saveAsLeakMutation.isPending}
+                            >
+                              {savedResults.has(result.id) ? (
+                                <CheckCheck className="w-3 h-3 ml-1" />
+                              ) : saveAsLeakMutation.isPending ? (
+                                <Loader2 className="w-3 h-3 ml-1 animate-spin" />
+                              ) : (
+                                <Save className="w-3 h-3 ml-1" />
+                              )}
+                              {savedResults.has(result.id) ? "تم الحفظ" : "حفظ كحادثة"}
                             </Button>
                           </div>
 

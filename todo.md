@@ -536,3 +536,38 @@
 - [x] Add PersonalityScenarios to sidebar under إداري group
 - [x] All 157 tests passing
 - [x] Save checkpoint
+
+## Phase 36: Three New Features
+
+### A. Save Live Scan Results as Leak Incidents
+- [x] Add tRPC procedure to convert scan results into leak records (saveAsLeak, saveAllAsLeaks)
+- [x] Map scan result fields to leak schema (source, severity, description, evidence)
+- [x] Add "حفظ كحادثة تسريب" button on scan results page
+- [x] Add "حفظ جميع النتائج" bulk save button
+- [x] Auto-generate AI analysis for saved incidents
+- [x] Log save action in audit trail
+- [x] Show success notification with link to saved leak
+
+### B. Sound Effects for Smart Rasid Console
+- [x] Generate cyber-themed sound effects using Web Audio API (no external files needed)
+- [x] Created soundManager.ts with 6 sound types (send, receive, error, success, typing, notification)
+- [x] Add sound manager utility with volume control
+- [x] Play typing sound during AI response streaming
+- [x] Play notification sound on new message received
+- [x] Play alert sound on error/critical findings
+- [x] Add mute/unmute toggle in chat header
+- [x] Persist sound preference in localStorage
+
+### C. Chat Conversation History
+- [x] Add chat_conversations table to database schema
+- [x] Add chat_messages table to database schema
+- [x] Push database migration
+- [x] Add tRPC procedures for conversation CRUD (save, list, get, delete) in chatHistory router
+- [x] Save/load messages to/from database
+- [x] Build conversation history sidebar panel in SmartRasid (slide-in from left)
+- [x] Add conversation list with message count and date
+- [x] Add "NEW_SESSION" button to start fresh conversation
+- [x] Add conversation title auto-generation from first user message
+- [x] Add text export for conversations with full formatting (TXT download)
+- [x] Add delete conversation functionality with confirmation
+- [x] All 173 tests passing (8 test files)
