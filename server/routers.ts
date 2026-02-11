@@ -99,6 +99,7 @@ import { generateIncidentDocumentation } from "./pdfService";
 import { notifyOwner } from "./_core/notification";
 import { invokeLLM } from "./_core/llm";
 import { rasidAIChat } from "./rasidAI";
+import { executeScan, quickScan } from "./scanEngine";
 import {
   createAiRating,
   getAiRatings,
@@ -1570,6 +1571,48 @@ export const appRouter = router({
       .mutation(async ({ input }) => {
         await incrementKnowledgeBaseViewCount(input.entryId);
         return { success: true };
+      }),
+  }),
+
+  // ─── Live Scan (Real Scanning Engine) ───────────────────────
+  liveScan: router({
+    execute: protectedProcedure
+      .input(z.object({
+        targets: z.array(z.object({
+          type: z.enum(["email", "domain", "keyword", "phone", "national_id"]),
+          value: z.string().min(1),
+        })),
+        sources: z.array(z.string()).optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const who = getAuthUser(ctx);
+        const sources = input.sources ?? ["xposedornot", "crtsh", "psbdmp", "googledork", "breachdirectory"];
+        const session = await executeScan(input.targets, sources);
+        await logAudit(
+          who.id,
+          "liveScan.execute",
+          `Executed scan on ${input.targets.map(t => `${t.type}:${t.value}`).join(", ")} — ${session.totalFindings} findings`,
+          "monitoring",
+          who.name
+        );
+        return session;
+      }),
+    quick: protectedProcedure
+      .input(z.object({
+        value: z.string().min(1),
+        type: z.enum(["email", "domain", "keyword", "phone", "national_id"]).optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const who = getAuthUser(ctx);
+        const session = await quickScan(input.value, input.type ?? "email");
+        await logAudit(
+          who.id,
+          "liveScan.quick",
+          `Quick scan: ${input.value} — ${session.totalFindings} findings`,
+          "monitoring",
+          who.name
+        );
+        return session;
       }),
   }),
 });
