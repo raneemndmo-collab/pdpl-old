@@ -120,6 +120,13 @@
       "when": 1770846921763,
       "tag": "0016_minor_brood",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "5",
+      "when": 1770886844057,
+      "tag": "0017_chemical_kulan_gath",
+      "breakpoints": true
     }
   ]
 }

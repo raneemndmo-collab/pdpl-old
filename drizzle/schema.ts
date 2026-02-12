@@ -779,3 +779,16 @@ export const trainingDocuments = mysqlTable("training_documents", {
 });
 export type TrainingDocument = typeof trainingDocuments.$inferSelect;
 export type InsertTrainingDocument = typeof trainingDocuments.$inferInsert;
+
+// ═══ KNOWLEDGE BASE SEARCH LOG TABLE ═══
+export const kbSearchLog = mysqlTable("kb_search_log", {
+  id: int("id").autoincrement().primaryKey(),
+  query: text("kbsQuery").notNull(),
+  resultsCount: int("kbsResultsCount").default(0),
+  matchedIds: json("kbsMatchedIds").$type<number[]>(),
+  userId: int("kbsUserId"),
+  source: mysqlEnum("kbsSource", ["manual", "ai_auto", "api"]).default("manual").notNull(),
+  createdAt: timestamp("kbsCreatedAt").defaultNow().notNull(),
+});
+export type KbSearchLogEntry = typeof kbSearchLog.$inferSelect;
+export type InsertKbSearchLogEntry = typeof kbSearchLog.$inferInsert;
