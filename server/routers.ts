@@ -136,7 +136,16 @@ import {
   deleteTrainingDocument,
   getAiFeedbackStats,
   getTrainingDocumentContent,
+  getKnowledgeBaseEntriesWithEmbeddings,
+  updateKnowledgeBaseEmbedding,
+  getEntriesWithoutEmbeddings,
 } from "./db";
+import {
+  generateEmbedding,
+  prepareEmbeddingText,
+  clearEmbeddingCache,
+  getEmbeddingCacheStats,
+} from "./semanticSearch";
 
 // Helper to get current user info from either auth source
 function getAuthUser(ctx: { user: any; platformUser: any }) {
@@ -1560,6 +1569,20 @@ export const appRouter = router({
           createdByName: who.name,
         });
         await logAudit(who.id, "knowledgeBase.create", `Created knowledge base entry: ${input.titleAr}`, "system", who.name);
+        // Auto-generate embedding for new entry (non-blocking)
+        if (input.isPublished !== false) {
+          const embText = prepareEmbeddingText({
+            title: input.title,
+            titleAr: input.titleAr,
+            content: input.content,
+            contentAr: input.contentAr,
+            category: input.category,
+            tags: input.tags,
+          });
+          generateEmbedding(embText)
+            .then(emb => updateKnowledgeBaseEmbedding(entryId, emb, "text-embedding-ada-002"))
+            .catch(err => console.error("Auto-embedding failed for new entry:", err));
+        }
         return { id, entryId };
       }),
     update: protectedProcedure
@@ -1578,6 +1601,23 @@ export const appRouter = router({
         const { entryId, ...data } = input;
         await updateKnowledgeBaseEntry(entryId, { ...data, updatedBy: who.id } as any);
         await logAudit(who.id, "knowledgeBase.update", `Updated knowledge base entry: ${entryId}`, "system", who.name);
+        // Re-generate embedding if content changed (non-blocking)
+        if (input.content || input.contentAr || input.title || input.titleAr || input.tags) {
+          const entry = await getKnowledgeBaseEntryById(entryId);
+          if (entry && entry.isPublished) {
+            const embText = prepareEmbeddingText({
+              title: entry.title,
+              titleAr: entry.titleAr,
+              content: entry.content,
+              contentAr: entry.contentAr,
+              category: entry.category,
+              tags: entry.tags,
+            });
+            generateEmbedding(embText)
+              .then(emb => updateKnowledgeBaseEmbedding(entryId, emb, "text-embedding-ada-002"))
+              .catch(err => console.error("Auto-embedding failed for updated entry:", err));
+          }
+        }
         return { success: true };
       }),
     delete: protectedProcedure
@@ -1596,6 +1636,78 @@ export const appRouter = router({
       .mutation(async ({ input }) => {
         await incrementKnowledgeBaseViewCount(input.entryId);
         return { success: true };
+      }),
+    // Generate embeddings for a single entry
+    generateEmbedding: protectedProcedure
+      .input(z.object({ entryId: z.string() }))
+      .mutation(async ({ ctx, input }) => {
+        const who = getAuthUser(ctx);
+        const entry = await getKnowledgeBaseEntryById(input.entryId);
+        if (!entry) throw new Error("Entry not found");
+        
+        const text = prepareEmbeddingText({
+          title: entry.title,
+          titleAr: entry.titleAr,
+          content: entry.content,
+          contentAr: entry.contentAr,
+          category: entry.category,
+          tags: entry.tags,
+        });
+        
+        const embedding = await generateEmbedding(text);
+        await updateKnowledgeBaseEmbedding(input.entryId, embedding, "text-embedding-ada-002");
+        await logAudit(who.id, "knowledgeBase.embedding", `Generated embedding for: ${entry.titleAr}`, "system", who.name);
+        return { success: true, dimensions: embedding.length };
+      }),
+    // Generate embeddings for all entries that don't have them
+    generateAllEmbeddings: protectedProcedure
+      .mutation(async ({ ctx }) => {
+        const who = getAuthUser(ctx);
+        const entries = await getEntriesWithoutEmbeddings();
+        let generated = 0;
+        let failed = 0;
+        
+        for (const entry of entries) {
+          try {
+            const text = prepareEmbeddingText({
+              title: entry.title,
+              titleAr: entry.titleAr,
+              content: entry.content,
+              contentAr: entry.contentAr,
+              category: entry.category,
+              tags: entry.tags,
+            });
+            const embedding = await generateEmbedding(text);
+            await updateKnowledgeBaseEmbedding(entry.entryId, embedding, "text-embedding-ada-002");
+            generated++;
+            // Small delay to avoid rate limiting
+            await new Promise(r => setTimeout(r, 200));
+          } catch (error) {
+            console.error(`Failed to generate embedding for ${entry.entryId}:`, error);
+            failed++;
+          }
+        }
+        
+        clearEmbeddingCache();
+        await logAudit(who.id, "knowledgeBase.embeddings_batch", `Generated ${generated} embeddings (${failed} failed) out of ${entries.length} entries`, "system", who.name);
+        return { success: true, total: entries.length, generated, failed };
+      }),
+    // Get embedding stats
+    embeddingStats: protectedProcedure
+      .query(async () => {
+        const allEntries = await getKnowledgeBaseEntriesWithEmbeddings();
+        const withEmbeddings = allEntries.filter(e => e.embedding && e.embedding.length > 0);
+        const withoutEmbeddings = allEntries.filter(e => !e.embedding || e.embedding.length === 0);
+        const cacheStats = getEmbeddingCacheStats();
+        return {
+          total: allEntries.length,
+          withEmbeddings: withEmbeddings.length,
+          withoutEmbeddings: withoutEmbeddings.length,
+          coverage: allEntries.length > 0 ? Math.round((withEmbeddings.length / allEntries.length) * 100) : 0,
+          cacheSize: cacheStats.size,
+          model: "text-embedding-ada-002",
+          dimensions: 1536,
+        };
       }),
   }),
 

@@ -12,6 +12,11 @@
  */
 import { invokeLLM } from "./_core/llm";
 import {
+  semanticSearch,
+  prepareEmbeddingText,
+  type KnowledgeEntry,
+} from "./semanticSearch";
+import {
   getLeaks,
   getLeakById,
   getDashboardStats,
@@ -48,6 +53,7 @@ import {
   getPersonalityScenarios,
   getCustomActions,
   getTrainingDocuments,
+  getKnowledgeBaseEntriesWithEmbeddings,
 } from "./db";
 
 // ═══════════════════════════════════════════════════════════════
@@ -446,7 +452,7 @@ export const RASID_TOOLS = [
     type: "function" as const,
     function: {
       name: "search_knowledge_base",
-      description: "البحث في قاعدة المعرفة عن مقالات، أسئلة وأجوبة، سياسات، وتعليمات. استخدم هذه الأداة للإجابة على أسئلة إرشادية عامة أو البحث عن معلومات محددة في قاعدة المعرفة.",
+      description: "البحث الدلالي في قاعدة المعرفة باستخدام الذكاء الاصطناعي. يبحث عن مقالات، أسئلة وأجوبة، سياسات، وتعليمات بناءً على المعنى وليس مجرد تطابق الكلمات. استخدم هذه الأداة للإجابة على أسئلة إرشادية عامة أو البحث عن معلومات محددة.",
       parameters: {
         type: "object",
         properties: {
@@ -1119,38 +1125,99 @@ async function executeToolInternal(toolName: string, params: any): Promise<any> 
       };
     }
 
-    // ─── Knowledge Agent ────────────────────────────────────
+    // ─── Knowledge Agent — Semantic Search ───────────────────
     case "search_knowledge_base": {
-      const entries = await getKnowledgeBaseEntries({
-        search: params.search_query,
-        category: params.category !== "all" ? params.category : undefined,
-        isPublished: true,
-        limit: 10,
-      });
-
-      if (entries.length === 0) {
-        // Fall back to platform guide
-        const guide = getPlatformGuide(params.search_query);
-        return {
-          source: "platform_guide",
-          entries: [],
-          fallbackGuide: guide,
-        };
-      }
-
-      return {
-        source: "knowledge_base",
-        total: entries.length,
-        entries: entries.map((e) => ({
+      try {
+        // Get all published entries with embeddings
+        const allEntries = await getKnowledgeBaseEntriesWithEmbeddings();
+        
+        // Map to KnowledgeEntry format for semantic search
+        const knowledgeEntries: KnowledgeEntry[] = allEntries.map(e => ({
           entryId: e.entryId,
           category: e.category,
-          title: e.titleAr || e.title,
-          content: (e.contentAr || e.content)?.substring(0, 2000),
+          title: e.title,
+          titleAr: e.titleAr,
+          content: e.content,
+          contentAr: e.contentAr,
           tags: e.tags,
+          embedding: e.embedding,
           viewCount: e.viewCount,
           helpfulCount: e.helpfulCount,
-        })),
-      };
+        }));
+
+        // Perform semantic search
+        const results = await semanticSearch(
+          params.search_query,
+          knowledgeEntries,
+          {
+            topK: 5,
+            category: params.category !== "all" ? params.category : undefined,
+            threshold: 0.6,
+          }
+        );
+
+        if (results.length === 0) {
+          // Fall back to platform guide
+          const guide = getPlatformGuide(params.search_query);
+          return {
+            source: "platform_guide",
+            searchMethod: "semantic_fallback",
+            entries: [],
+            fallbackGuide: guide,
+          };
+        }
+
+        return {
+          source: "knowledge_base",
+          searchMethod: "semantic",
+          total: results.length,
+          entries: results.map((r) => ({
+            entryId: r.entry.entryId,
+            category: r.entry.category,
+            title: r.entry.titleAr || r.entry.title,
+            content: (r.entry.contentAr || r.entry.content)?.substring(0, 2000),
+            tags: r.entry.tags,
+            viewCount: r.entry.viewCount,
+            helpfulCount: r.entry.helpfulCount,
+            similarityScore: Math.round(r.similarity * 100) / 100,
+            rank: r.rank,
+          })),
+        };
+      } catch (error) {
+        // If semantic search fails, fall back to keyword search
+        console.error("Semantic search failed, falling back to keyword:", error);
+        const entries = await getKnowledgeBaseEntries({
+          search: params.search_query,
+          category: params.category !== "all" ? params.category : undefined,
+          isPublished: true,
+          limit: 10,
+        });
+
+        if (entries.length === 0) {
+          const guide = getPlatformGuide(params.search_query);
+          return {
+            source: "platform_guide",
+            searchMethod: "keyword_fallback",
+            entries: [],
+            fallbackGuide: guide,
+          };
+        }
+
+        return {
+          source: "knowledge_base",
+          searchMethod: "keyword_fallback",
+          total: entries.length,
+          entries: entries.map((e) => ({
+            entryId: e.entryId,
+            category: e.category,
+            title: e.titleAr || e.title,
+            content: (e.contentAr || e.content)?.substring(0, 2000),
+            tags: e.tags,
+            viewCount: e.viewCount,
+            helpfulCount: e.helpfulCount,
+          })),
+        };
+      }
     }
 
     // ─── Analytics Agent — Correlations ─────────────────────

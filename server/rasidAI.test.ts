@@ -73,6 +73,9 @@ vi.mock("./db", () => ({
   getKnowledgeBaseEntries: vi.fn().mockResolvedValue([
     { id: 1, title: "PDPL Overview", titleAr: "نظرة عامة على PDPL", content: "PDPL is the Personal Data Protection Law", category: "policy" },
   ]),
+  getKnowledgeBaseEntriesWithEmbeddings: vi.fn().mockResolvedValue([
+    { id: 1, entryId: "KB-001", title: "PDPL Overview", titleAr: "نظرة عامة على PDPL", content: "PDPL is the Personal Data Protection Law", contentAr: "نظام حماية البيانات الشخصية", category: "policy", tags: ["PDPL"], embedding: null, viewCount: 10, helpfulCount: 5 },
+  ]),
   getAllPlatformUsers: vi.fn().mockResolvedValue([
     { id: 1, name: "Admin User", role: "admin", lastLoginAt: Date.now() },
     { id: 2, name: "Analyst User", role: "user", lastLoginAt: Date.now() - 3600000 },

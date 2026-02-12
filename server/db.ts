@@ -1098,6 +1098,44 @@ export async function incrementKnowledgeBaseViewCount(entryId: string): Promise<
     .where(eq(knowledgeBase.entryId, entryId));
 }
 
+/**
+ * Get all published knowledge base entries with their embeddings for semantic search
+ */
+export async function getKnowledgeBaseEntriesWithEmbeddings(): Promise<KnowledgeBaseEntry[]> {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(knowledgeBase).where(eq(knowledgeBase.isPublished, true)).limit(200);
+}
+
+/**
+ * Update the embedding vector for a knowledge base entry
+ */
+export async function updateKnowledgeBaseEmbedding(
+  entryId: string,
+  embedding: number[],
+  model: string
+): Promise<void> {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(knowledgeBase)
+    .set({ embedding, embeddingModel: model })
+    .where(eq(knowledgeBase.entryId, entryId));
+}
+
+/**
+ * Get entries that don't have embeddings yet
+ */
+export async function getEntriesWithoutEmbeddings(): Promise<KnowledgeBaseEntry[]> {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(knowledgeBase)
+    .where(and(
+      eq(knowledgeBase.isPublished, true),
+      sql`${knowledgeBase.embedding} IS NULL`
+    ))
+    .limit(100);
+}
+
 export async function getPublishedKnowledgeForAI(): Promise<string> {
   const db = await getDb();
   if (!db) return "";

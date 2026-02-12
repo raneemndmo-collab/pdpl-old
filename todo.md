@@ -622,3 +622,17 @@
 - [x] Seed all content into database (verified: 26 KB + 4 docs + 4 actions + 11 personality scenarios)
 - [x] All 173 tests passing (8 test files)
 - [x] Save checkpoint
+
+## Phase 39: Semantic Search for Knowledge Base
+- [x] Analyze current keyword-based search in rasidAI
+- [x] Create embedding generation service using OpenAI embeddings API
+- [x] Add embedding column to knowledge_base schema (kbEmbedding JSON, kbEmbeddingModel text)
+- [x] Push database migration
+- [x] Build semantic search engine with cosine similarity (server/semanticSearch.ts)
+- [x] Integrate semantic search with rasidAI search_knowledge_base tool (with keyword fallback)
+- [x] Generate embeddings for all 26 existing knowledge base entries (100% coverage, 1536 dimensions)
+- [x] Add auto-embedding on knowledge base create/update (non-blocking)
+- [x] Add tRPC endpoints: generateEmbedding, generateAllEmbeddings, embeddingStats
+- [x] Write tests for semantic search functionality (20 tests in semanticSearch.test.ts)
+- [x] All 193 tests passing (9 test files)
+- [x] Save checkpoint

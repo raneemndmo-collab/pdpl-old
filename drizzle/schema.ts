@@ -659,6 +659,8 @@ export const knowledgeBase = mysqlTable("knowledge_base", {
   updatedBy: int("kbUpdatedBy"),
   createdAt: timestamp("kbCreatedAt").defaultNow().notNull(),
   updatedAt: timestamp("kbUpdatedAt").defaultNow().onUpdateNow().notNull(),
+  embedding: json("kbEmbedding").$type<number[]>(),
+  embeddingModel: varchar("kbEmbeddingModel", { length: 64 }),
 });
 
 export type KnowledgeBaseEntry = typeof knowledgeBase.$inferSelect;
