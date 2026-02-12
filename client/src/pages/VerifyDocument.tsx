@@ -393,11 +393,38 @@ export default function VerifyDocument() {
             addConsoleLine("لم يتم العثور على كود توثيق في ملف PDF", "text-red-400", "[✗]");
           }
         }
+      } else if (file.type === "text/html" || file.name.endsWith(".html") || file.name.endsWith(".htm")) {
+        // Process HTML file — read text and extract verification code
+        const text = await file.text();
+        const htmlCode = extractVerificationCode(text);
+        if (htmlCode) {
+          addConsoleLine(`تم استخراج كود التوثيق من ملف HTML: ${htmlCode}`, "text-emerald-400", "[✓]");
+          setCode(htmlCode);
+          startVerification(htmlCode);
+        } else {
+          const fnCode = extractVerificationCode(file.name);
+          if (fnCode) {
+            addConsoleLine(`تم استخراج الكود من اسم الملف: ${fnCode}`, "text-amber-400", "[~]");
+            setCode(fnCode);
+            startVerification(fnCode);
+          } else {
+            addConsoleLine("لم يتم العثور على كود توثيق في ملف HTML", "text-red-400", "[✗]");
+          }
+        }
       } else {
-        addConsoleLine("نوع الملف غير مدعوم — يرجى رفع صورة أو PDF", "text-red-400", "[✗]");
+        // Try extracting code from filename as last resort for any file type
+        const fnCode = extractVerificationCode(file.name);
+        if (fnCode) {
+          addConsoleLine(`تم استخراج الكود من اسم الملف: ${fnCode}`, "text-amber-400", "[~]");
+          setCode(fnCode);
+          startVerification(fnCode);
+        } else {
+          addConsoleLine("نوع الملف غير مدعوم — يرجى رفع صورة أو PDF أو HTML", "text-red-400", "[✗]");
+        }
       }
     } catch (err) {
-      addConsoleLine("خطأ في معالجة الملف", "text-red-400", "[✗]");
+      console.error("File upload error:", err);
+      addConsoleLine("خطأ في معالجة الملف — يرجى المحاولة مرة أخرى", "text-red-400", "[✗]");
     }
 
     if (fileInputRef.current) fileInputRef.current.value = "";
@@ -546,7 +573,7 @@ export default function VerifyDocument() {
       </div>
 
       {/* Hidden elements */}
-      <input ref={fileInputRef} type="file" accept="image/*,.pdf" className="hidden" onChange={handleFileUpload} />
+      <input ref={fileInputRef} type="file" accept="image/*,.pdf,.html,.htm" className="hidden" onChange={handleFileUpload} />
       <canvas ref={canvasRef} className="hidden" />
 
       <div className="relative z-10 container max-w-3xl mx-auto px-4 py-8">
@@ -672,7 +699,7 @@ export default function VerifyDocument() {
                     onClick={() => fileInputRef.current?.click()}
                   >
                     <Upload className="w-4 h-4" />
-                    رفع صورة / PDF
+                    رفع ملف (صورة / PDF / HTML)
                   </Button>
                 </div>
               </CardContent>

@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
+import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -133,7 +134,7 @@ export default function UserManagement() {
   return (
     <div className="space-y-6" dir="rtl">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }} className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-foreground flex items-center gap-3">
             <Users className="w-7 h-7 text-emerald-400" />
@@ -259,8 +260,7 @@ export default function UserManagement() {
             </form>
           </DialogContent>
         </Dialog>
-      </div>
-
+       </motion.div>
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="group cursor-pointer hover:scale-[1.02] transition-all" onClick={() => setActiveModal('total_users')}>
@@ -324,8 +324,16 @@ export default function UserManagement() {
                 <Loader2 className="w-8 h-8 animate-spin text-primary" />
               </div>
             ) : (
-              filteredUsers.map((u: any) => (
-                <div key={u.id} className="group cursor-pointer hover:scale-[1.01] transition-all bg-background/50 hover:bg-background rounded-lg p-4 flex items-center justify-between" onClick={() => setActiveModal(`user_${u.id}`)}>
+              filteredUsers.map((u: any, idx: number) => (
+                <motion.div
+                  key={u.id}
+                  initial={{ opacity: 0, y: 15 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3, delay: idx * 0.05 }}
+                  whileHover={{ scale: 1.01, x: -3 }}
+                  className="group cursor-pointer transition-all bg-background/50 hover:bg-background rounded-lg p-4 flex items-center justify-between"
+                  onClick={() => setActiveModal(`user_${u.id}`)}
+                >
                   <div className="flex items-center gap-4">
                     <div>
                       <p className="font-bold text-foreground">{u.name}</p>
@@ -355,7 +363,7 @@ export default function UserManagement() {
                     <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); setResetPasswordUser(u); }}><Key className="w-4 h-4 text-amber-400" /></Button>
                     <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); deleteMutation.mutate({ id: u.id }); }}><Trash2 className="w-4 h-4 text-red-400" /></Button>
                   </div>
-                </div>
+                </motion.div>
               ))
             )}
           </div>

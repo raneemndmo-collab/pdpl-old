@@ -96,7 +96,7 @@ interface LeakDetailDrilldownProps {
 export default function LeakDetailDrilldown({ leak, open, onClose, onBack, showBackButton }: LeakDetailDrilldownProps) {
   const [activeTab, setActiveTab] = useState<TabId>("overview");
   const [isGeneratingDoc, setIsGeneratingDoc] = useState(false);
-  const [generatedDoc, setGeneratedDoc] = useState<{ documentId: string; verificationCode: string; htmlContent: string; pdfBase64?: string | null } | null>(null);
+  const [generatedDoc, setGeneratedDoc] = useState<{ documentId: string; verificationCode: string; htmlContent: string } | null>(null);
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const [showComplianceWarning, setShowComplianceWarning] = useState(false);
 
@@ -159,25 +159,29 @@ export default function LeakDetailDrilldown({ leak, open, onClose, onBack, showB
   const handleDownloadDoc = useCallback(async () => {
     if (!generatedDoc || !leakId) return;
     try {
-      // Use server-generated PDF if available
-      if (generatedDoc.pdfBase64) {
-        toast.info("جاري تحميل ملف PDF...");
-        const byteChars = atob(generatedDoc.pdfBase64);
-        const byteNumbers = new Array(byteChars.length);
-        for (let i = 0; i < byteChars.length; i++) {
-          byteNumbers[i] = byteChars.charCodeAt(i);
-        }
-        const byteArray = new Uint8Array(byteNumbers);
-        const blob = new Blob([byteArray], { type: "application/pdf" });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = `incident-${leakId}-${generatedDoc.verificationCode}.pdf`;
-        a.click();
-        URL.revokeObjectURL(url);
-        toast.success("تم تحميل ملف PDF بنجاح");
-      } else {
-        // Fallback to HTML download
+      // Inject a print toolbar at the top of the HTML document
+      const printToolbar = `
+        <div id="print-toolbar" style="position:fixed;top:0;left:0;right:0;z-index:9999;background:linear-gradient(135deg,#0a2540,#0c3054);padding:12px 24px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 4px 20px rgba(0,0,0,0.3);font-family:'Tajawal',sans-serif;direction:rtl;">
+          <div style="display:flex;align-items:center;gap:12px;">
+            <button onclick="document.getElementById('print-toolbar').style.display='none';window.print();setTimeout(()=>document.getElementById('print-toolbar').style.display='flex',500);" style="background:linear-gradient(135deg,#0d9488,#06b6d4);color:white;border:none;padding:10px 28px;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;font-family:'Tajawal',sans-serif;display:flex;align-items:center;gap:8px;">
+              ⬇ حفظ كـ PDF
+            </button>
+            <span style="color:rgba(255,255,255,0.5);font-size:12px;">اختر "حفظ كـ PDF" من نافذة الطباعة</span>
+          </div>
+          <span style="color:rgba(255,255,255,0.4);font-size:11px;">منصة راصد — توثيق حادثة تسريب</span>
+        </div>
+        <div style="height:56px;"></div>
+      `;
+      // Insert toolbar after <body> tag
+      const htmlWithToolbar = generatedDoc.htmlContent.replace(
+        '<div class="page">',
+        printToolbar + '<div class="page">'
+      );
+      
+      const printWindow = window.open("", "_blank");
+      if (!printWindow) {
+        // Fallback: download as HTML file
+        toast.info("تم حظر النافذة — جاري تحميل الملف مباشرة");
         const blob = new Blob([generatedDoc.htmlContent], { type: "text/html;charset=utf-8" });
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
@@ -185,11 +189,13 @@ export default function LeakDetailDrilldown({ leak, open, onClose, onBack, showB
         a.download = `incident-${leakId}-${generatedDoc.verificationCode}.html`;
         a.click();
         URL.revokeObjectURL(url);
-        toast.warning("تم التحميل كملف HTML");
+        return;
       }
+      printWindow.document.write(htmlWithToolbar);
+      printWindow.document.close();
     } catch (err) {
       console.error("PDF download error:", err);
-      toast.error("حدث خطأ أثناء تحميل الملف");
+      toast.error("حدث خطأ أثناء فتح نافذة الطباعة");
     }
   }, [generatedDoc, leakId]);
 

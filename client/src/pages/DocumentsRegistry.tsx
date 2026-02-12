@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
+import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -98,7 +99,7 @@ export default function DocumentsRegistry() {
   return (
     <div className="space-y-6" dir="rtl">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }} className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-3">
             <div className="p-2 rounded-xl bg-gradient-to-br from-teal-500/20 to-cyan-500/20 border border-teal-500/30">
@@ -114,54 +115,36 @@ export default function DocumentsRegistry() {
             {stats.total} وثيقة
           </Badge>
         </div>
-      </div>
+      </motion.div>
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card className="bg-card/50 border-border/50 backdrop-blur-sm">
-          <CardContent className="p-4 flex items-center gap-3">
-            <div className="p-2.5 rounded-xl bg-teal-500/15 border border-teal-500/25">
-              <FileText className="h-5 w-5 text-teal-400" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-teal-400">{stats.total}</p>
-              <p className="text-xs text-muted-foreground">إجمالي التوثيقات</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="bg-card/50 border-border/50 backdrop-blur-sm">
-          <CardContent className="p-4 flex items-center gap-3">
-            <div className="p-2.5 rounded-xl bg-blue-500/15 border border-blue-500/25">
-              <AlertTriangle className="h-5 w-5 text-blue-400" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-blue-400">{stats.byType.incident_report}</p>
-              <p className="text-xs text-muted-foreground">توثيق حوادث</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="bg-card/50 border-border/50 backdrop-blur-sm">
-          <CardContent className="p-4 flex items-center gap-3">
-            <div className="p-2.5 rounded-xl bg-purple-500/15 border border-purple-500/25">
-              <FileBarChart className="h-5 w-5 text-purple-400" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-purple-400">{stats.byType.custom_report + stats.byType.executive_summary}</p>
-              <p className="text-xs text-muted-foreground">تقارير مخصصة</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="bg-card/50 border-border/50 backdrop-blur-sm">
-          <CardContent className="p-4 flex items-center gap-3">
-            <div className="p-2.5 rounded-xl bg-amber-500/15 border border-amber-500/25">
-              <User className="h-5 w-5 text-amber-400" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-amber-400">{stats.uniqueEmployees}</p>
-              <p className="text-xs text-muted-foreground">موظفين مُصدرين</p>
-            </div>
-          </CardContent>
-        </Card>
+        {[
+          { color: "teal", icon: <FileText className="h-5 w-5 text-teal-400" />, value: stats.total, label: "إجمالي التوثيقات" },
+          { color: "blue", icon: <AlertTriangle className="h-5 w-5 text-blue-400" />, value: stats.byType.incident_report, label: "توثيق حوادث" },
+          { color: "purple", icon: <FileBarChart className="h-5 w-5 text-purple-400" />, value: stats.byType.custom_report + stats.byType.executive_summary, label: "تقارير مخصصة" },
+          { color: "amber", icon: <User className="h-5 w-5 text-amber-400" />, value: stats.uniqueEmployees, label: "موظفين مُصدرين" },
+        ].map((s, idx) => (
+          <motion.div
+            key={s.label}
+            initial={{ opacity: 0, y: 20, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            transition={{ duration: 0.4, delay: idx * 0.1 }}
+            whileHover={{ scale: 1.04, y: -2 }}
+          >
+            <Card className="bg-card/50 border-border/50 backdrop-blur-sm">
+              <CardContent className="p-4 flex items-center gap-3">
+                <div className={`p-2.5 rounded-xl bg-${s.color}-500/15 border border-${s.color}-500/25`}>
+                  {s.icon}
+                </div>
+                <div>
+                  <p className={`text-2xl font-bold text-${s.color}-400`}>{s.value}</p>
+                  <p className="text-xs text-muted-foreground">{s.label}</p>
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+        ))}
       </div>
 
       {/* Filters */}
@@ -278,9 +261,12 @@ export default function DocumentsRegistry() {
                   </td>
                 </tr>
               ) : (
-                paged.map((doc: DocumentItem) => (
-                  <tr
+                paged.map((doc: DocumentItem, idx: number) => (
+                  <motion.tr
                     key={doc.id}
+                    initial={{ opacity: 0, x: 15 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ duration: 0.3, delay: idx * 0.04 }}
                     className="border-b border-border/30 hover:bg-muted/20 cursor-pointer transition-colors"
                     onClick={() => setSelectedDoc(doc)}
                   >
@@ -357,7 +343,7 @@ export default function DocumentsRegistry() {
                         )}
                       </div>
                     </td>
-                  </tr>
+                  </motion.tr>
                 ))
               )}
             </tbody>

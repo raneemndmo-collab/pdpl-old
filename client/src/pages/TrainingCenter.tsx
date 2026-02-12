@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react";
 import { trpc } from "@/lib/trpc";
+import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -588,33 +589,30 @@ function FeedbackTab() {
     <div className="space-y-6">
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card className="bg-slate-800/50 border-slate-700">
-          <CardContent className="p-4 text-center">
-            <div className="text-2xl font-bold text-cyan-400">{stats?.total ?? 0}</div>
-            <div className="text-xs text-slate-400">إجمالي التقييمات</div>
-          </CardContent>
-        </Card>
-        <Card className="bg-slate-800/50 border-slate-700">
-          <CardContent className="p-4 text-center">
-            <div className="text-2xl font-bold text-yellow-400 flex items-center justify-center gap-1">
-              <Star className="w-5 h-5 fill-yellow-400" />
-              {stats?.avgRating ?? 0}
-            </div>
-            <div className="text-xs text-slate-400">متوسط التقييم</div>
-          </CardContent>
-        </Card>
-        <Card className="bg-slate-800/50 border-slate-700">
-          <CardContent className="p-4 text-center">
-            <div className="text-2xl font-bold text-green-400">{Number(distribution["5"] ?? 0) + Number(distribution["4"] ?? 0)}</div>
-            <div className="text-xs text-slate-400">تقييمات إيجابية</div>
-          </CardContent>
-        </Card>
-        <Card className="bg-slate-800/50 border-slate-700">
-          <CardContent className="p-4 text-center">
-            <div className="text-2xl font-bold text-red-400">{Number(distribution["1"] ?? 0) + Number(distribution["2"] ?? 0)}</div>
-            <div className="text-xs text-slate-400">تقييمات سلبية</div>
-          </CardContent>
-        </Card>
+        {[
+          { value: stats?.total ?? 0, label: "إجمالي التقييمات", color: "text-cyan-400", extra: null },
+          { value: stats?.avgRating ?? 0, label: "متوسط التقييم", color: "text-yellow-400", extra: <Star className="w-5 h-5 fill-yellow-400" /> },
+          { value: Number(distribution["5"] ?? 0) + Number(distribution["4"] ?? 0), label: "تقييمات إيجابية", color: "text-green-400", extra: null },
+          { value: Number(distribution["1"] ?? 0) + Number(distribution["2"] ?? 0), label: "تقييمات سلبية", color: "text-red-400", extra: null },
+        ].map((s, idx) => (
+          <motion.div
+            key={s.label}
+            initial={{ opacity: 0, y: 20, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            transition={{ duration: 0.4, delay: idx * 0.1 }}
+            whileHover={{ scale: 1.05, y: -3 }}
+          >
+            <Card className="bg-slate-800/50 border-slate-700">
+              <CardContent className="p-4 text-center">
+                <div className={`text-2xl font-bold ${s.color} flex items-center justify-center gap-1`}>
+                  {s.extra}
+                  {s.value}
+                </div>
+                <div className="text-xs text-slate-400">{s.label}</div>
+              </CardContent>
+            </Card>
+          </motion.div>
+        ))}
       </div>
 
       {/* Distribution Chart */}

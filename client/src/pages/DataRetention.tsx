@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { trpc } from "@/lib/trpc";
+import { motion } from "framer-motion";
 import {
   Archive,
   Clock,
@@ -54,7 +55,7 @@ export default function DataRetention() {
   return (
     <div className="space-y-6" dir="rtl">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }} className="flex items-center justify-between">
         <div 
           className="group cursor-pointer hover:scale-[1.02] transition-all"
           onClick={() => setActiveModal("main_header")}
@@ -76,10 +77,10 @@ export default function DataRetention() {
           {executing ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
           تنفيذ السياسات الآن
         </button>
-      </div>
+      </motion.div>
 
       {/* Info Banner */}
-      <div className="bg-gradient-to-r from-amber-500/10 to-orange-500/10 border border-amber-500/30 rounded-xl p-4 flex items-start gap-3">
+      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.15 }} className="bg-gradient-to-r from-amber-500/10 to-orange-500/10 border border-amber-500/30 rounded-xl p-4 flex items-start gap-3">
         <AlertTriangle className="w-5 h-5 text-amber-400 mt-0.5 shrink-0" />
         <div>
           <p className="text-amber-200 text-sm font-medium">ملاحظة حول سياسات الاحتفاظ</p>
@@ -88,13 +89,17 @@ export default function DataRetention() {
             تأكد من مراجعة الإعدادات قبل التفعيل. يتم تنفيذ السياسات يدوياً عند الضغط على "تنفيذ السياسات الآن".
           </p>
         </div>
-      </div>
+      </motion.div>
 
       {/* Policies Grid */}
       <div className="grid gap-4">
-        {policies.map((policy) => (
-          <div
+        {policies.map((policy, idx) => (
+          <motion.div
             key={policy.id}
+            initial={{ opacity: 0, y: 20, scale: 0.97 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            transition={{ duration: 0.4, delay: 0.2 + idx * 0.08 }}
+            whileHover={{ scale: 1.01, y: -2 }}
             className={`bg-secondary/60 backdrop-blur border rounded-xl p-6 transition-all ${
               policy.isEnabled ? "border-purple-500/30 hover:border-purple-500/50" : "border-border hover:border-border"
             }`}
@@ -220,7 +225,7 @@ export default function DataRetention() {
               <p>مجموع السجلات التي تمت معالجتها بواسطة هذه السياسة هو: {policy.recordsArchived?.toLocaleString() ?? 0}.</p>
               <p>هذا العدد يمثل إجمالي السجلات التي تم حذفها أو أرشفتها منذ إنشاء السياسة.</p>
             </DetailModal>
-          </div>
+          </motion.div>
         ))}
       </div>
 

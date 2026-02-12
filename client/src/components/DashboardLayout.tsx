@@ -57,6 +57,7 @@ import { useNdmoAuth } from "@/hooks/useNdmoAuth";
 import { getLoginUrl } from "@/const";
 import NotificationBell from "./NotificationBell";
 import { useTheme } from "@/contexts/ThemeContext";
+import { Redirect } from "wouter";
 
 /* SDAIA Official FULL Logo URLs (with "منصة راصد" + "مكتب إدارة البيانات الوطنية") */
 const FULL_LOGO_DARK = "https://files.manuscdn.com/user_upload_by_module/session_file/310519663296955420/vyIfeykxwXasuonx.png"; // Navy+Gold for light bg
@@ -199,6 +200,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   const isDark = theme === "dark";
   const logoSrc = isDark ? FULL_LOGO_LIGHT : FULL_LOGO_DARK;
+
+  // Redirect unauthenticated users to login page
+  if (!loading && !isAuthenticated) {
+    return <Redirect to="/login" />;
+  }
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">

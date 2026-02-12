@@ -1,6 +1,7 @@
-import { useState, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
+import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -306,7 +307,7 @@ export default function LiveScan() {
   return (
     <div className="space-y-6" dir="rtl">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }} className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-white flex items-center gap-3">
             <div className="p-2 rounded-xl bg-gradient-to-br from-purple-500/30 to-blue-500/30 border border-purple-500/20">
@@ -322,7 +323,7 @@ export default function LiveScan() {
             {scanHistory.length} عملية مسح
           </Badge>
         )}
-      </div>
+      </motion.div>
 
       {/* Main Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
@@ -617,14 +618,18 @@ export default function LiveScan() {
                 </Button>
               </div>
 
-                {scanResults.map((result) => {
+                {scanResults.map((result, idx) => {
                   const isExpanded = expandedResults.has(result.id);
                   const sevConfig = SEVERITY_CONFIG[result.severity] || SEVERITY_CONFIG.info;
                   const IconComp = getSourceIcon(result.sourceIcon);
 
                   return (
-                    <div
+                    <motion.div
                       key={result.id}
+                      initial={{ opacity: 0, y: 20, scale: 0.97 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      transition={{ duration: 0.35, delay: idx * 0.06 }}
+                      whileHover={{ scale: 1.01 }}
                       className={`glass-card rounded-xl border ${sevConfig.bg} overflow-hidden transition-all`}
                     >
                       <button
@@ -797,7 +802,7 @@ export default function LiveScan() {
                           )}
                         </div>
                       )}
-                    </div>
+                    </motion.div>
                   );
                 })}
               </div>
@@ -841,7 +846,13 @@ export default function LiveScan() {
             ) : (
               <div className="space-y-2">
                 {scanHistory.map((h, i) => (
-                  <div key={i} className="flex items-center gap-3 p-3 rounded-xl bg-white/5 border border-white/10">
+                  <motion.div
+                    key={i}
+                    initial={{ opacity: 0, x: 15 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ duration: 0.3, delay: i * 0.05 }}
+                    className="flex items-center gap-3 p-3 rounded-xl bg-white/5 border border-white/10"
+                  >
                     <div className="p-2 rounded-lg bg-purple-500/20">
                       <Search className="w-4 h-4 text-purple-400" />
                     </div>
@@ -862,7 +873,7 @@ export default function LiveScan() {
                       {h.findings > 0 ? `${h.findings} تهديد` : "آمن"}
                     </Badge>
                     <span className="text-xs text-white/30">{h.date.toLocaleTimeString("ar-SA")}</span>
-                  </div>
+                  </motion.div>
                 ))}
               </div>
             )}

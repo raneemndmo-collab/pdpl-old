@@ -6,7 +6,6 @@
  */
 import QRCode from "qrcode";
 import crypto from "crypto";
-import { generatePdfFromHtml } from "./pdfGenerator";
 import { RASID_LOGO_DARK_BASE64, RASID_LOGO_LIGHT_BASE64 } from "./logoBase64";
 
 // ─── Logo URLs (CDN for web, Base64 for PDF) ───────────────────────────────────
@@ -106,7 +105,6 @@ export interface DocumentationResult {
   verificationCode: string;
   contentHash: string;
   htmlContent: string;
-  pdfBuffer: Buffer | null;
   leakId: string;
   title: string;
   titleAr: string;
@@ -252,15 +250,19 @@ export async function generateIncidentDocumentation(
 <html dir="rtl" lang="ar">
 <head>
   <meta charset="UTF-8">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800;900&display=swap" rel="stylesheet">
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
-      font-family: 'Noto Kufi Arabic', 'Noto Sans Arabic', 'Noto Naskh Arabic', 'Amiri', sans-serif;
+      font-family: 'Tajawal', 'Noto Kufi Arabic', 'Noto Sans Arabic', sans-serif;
       background: #fff;
       color: #1e293b;
       direction: rtl;
-      -webkit-print-color-adjust: exact;
-      print-color-adjust: exact;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+      color-adjust: exact !important;
     }
     .page {
       max-width: 820px;
@@ -270,11 +272,13 @@ export async function generateIncidentDocumentation(
     }
     @page {
       size: A4;
-      margin: 0;
+      margin: 8mm;
     }
     @media print {
-      .page { padding: 0; }
+      body { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; }
+      .page { padding: 0; max-width: 100%; }
       .no-print { display: none !important; }
+      img { max-width: 100% !important; }
     }
     .section-title {
       display: flex;
@@ -605,21 +609,11 @@ export async function generateIncidentDocumentation(
 </body>
 </html>`;
 
-  // Generate PDF using Puppeteer
-  let pdfBuffer: Buffer | null = null;
-  try {
-    pdfBuffer = await generatePdfFromHtml(htmlContent);
-  } catch (err) {
-    console.error("[PDF] Puppeteer PDF generation failed:", err);
-    // pdfBuffer stays null, client can fallback to HTML
-  }
-
   return {
     documentId,
     verificationCode,
     contentHash,
     htmlContent,
-    pdfBuffer,
     leakId: leak.leakId,
     title: leak.title,
     titleAr: leak.titleAr,

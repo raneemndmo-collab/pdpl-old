@@ -8,7 +8,16 @@ import { useTheme } from "@/contexts/ThemeContext";
 // Full brand logos (with "منصة راصد" + "مكتب إدارة البيانات الوطنية")
 const RASID_LOGO_LIGHT = "https://files.manuscdn.com/user_upload_by_module/session_file/310519663296955420/tSiomIdoNdNFAtOB.png"; // Cream+Gold for dark bg
 const RASID_LOGO_DARK = "https://files.manuscdn.com/user_upload_by_module/session_file/310519663296955420/vyIfeykxwXasuonx.png"; // Navy+Gold for light bg
-const RASID_CHARACTER = "https://files.manuscdn.com/user_upload_by_module/session_file/310519663296955420/qTFgtbWZjShuewJe.png";
+// New transparent character images (7 variants)
+const RASID_CHARACTERS = {
+  armsCrossedShmagh: "https://files.manuscdn.com/user_upload_by_module/session_file/310519663296955420/qoUheMlVnqPiZdQe.png",
+  waving: "https://files.manuscdn.com/user_upload_by_module/session_file/310519663296955420/trhmUCDmIUgvRfyf.png",
+  sunglasses: "https://files.manuscdn.com/user_upload_by_module/session_file/310519663296955420/ksSaxPLmSvrLxHAg.png",
+  shmagh: "https://files.manuscdn.com/user_upload_by_module/session_file/310519663296955420/qnhkKZjJrOPcqgsf.png",
+  handsOnHips: "https://files.manuscdn.com/user_upload_by_module/session_file/310519663296955420/pHcUGrMdEgCexGAn.png",
+  standingShmagh: "https://files.manuscdn.com/user_upload_by_module/session_file/310519663296955420/JzZklqOoMNmtrCuP.png",
+};
+const RASID_CHARACTER = RASID_CHARACTERS.armsCrossedShmagh;
 
 /* SDAIA Colors */
 const SDAIA = {

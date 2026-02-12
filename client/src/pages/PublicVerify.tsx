@@ -346,6 +346,27 @@ export default function PublicVerify() {
             handleVerify(fnCode);
           }
         }
+      } else if (file.type === "text/html" || file.name.endsWith(".html") || file.name.endsWith(".htm")) {
+        // Process HTML file — read text and extract verification code
+        const text = await file.text();
+        const htmlCode = extractVerificationCode(text);
+        if (htmlCode) {
+          setCode(htmlCode);
+          handleVerify(htmlCode);
+        } else {
+          const fnCode = extractVerificationCode(file.name);
+          if (fnCode) {
+            setCode(fnCode);
+            handleVerify(fnCode);
+          }
+        }
+      } else {
+        // Try extracting code from filename as last resort
+        const fnCode = extractVerificationCode(file.name);
+        if (fnCode) {
+          setCode(fnCode);
+          handleVerify(fnCode);
+        }
       }
     } catch {}
 
@@ -468,7 +489,7 @@ export default function PublicVerify() {
       <input
         ref={fileInputRef}
         type="file"
-        accept="image/*,.pdf"
+        accept="image/*,.pdf,.html,.htm"
         className="hidden"
         onChange={handleFileUpload}
       />

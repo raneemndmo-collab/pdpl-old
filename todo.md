@@ -759,3 +759,76 @@
 - [x] Fix file upload verification not responding in PublicVerify page — already working with direct fetch
 - [x] Test PDF generation with proper Arabic rendering
 - [x] Test file upload verification flow end-to-end
+
+## Phase 61: Fix PDF Export (still exporting HTML) + Professional Document
+- [ ] Fix PDF export - currently still exporting HTML instead of PDF
+- [ ] Ensure Puppeteer PDF generation is actually called in the router
+- [ ] Make document include ALL details: evidence chain, PII types, sample data, screenshots
+- [ ] Professional government-quality document design
+- [ ] Test PDF download end-to-end
+
+## Phase 61 (revised): Fix PDF Export + Fix Verification Upload
+- [ ] Fix file upload verification not responding (VerifyDocument + PublicVerify)
+- [ ] Fix PDF export — replace Puppeteer with browser print-to-PDF
+- [ ] Create dedicated print page route for professional PDF output
+- [ ] Rebuild HTML template with all details, evidence, PII, screenshots
+- [ ] Test both fixes end-to-end
+
+## Phase 62: Fix PDF Export + Auth + Login Page
+- [ ] Fix PDF export - remove Puppeteer dependency, use browser window.print() for PDF
+- [ ] Rebuild HTML template with Tajawal font from Google Fonts CDN
+- [ ] Add comprehensive @media print CSS for professional PDF output
+- [ ] Fix file upload verification not responding (HTML file support + filename extraction)
+- [ ] Fix dashboard accessible without login - require authentication for all dashboard routes
+- [ ] Fix login page character image - remove non-transparent background (checkered pattern visible)
+- [ ] Fix login page layout consistency
+- [ ] Test PDF export end-to-end
+- [ ] Test file upload verification end-to-end
+- [ ] Test authentication requirement for dashboard
+
+## Phase 63: Comprehensive PDF Report Rebuild + Auth + Login Fix
+- [ ] Rebuild PDF HTML template with ALL incident sections
+- [ ] Section 1: Header with NDMO + Rasid logos, classification badge
+- [ ] Section 2: Overview - source, records, exploit method, discovery date
+- [ ] Section 3: Attacker/Seller info - alias, price, platform
+- [ ] Section 4: Leak source - sector, region, source URL
+- [ ] Section 5: Incident description (Arabic + English)
+- [ ] Section 6: PII types exposed (badges)
+- [ ] Section 7: Sample data table (all columns from the UI)
+- [ ] Section 8: Evidence screenshots from source
+- [ ] Section 9: Source URL and evidence chain with SHA-256
+- [ ] Section 10: AI Analysis - impact assessment, confidence, executive summary
+- [ ] Section 11: AI Recommendations
+- [ ] Section 12: QR code + verification code + footer
+- [ ] Update routers.ts to pass all data (samples, evidence, AI) to PDF generator
+- [ ] Fix dashboard requires authentication
+- [ ] Fix login page character non-transparent background
+- [ ] Test PDF with all sections
+
+## Phase 64: New Requirements - Streaming AI, Design Match, Animations
+- [x] Rasid AI streaming typing effect (word-by-word typewriter response display)
+- [x] Match card design to design.rasid.vip/dashboard in both light and dark themes
+- [x] Fix light theme to be professional and match reference design across entire platform
+- [x] Add motion animations to ALL cards, stats, indicators across entire platform
+- [x] No card or stat should appear without motion animation effects
+
+## Phase 65: Character Images Update + Auth Fix
+- [x] Upload new transparent character images to CDN (7 variants)
+- [x] Update login page to use new Character_5 (arms crossed + shmagh) image
+- [x] Update Smart Rasid AI page to use Character_1 (waving) image
+- [x] Store all character CDN URLs as constants for reuse across platform
+- [x] Fix DashboardLayout auth redirect (require login)
+- [x] Test login page character renders with transparent background
+
+## Phase 66: Document Verification - Accept Images & HTML
+- [x] Allow image extensions (png, jpg, jpeg, gif, webp, svg) in document verification upload
+- [x] Allow HTML extension in document verification upload
+
+## Phase 67: VIP Leader Greeting in Smart Rasid AI
+- [x] Upload leader photos to CDN (الربدي - قائد المبادرة, السرحان - نائب المعالي)
+- [x] Add VIP detection logic when user mentions الربدي/المعالي or السرحان/مشعل
+- [x] Show respectful greeting with leader's photo thumbnail for الربدي (معالي القائد)
+- [x] Show respectful greeting with leader's photo thumbnail for السرحان (سعادة نائب المعالي)
+- [x] Professional animated card with photo, title, and respectful phrases
+- [x] Add VIP greeting for محمد الرحيلي (humorous + respectful: معلمنا الأكبر مانقدر نتكلم فيه لأنه راح يرصدنا 😄😂)
+- [x] Add VIP greeting for منال المعتاز (مديرتنا الجديدة, respectful welcome)

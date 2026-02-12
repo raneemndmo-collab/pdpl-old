@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { trpc } from "@/lib/trpc";
+import { motion } from "framer-motion";
 import {
   Mail,
   Phone,
@@ -67,7 +68,7 @@ export default function AlertChannels() {
   return (
     <div className="space-y-6" dir="rtl">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }} className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-foreground flex items-center gap-3">
             <div className="p-2 rounded-xl bg-gradient-to-br from-amber-500/20 to-orange-500/20 border border-amber-500/30">
@@ -77,7 +78,7 @@ export default function AlertChannels() {
           </h1>
           <p className="text-muted-foreground mt-1">إدارة قنوات البريد الإلكتروني والرسائل النصية للتنبيهات</p>
         </div>
-      </div>
+      </motion.div>
 
       {/* Stats Cards — clickable */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -86,10 +87,14 @@ export default function AlertChannels() {
           { key: "failed", label: "تنبيهات فاشلة", value: stats?.totalFailed ?? 0, icon: XCircle, color: "text-red-400", borderColor: "border-red-500/20", bgColor: "bg-red-500/5" },
           { key: "activeRules", label: "قواعد نشطة", value: stats?.activeRules ?? 0, icon: Shield, color: "text-cyan-400", borderColor: "border-cyan-500/20", bgColor: "bg-cyan-500/5" },
           { key: "activeContacts", label: "جهات اتصال نشطة", value: stats?.activeContacts ?? 0, icon: Users, color: "text-amber-400", borderColor: "border-amber-500/20", bgColor: "bg-amber-500/5" },
-        ].map((stat) => (
-          <div
+        ].map((stat, idx) => (
+          <motion.div
             key={stat.key}
-            className={`${stat.bgColor} backdrop-blur border ${stat.borderColor} rounded-xl p-4 cursor-pointer hover:scale-[1.02] transition-all group`}
+            initial={{ opacity: 0, y: 20, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            transition={{ duration: 0.4, delay: idx * 0.1 }}
+            whileHover={{ scale: 1.04, y: -2 }}
+            className={`${stat.bgColor} backdrop-blur border ${stat.borderColor} rounded-xl p-4 cursor-pointer transition-all group`}
             onClick={() => setActiveModal(stat.key)}
           >
             <div className="flex items-center gap-2 mb-2">
@@ -98,7 +103,7 @@ export default function AlertChannels() {
             </div>
             <div className="text-2xl font-bold text-foreground">{stat.value.toLocaleString()}</div>
             <p className="text-[9px] text-primary/50 mt-1 opacity-0 group-hover:opacity-100 transition-opacity">اضغط للتفاصيل ←</p>
-          </div>
+          </motion.div>
         ))}
       </div>
 
@@ -124,9 +129,13 @@ export default function AlertChannels() {
       {/* Contacts Tab */}
       {activeTab === "contacts" && (
         <div className="space-y-4">
-          {contacts.map((contact) => (
-            <div
+          {contacts.map((contact, idx) => (
+            <motion.div
               key={contact.id}
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.35, delay: idx * 0.06 }}
+              whileHover={{ scale: 1.01, x: -4 }}
               className="bg-secondary/60 backdrop-blur border border-border rounded-xl p-5 hover:border-primary/30 transition-all cursor-pointer"
               onClick={() => { setSelectedEntry(contact); setActiveModal("contactDetail"); }}
             >
@@ -180,7 +189,7 @@ export default function AlertChannels() {
                   </button>
                 </div>
               </div>
-            </div>
+            </motion.div>
           ))}
           {contacts.length === 0 && (
             <div className="text-center py-12 text-muted-foreground">
@@ -194,9 +203,13 @@ export default function AlertChannels() {
       {/* Rules Tab */}
       {activeTab === "rules" && (
         <div className="space-y-4">
-          {rules.map((rule) => (
-            <div
+          {rules.map((rule, idx) => (
+            <motion.div
               key={rule.id}
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.35, delay: idx * 0.06 }}
+              whileHover={{ scale: 1.01, x: -4 }}
               className="bg-secondary/60 backdrop-blur border border-border rounded-xl p-5 hover:border-primary/30 transition-all cursor-pointer"
               onClick={() => { setSelectedEntry(rule); setActiveModal("ruleDetail"); }}
             >
@@ -241,7 +254,7 @@ export default function AlertChannels() {
                   </button>
                 </div>
               </div>
-            </div>
+            </motion.div>
           ))}
           {rules.length === 0 && (
             <div className="text-center py-12 text-muted-foreground">
@@ -268,9 +281,12 @@ export default function AlertChannels() {
                 </tr>
               </thead>
               <tbody>
-                {history.map((entry) => (
-                  <tr
+                {history.map((entry, idx) => (
+                  <motion.tr
                     key={entry.id}
+                    initial={{ opacity: 0, x: 15 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ duration: 0.3, delay: idx * 0.04 }}
                     className="border-b border-border/50 hover:bg-accent transition-colors cursor-pointer"
                     onClick={() => { setSelectedEntry(entry); setActiveModal("historyDetail"); }}
                   >
@@ -293,7 +309,7 @@ export default function AlertChannels() {
                     <td className="p-4 text-xs text-muted-foreground">
                       {entry.sentAt ? new Date(entry.sentAt).toLocaleString("ar-SA") : "—"}
                     </td>
-                  </tr>
+                  </motion.tr>
                 ))}
               </tbody>
             </table>

@@ -64,8 +64,8 @@ import { soundManager } from "@/lib/soundManager";
 import { Save, Trash2, FolderOpen, Download, X, MessageCircle, Archive } from "lucide-react";
 
 // ═══ CONSTANTS ═══
-const RASID_CHARACTER_URL = "https://files.manuscdn.com/user_upload_by_module/session_file/310519663296955420/EcTxzqTDBTbCBkgA.png";
-const RASID_FACE_URL = "https://files.manuscdn.com/user_upload_by_module/session_file/310519663296955420/CKohhQCRRyLHdRyE.png";
+const RASID_CHARACTER_URL = "https://files.manuscdn.com/user_upload_by_module/session_file/310519663296955420/trhmUCDmIUgvRfyf.png"; // Waving character
+const RASID_FACE_URL = "https://files.manuscdn.com/user_upload_by_module/session_file/310519663296955420/JzZklqOoMNmtrCuP.png"; // Standing shmagh for face/avatar
 
 interface ThinkingStep {
   id: string;
@@ -318,12 +318,146 @@ function ThinkingStepsDisplay({ steps, isExpanded, onToggle }: { steps: Thinking
   );
 }
 
+// ═══ VIP LEADER DETECTION & CARD ═══
+const VIP_LEADERS_CLIENT = [
+  {
+    keywords: ["الربدي", "المعالي", "معالي القائد", "قائد المبادرة"],
+    name: "الربدي",
+    title: "معالي قائد مبادرة راصد الوطنية",
+    imageUrl: "https://files.manuscdn.com/user_upload_by_module/session_file/310519663296955420/EyXIbPHjtTKGlhZg.png",
+    type: "leader" as const,
+    gradient: "from-amber-500/20 via-yellow-500/10 to-amber-600/20",
+    borderColor: "border-amber-500/30",
+    glowColor: "shadow-amber-500/20",
+    titleColor: "text-amber-300",
+    badgeColor: "bg-amber-500/20 text-amber-300 border-amber-500/30",
+  },
+  {
+    keywords: ["السرحان", "مشعل السرحان", "مشعل", "نائب المعالي", "سعادة النائب"],
+    name: "مشعل السرحان",
+    title: "سعادة نائب معالي قائد المبادرة",
+    imageUrl: "https://files.manuscdn.com/user_upload_by_module/session_file/310519663296955420/jZnDsXzrTXOCeTwv.jpg",
+    type: "deputy" as const,
+    gradient: "from-cyan-500/20 via-teal-500/10 to-cyan-600/20",
+    borderColor: "border-cyan-500/30",
+    glowColor: "shadow-cyan-500/20",
+    titleColor: "text-cyan-300",
+    badgeColor: "bg-cyan-500/20 text-cyan-300 border-cyan-500/30",
+  },
+  {
+    keywords: ["الرحيلي", "محمد الرحيلي"],
+    name: "محمد الرحيلي",
+    title: "معلمنا الأكبر",
+    imageUrl: null,
+    type: "team" as const,
+    gradient: "from-emerald-500/20 via-green-500/10 to-emerald-600/20",
+    borderColor: "border-emerald-500/30",
+    glowColor: "shadow-emerald-500/20",
+    titleColor: "text-emerald-300",
+    badgeColor: "bg-emerald-500/20 text-emerald-300 border-emerald-500/30",
+  },
+  {
+    keywords: ["المعتاز", "منال المعتاز", "منال"],
+    name: "منال المعتاز",
+    title: "مديرتنا الجديدة",
+    imageUrl: null,
+    type: "team" as const,
+    gradient: "from-purple-500/20 via-violet-500/10 to-purple-600/20",
+    borderColor: "border-purple-500/30",
+    glowColor: "shadow-purple-500/20",
+    titleColor: "text-purple-300",
+    badgeColor: "bg-purple-500/20 text-purple-300 border-purple-500/30",
+  },
+];
+
+function detectVipLeader(content: string): typeof VIP_LEADERS_CLIENT[0] | null {
+  const lower = content.toLowerCase();
+  for (const leader of VIP_LEADERS_CLIENT) {
+    for (const keyword of leader.keywords) {
+      if (lower.includes(keyword)) return leader;
+    }
+  }
+  return null;
+}
+
+function VipLeaderCard({ leader }: { leader: typeof VIP_LEADERS_CLIENT[0] }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, scale: 0.9, y: 10 }}
+      animate={{ opacity: 1, scale: 1, y: 0 }}
+      transition={{ duration: 0.5, ease: "easeOut" }}
+      className={`relative overflow-hidden rounded-xl mb-3 border ${leader.borderColor} bg-gradient-to-br ${leader.gradient} shadow-lg ${leader.glowColor}`}
+    >
+      {/* Decorative shimmer */}
+      <motion.div
+        className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent"
+        animate={{ x: ["-100%", "200%"] }}
+        transition={{ duration: 3, repeat: Infinity, repeatDelay: 2 }}
+      />
+      
+      <div className="relative flex items-center gap-3 p-3">
+        {leader.imageUrl ? (
+          <motion.div
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
+            className={`w-14 h-14 rounded-xl overflow-hidden border-2 ${leader.borderColor} shadow-lg ${leader.glowColor} flex-shrink-0`}
+          >
+            <img
+              src={leader.imageUrl}
+              alt={leader.name}
+              className="w-full h-full object-cover"
+            />
+          </motion.div>
+        ) : (
+          <motion.div
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
+            className={`w-14 h-14 rounded-xl border-2 ${leader.borderColor} shadow-lg ${leader.glowColor} flex-shrink-0 flex items-center justify-center bg-gradient-to-br ${leader.gradient}`}
+          >
+            <Crown className={`w-6 h-6 ${leader.titleColor}`} />
+          </motion.div>
+        )}
+        <div className="flex-1 min-w-0">
+          <motion.div
+            initial={{ opacity: 0, x: -10 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.3 }}
+            className="flex items-center gap-2 mb-0.5"
+          >
+            <span className={`text-sm font-bold ${leader.titleColor}`}>{leader.name}</span>
+            <span className={`text-[9px] px-1.5 py-0.5 rounded-full border ${leader.badgeColor} font-semibold`}>
+              {leader.type === "leader" ? "معالي القائد" : leader.type === "deputy" ? "سعادة النائب" : leader.title}
+            </span>
+          </motion.div>
+          <motion.p
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.4 }}
+            className="text-[11px] text-slate-400 truncate"
+          >
+            {leader.title}
+          </motion.p>
+        </div>
+        <motion.div
+          animate={{ rotate: [0, 5, -5, 0] }}
+          transition={{ duration: 2, repeat: Infinity, repeatDelay: 3 }}
+        >
+          <Crown className={`w-5 h-5 ${leader.titleColor} opacity-60`} />
+        </motion.div>
+      </div>
+    </motion.div>
+  );
+}
+
 // ═══ TYPEWRITER STREAMDOWN ═══
 function TypewriterStreamdown({ children, isNew }: { children: string; isNew: boolean }) {
   const [displayedContent, setDisplayedContent] = useState(isNew ? "" : children);
   const [isTyping, setIsTyping] = useState(isNew);
   const contentRef = useRef(children);
   const indexRef = useRef(0);
+  const rafRef = useRef<number>(0);
 
   useEffect(() => {
     if (!isNew) {
@@ -335,21 +469,42 @@ function TypewriterStreamdown({ children, isNew }: { children: string; isNew: bo
     setIsTyping(true);
     setDisplayedContent("");
 
-    const charsPerTick = 8; // Fast typing speed
-    const tickInterval = 12; // ms between ticks
+    // Fast streaming typewriter — word-aware chunks for natural feel
+    const baseCharsPerTick = 4;
+    const tickInterval = 8; // Very fast ticks
+    let lastTime = 0;
 
-    const timer = setInterval(() => {
-      indexRef.current += charsPerTick;
-      if (indexRef.current >= contentRef.current.length) {
-        setDisplayedContent(contentRef.current);
-        setIsTyping(false);
-        clearInterval(timer);
-      } else {
-        setDisplayedContent(contentRef.current.slice(0, indexRef.current));
+    const animate = (timestamp: number) => {
+      if (!lastTime) lastTime = timestamp;
+      const elapsed = timestamp - lastTime;
+
+      if (elapsed >= tickInterval) {
+        lastTime = timestamp;
+        const content = contentRef.current;
+        let nextIdx = indexRef.current + baseCharsPerTick;
+
+        // Advance to end of current word for natural breaks
+        while (nextIdx < content.length && content[nextIdx] !== ' ' && content[nextIdx] !== '\n' && (nextIdx - indexRef.current) < 12) {
+          nextIdx++;
+        }
+
+        indexRef.current = nextIdx;
+
+        if (indexRef.current >= content.length) {
+          setDisplayedContent(content);
+          setIsTyping(false);
+          return;
+        }
+        setDisplayedContent(content.slice(0, indexRef.current));
       }
-    }, tickInterval);
+      rafRef.current = requestAnimationFrame(animate);
+    };
 
-    return () => clearInterval(timer);
+    rafRef.current = requestAnimationFrame(animate);
+
+    return () => {
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    };
   }, [children, isNew]);
 
   return (
@@ -357,9 +512,9 @@ function TypewriterStreamdown({ children, isNew }: { children: string; isNew: bo
       <Streamdown>{displayedContent}</Streamdown>
       {isTyping && (
         <motion.span
-          animate={{ opacity: [1, 0] }}
-          transition={{ duration: 0.5, repeat: Infinity, repeatType: "reverse" }}
-          className="inline-block w-2 h-4 bg-cyan-400 ml-0.5 align-middle rounded-sm"
+          animate={{ opacity: [1, 0.3] }}
+          transition={{ duration: 0.4, repeat: Infinity, repeatType: "reverse" }}
+          className="inline-block w-1.5 h-4 bg-cyan-400 ml-1 align-middle rounded-sm shadow-[0_0_8px_rgba(61,177,172,0.6)]"
         />
       )}
     </>
@@ -1110,6 +1265,11 @@ export default function SmartRasid() {
 
                     {msg.role === "assistant" ? (
                       <div className="rasid-response prose prose-invert max-w-none text-[13px] leading-[1.7] [&_h1]:text-base [&_h1]:font-bold [&_h1]:text-cyan-200 [&_h1]:mt-4 [&_h1]:mb-2 [&_h2]:text-[14px] [&_h2]:font-bold [&_h2]:text-cyan-200 [&_h2]:mt-3 [&_h2]:mb-2 [&_h3]:text-[13px] [&_h3]:font-semibold [&_h3]:text-cyan-300 [&_h3]:mt-3 [&_h3]:mb-1.5 [&_h4]:text-[12px] [&_h4]:font-semibold [&_h4]:text-teal-300 [&_h4]:mt-2 [&_h4]:mb-1 [&_p]:text-[13px] [&_p]:text-slate-300 [&_p]:leading-[1.7] [&_p]:mb-2 [&_li]:text-[12px] [&_li]:text-slate-300 [&_li]:leading-[1.6] [&_ul]:space-y-0.5 [&_ol]:space-y-0.5 [&_table]:text-[11px] [&_table]:w-full [&_table]:border-collapse [&_th]:bg-cyan-500/10 [&_th]:text-cyan-300 [&_th]:text-[11px] [&_th]:font-semibold [&_th]:px-2.5 [&_th]:py-1.5 [&_th]:border [&_th]:border-cyan-500/15 [&_td]:px-2.5 [&_td]:py-1.5 [&_td]:border [&_td]:border-cyan-500/10 [&_td]:text-slate-400 [&_a]:text-cyan-400 [&_a]:underline [&_a]:underline-offset-2 [&_strong]:text-cyan-200 [&_strong]:font-semibold [&_em]:text-teal-300 [&_code]:text-[11px] [&_code]:text-cyan-300 [&_code]:bg-cyan-500/10 [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:rounded [&_pre]:text-[11px] [&_pre]:bg-[#060d1b] [&_pre]:border [&_pre]:border-cyan-500/10 [&_pre]:rounded-lg [&_pre]:p-3 [&_pre]:overflow-x-auto [&_blockquote]:border-r-2 [&_blockquote]:border-cyan-400/40 [&_blockquote]:pr-3 [&_blockquote]:pl-0 [&_blockquote]:text-[12px] [&_blockquote]:text-cyan-200/80 [&_blockquote]:italic [&_blockquote]:my-2 [&_hr]:border-cyan-500/15 [&_hr]:my-3 [&_img]:rounded-lg [&_img]:border [&_img]:border-cyan-500/20 [&_img]:shadow-lg [&_img]:shadow-cyan-500/5 [&_img]:max-w-full [&_img]:my-3">
+                        {/* VIP Leader Card */}
+                        {(() => {
+                          const vipLeader = detectVipLeader(msg.content);
+                          return vipLeader ? <VipLeaderCard leader={vipLeader} /> : null;
+                        })()}
                         <TypewriterStreamdown isNew={newMessageIds.has(msg.id)}>{msg.content}</TypewriterStreamdown>
                         {/* Clickable Leak IDs */}
                         {extractLeakIds(msg.content).length > 0 && (
