@@ -1,0 +1,20 @@
+{
+  "query": "SELECT \n  COUNT(*) as total,\n  SUM(CASE WHEN sampleData IS NULL THEN 1 ELSE 0 END) as missing_sampleData,\n  SUM(CASE WHEN sourceUrl IS NULL THEN 1 ELSE 0 END) as missing_sourceUrl,\n  SUM(CASE WHEN screenshotUrls IS NULL THEN 1 ELSE 0 END) as missing_screenshots,\n  SUM(CASE WHEN threatActor IS NULL THEN 1 ELSE 0 END) as missing_threatActor,\n  SUM(CASE WHEN leakPrice IS NULL THEN 1 ELSE 0 END) as missing_price,\n  SUM(CASE WHEN breachMethod IS NULL THEN 1 ELSE 0 END) as missing_breachMethod,\n  SUM(CASE WHEN sourcePlatform IS NULL THEN 1 ELSE 0 END) as missing_sourcePlatform\nFROM leaks",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3yaEUUPpH7u5Dce.6de1e535cf2b --database huuT6g8hnnLTgdYvaqdH49 --execute SELECT \n  COUNT(*) as total,\n  SUM(CASE WHEN sampleData IS NULL THEN 1 ELSE 0 END) as missing_sampleData,\n  SUM(CASE WHEN sourceUrl IS NULL THEN 1 ELSE 0 END) as missing_sourceUrl,\n  SUM(CASE WHEN screenshotUrls IS NULL THEN 1 ELSE 0 END) as missing_screenshots,\n  SUM(CASE WHEN threatActor IS NULL THEN 1 ELSE 0 END) as missing_threatActor,\n  SUM(CASE WHEN leakPrice IS NULL THEN 1 ELSE 0 END) as missing_price,\n  SUM(CASE WHEN breachMethod IS NULL THEN 1 ELSE 0 END) as missing_breachMethod,\n  SUM(CASE WHEN sourcePlatform IS NULL THEN 1 ELSE 0 END) as missing_sourcePlatform\nFROM leaks",
+  "rows": [
+    {
+      "total": "265",
+      "missing_sampleData": "32",
+      "missing_sourceUrl": "32",
+      "missing_screenshots": "32",
+      "missing_threatActor": "17",
+      "missing_price": "30",
+      "missing_breachMethod": "17",
+      "missing_sourcePlatform": "17"
+    }
+  ],
+  "messages": [],
+  "stdout": "total\tmissing_sampleData\tmissing_sourceUrl\tmissing_screenshots\tmissing_threatActor\tmissing_price\tmissing_breachMethod\tmissing_sourcePlatform\n265\t32\t32\t32\t17\t30\t17\t17\n",
+  "stderr": "",
+  "execution_time_ms": 1544
+}

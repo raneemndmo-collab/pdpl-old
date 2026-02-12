@@ -19,7 +19,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-const RASID_LOGO = "https://files.manuscdn.com/user_upload_by_module/session_file/310519663296955420/ziWPuMClYqvYmkJG.png";
+const RASID_LOGO = "https://files.manuscdn.com/user_upload_by_module/session_file/310519663296955420/tSiomIdoNdNFAtOB.png"; // Full brand logo (cream+gold for dark bg)
 
 interface ComplianceWarningDialogProps {
   open: boolean;
@@ -267,7 +267,7 @@ export default function ComplianceWarningDialog({
                 >
                   {/* Platform Identity */}
                   <div className="flex items-center justify-center gap-3 py-3">
-                    <img src={RASID_LOGO} alt="راصد" className="w-8 h-8 object-contain" style={{ animation: "compliance-icon-pulse 3s ease-in-out infinite" }} />
+                    <img src={RASID_LOGO} alt="منصة راصد" className="w-16 h-auto object-contain" style={{ animation: "compliance-icon-pulse 3s ease-in-out infinite", filter: 'drop-shadow(0 0 8px rgba(61,177,172,0.15))' }} />
                     <div className="text-center">
                       <p className="text-sm font-bold text-white">منصة راصد — مكتب إدارة البيانات الوطنية</p>
                       <p className="text-[10px] text-red-300/40">National Data Management Office — Rasid Platform</p>

@@ -5,9 +5,9 @@
 import { motion } from "framer-motion";
 import { useTheme } from "@/contexts/ThemeContext";
 
-// Official logo URLs
-const RASID_LOGO_LIGHT = "https://files.manuscdn.com/user_upload_by_module/session_file/310519663296955420/ziWPuMClYqvYmkJG.png";
-const RASID_LOGO_DARK = "https://files.manuscdn.com/user_upload_by_module/session_file/310519663296955420/ziWPuMClYqvYmkJG.png";
+// Full brand logos (with "منصة راصد" + "مكتب إدارة البيانات الوطنية")
+const RASID_LOGO_LIGHT = "https://files.manuscdn.com/user_upload_by_module/session_file/310519663296955420/tSiomIdoNdNFAtOB.png"; // Cream+Gold for dark bg
+const RASID_LOGO_DARK = "https://files.manuscdn.com/user_upload_by_module/session_file/310519663296955420/vyIfeykxwXasuonx.png"; // Navy+Gold for light bg
 
 interface AnimatedLogoProps {
   size?: "sm" | "md" | "lg" | "xl";
@@ -30,10 +30,10 @@ export default function AnimatedLogo({ size = "md", showOrbits = true, className
   const logoSrc = isDark ? RASID_LOGO_DARK : RASID_LOGO_LIGHT;
 
   const C = {
-    accent: isDark ? "#4A7AB5" : "#1E3A5F",
-    purple: isDark ? "#634AB5" : "#4A3590",
-    accentGlow: isDark ? "rgba(74, 122, 181, 0.25)" : "rgba(30, 58, 95, 0.08)",
-    orbitBorder: isDark ? "rgba(74, 122, 181, 0.12)" : "rgba(30, 58, 95, 0.06)",
+    accent: isDark ? "#3DB1AC" : "#273470",
+    purple: isDark ? "#6459A7" : "#6459A7",
+    accentGlow: isDark ? "rgba(61, 177, 172, 0.25)" : "rgba(39, 52, 112, 0.08)",
+    orbitBorder: isDark ? "rgba(61, 177, 172, 0.12)" : "rgba(39, 52, 112, 0.06)",
   };
 
   return (

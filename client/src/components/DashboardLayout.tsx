@@ -58,9 +58,9 @@ import { getLoginUrl } from "@/const";
 import NotificationBell from "./NotificationBell";
 import { useTheme } from "@/contexts/ThemeContext";
 
-/* SDAIA Official Logo URLs */
-const SDAIA_LOGO_DARK = "https://files.manuscdn.com/user_upload_by_module/session_file/310519663296955420/NjVCCBUdZUnkmwiS.svg";
-const SDAIA_LOGO_LIGHT = "https://files.manuscdn.com/user_upload_by_module/session_file/310519663296955420/sxXyvRpwfGTEClwM.svg";
+/* SDAIA Official FULL Logo URLs (with "منصة راصد" + "مكتب إدارة البيانات الوطنية") */
+const FULL_LOGO_DARK = "https://files.manuscdn.com/user_upload_by_module/session_file/310519663296955420/vyIfeykxwXasuonx.png"; // Navy+Gold for light bg
+const FULL_LOGO_LIGHT = "https://files.manuscdn.com/user_upload_by_module/session_file/310519663296955420/tSiomIdoNdNFAtOB.png"; // Cream+Gold for dark bg
 const RASID_LOGO = "https://files.manuscdn.com/user_upload_by_module/session_file/310519663296955420/ziWPuMClYqvYmkJG.png";
 
 interface NavItem {
@@ -198,7 +198,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   };
 
   const isDark = theme === "dark";
-  const logoSrc = isDark ? SDAIA_LOGO_DARK : SDAIA_LOGO_LIGHT;
+  const logoSrc = isDark ? FULL_LOGO_LIGHT : FULL_LOGO_DARK;
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">
@@ -256,32 +256,48 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           border-l border-sidebar-border
         `}
       >
-        {/* Logo area — SDAIA Official */}
-        <div className="flex items-center gap-3 px-4 h-16 border-b border-sidebar-border dark:border-[rgba(61,177,172,0.1)]">
+        {/* Logo area — Full Brand Logo with Creative Effects */}
+        <div className="flex items-center justify-center px-2 py-8 border-b border-sidebar-border dark:border-[rgba(61,177,172,0.1)]" style={{ minHeight: collapsed ? '72px' : '200px' }}>
           <motion.div
-            className="relative w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 overflow-hidden"
-            whileHover={{ rotate: -5, scale: 1.08 }}
-            transition={{ type: "spring", stiffness: 300 }}
+            className="relative flex items-center justify-center flex-shrink-0"
+            whileHover={{ scale: 1.04 }}
+            transition={{ type: "spring", stiffness: 200 }}
+            style={{ width: collapsed ? '52px' : '100%', height: collapsed ? '52px' : '180px' }}
           >
-            {/* Glow ring around logo */}
-            <div className="absolute inset-0 rounded-xl dark:animate-glow-pulse" style={{ boxShadow: 'inset 0 0 12px rgba(61, 177, 172, 0.15)' }} />
+            {/* Orbiting glow ring */}
+            <div
+              className="absolute rounded-full pointer-events-none"
+              style={{
+                width: collapsed ? '60px' : 'calc(100% + 16px)',
+                height: collapsed ? '60px' : '190px',
+                border: '1px solid rgba(61, 177, 172, 0.12)',
+                animation: 'breathing-glow 4s ease-in-out infinite',
+                boxShadow: '0 0 30px rgba(61, 177, 172, 0.1), inset 0 0 30px rgba(100, 89, 167, 0.06)',
+              }}
+            />
+            {/* Floating particles around logo */}
+            <div className="absolute inset-0 pointer-events-none overflow-hidden">
+              <div className="absolute w-1.5 h-1.5 rounded-full bg-[#3DB1AC]" style={{ top: '8%', right: '12%', opacity: 0.5, animation: 'orbit 6s linear infinite' }} />
+              <div className="absolute w-1 h-1 rounded-full bg-[#6459A7]" style={{ bottom: '15%', left: '8%', opacity: 0.4, animation: 'orbit 8s linear infinite reverse' }} />
+              <div className="absolute w-1.5 h-1.5 rounded-full bg-[#3DB1AC]" style={{ top: '50%', left: '3%', opacity: 0.3, animation: 'orbit 10s linear infinite' }} />
+              <div className="absolute w-1 h-1 rounded-full bg-[#6459A7]" style={{ top: '20%', left: '50%', opacity: 0.25, animation: 'orbit 12s linear infinite reverse' }} />
+            </div>
+            {/* Logo image — LARGE to match design.rasid.vip */}
             <img
               src={logoSrc}
-              alt="راصد"
-              className="w-10 h-10 object-contain relative z-10 drop-shadow-[0_0_8px_rgba(61,177,172,0.3)]"
+              alt="منصة راصد - مكتب إدارة البيانات الوطنية"
+              className="relative z-10 object-contain"
+              style={{
+                width: collapsed ? '44px' : '100%',
+                height: collapsed ? '44px' : '170px',
+                maxWidth: '260px',
+                filter: isDark
+                  ? 'drop-shadow(0 0 15px rgba(61, 177, 172, 0.25)) drop-shadow(0 0 40px rgba(100, 89, 167, 0.12))'
+                  : 'drop-shadow(0 2px 10px rgba(39, 52, 112, 0.18))',
+                animation: 'logo-float 5s ease-in-out infinite',
+              }}
             />
           </motion.div>
-          {!collapsed && (
-            <motion.div
-              initial={{ opacity: 0, width: 0 }}
-              animate={{ opacity: 1, width: "auto" }}
-              exit={{ opacity: 0, width: 0 }}
-              className="overflow-hidden"
-            >
-              <h1 className="text-sm font-bold text-foreground whitespace-nowrap">منصة راصد</h1>
-              <p className="text-[10px] text-muted-foreground whitespace-nowrap">رصد تسريبات البيانات الشخصية</p>
-            </motion.div>
-          )}
         </div>
 
         {/* Data flow line under logo */}

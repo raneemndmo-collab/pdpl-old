@@ -5,8 +5,9 @@ import { Input } from "@/components/ui/input";
 import { Eye, EyeOff, Loader2, AlertCircle, Sun, Moon, Shield, Lock } from "lucide-react";
 import { useTheme } from "@/contexts/ThemeContext";
 
-const RASID_LOGO_LIGHT = "https://files.manuscdn.com/user_upload_by_module/session_file/310519663296955420/THVppkjqyLegafUm.png";
-const RASID_LOGO_DARK = "https://files.manuscdn.com/user_upload_by_module/session_file/310519663296955420/kuCEchYUSnPsbhZS.png";
+// Full brand logos (with "منصة راصد" + "مكتب إدارة البيانات الوطنية")
+const RASID_LOGO_LIGHT = "https://files.manuscdn.com/user_upload_by_module/session_file/310519663296955420/tSiomIdoNdNFAtOB.png"; // Cream+Gold for dark bg
+const RASID_LOGO_DARK = "https://files.manuscdn.com/user_upload_by_module/session_file/310519663296955420/vyIfeykxwXasuonx.png"; // Navy+Gold for light bg
 const RASID_CHARACTER = "https://files.manuscdn.com/user_upload_by_module/session_file/310519663296955420/qTFgtbWZjShuewJe.png";
 
 /* SDAIA Colors */
@@ -460,23 +461,39 @@ export default function PlatformLogin() {
         >
           {/* Login form — right side (RTL) */}
           <div className="flex-1 max-w-md mx-auto lg:mx-0">
-            {/* Animated Logo */}
+            {/* Full Brand Logo — enlarged with creative effects */}
             <div className="text-center mb-8">
-              <div className="flex justify-center mb-4">
-                <AnimatedLogo
-                  src={isDark ? RASID_LOGO_DARK : RASID_LOGO_LIGHT}
-                  isDark={isDark}
-                />
+              <div className="flex justify-center mb-3">
+                <div className="relative">
+                  {/* Glow ring behind logo */}
+                  <div
+                    className="absolute inset-0 rounded-2xl"
+                    style={{
+                      background: isDark
+                        ? 'radial-gradient(ellipse at center, rgba(61, 177, 172, 0.08), transparent 70%)'
+                        : 'radial-gradient(ellipse at center, rgba(39, 52, 112, 0.05), transparent 70%)',
+                      filter: 'blur(20px)',
+                      transform: 'scale(1.5)',
+                    }}
+                  />
+                  <img
+                    src={isDark ? RASID_LOGO_LIGHT : RASID_LOGO_DARK}
+                    alt="منصة راصد - مكتب إدارة البيانات الوطنية"
+                    className="relative z-10"
+                    style={{
+                      width: '320px',
+                      height: 'auto',
+                      filter: isDark
+                        ? 'drop-shadow(0 0 15px rgba(61, 177, 172, 0.15)) drop-shadow(0 0 40px rgba(100, 89, 167, 0.08))'
+                        : 'drop-shadow(0 4px 12px rgba(39, 52, 112, 0.12))',
+                      animation: 'logo-float 5s ease-in-out infinite',
+                    }}
+                  />
+                </div>
               </div>
-              <h1
-                className="text-xl font-bold mb-1"
-                style={{ color: isDark ? SDAIA.textDark : "#1C2833" }}
-              >
-                منصة راصد
-              </h1>
               <p
-                className="text-sm"
-                style={{ color: isDark ? "rgba(225,222,245,0.6)" : "rgba(28,40,51,0.6)" }}
+                className="text-sm mt-2"
+                style={{ color: isDark ? "rgba(225,222,245,0.5)" : "rgba(28,40,51,0.5)" }}
               >
                 منصة رصد تسريبات البيانات الشخصية
               </p>

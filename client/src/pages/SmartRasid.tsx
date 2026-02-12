@@ -318,6 +318,54 @@ function ThinkingStepsDisplay({ steps, isExpanded, onToggle }: { steps: Thinking
   );
 }
 
+// ═══ TYPEWRITER STREAMDOWN ═══
+function TypewriterStreamdown({ children, isNew }: { children: string; isNew: boolean }) {
+  const [displayedContent, setDisplayedContent] = useState(isNew ? "" : children);
+  const [isTyping, setIsTyping] = useState(isNew);
+  const contentRef = useRef(children);
+  const indexRef = useRef(0);
+
+  useEffect(() => {
+    if (!isNew) {
+      setDisplayedContent(children);
+      return;
+    }
+    contentRef.current = children;
+    indexRef.current = 0;
+    setIsTyping(true);
+    setDisplayedContent("");
+
+    const charsPerTick = 8; // Fast typing speed
+    const tickInterval = 12; // ms between ticks
+
+    const timer = setInterval(() => {
+      indexRef.current += charsPerTick;
+      if (indexRef.current >= contentRef.current.length) {
+        setDisplayedContent(contentRef.current);
+        setIsTyping(false);
+        clearInterval(timer);
+      } else {
+        setDisplayedContent(contentRef.current.slice(0, indexRef.current));
+      }
+    }, tickInterval);
+
+    return () => clearInterval(timer);
+  }, [children, isNew]);
+
+  return (
+    <>
+      <Streamdown>{displayedContent}</Streamdown>
+      {isTyping && (
+        <motion.span
+          animate={{ opacity: [1, 0] }}
+          transition={{ duration: 0.5, repeat: Infinity, repeatType: "reverse" }}
+          className="inline-block w-2 h-4 bg-cyan-400 ml-0.5 align-middle rounded-sm"
+        />
+      )}
+    </>
+  );
+}
+
 // ═══ MAIN COMPONENT ═══
 export default function SmartRasid() {
   const { user } = useAuth();
@@ -336,6 +384,7 @@ export default function SmartRasid() {
   const [conversationId] = useState(() => `conv-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`);
   const [isSaving, setIsSaving] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+  const [newMessageIds, setNewMessageIds] = useState<Set<string>>(new Set());
 
   // Chat history queries/mutations
   const historyQuery = trpc.chatHistory.list.useQuery(undefined, { enabled: showHistory });
@@ -462,6 +511,7 @@ export default function SmartRasid() {
         userQuery: msg,
       };
 
+      setNewMessageIds(prev => new Set(prev).add(assistantMessage.id));
       setMessages(prev => [...prev, assistantMessage]);
     } catch (err: any) {
       setLoadingSteps([]);
@@ -893,7 +943,7 @@ export default function SmartRasid() {
               transition={{ delay: 0.3 }}
               className="text-sm text-slate-400 mb-4 text-center max-w-lg font-[Tajawal]"
             >
-              كبير المحللين السيبرانيين — يحلل، يستنتج، يربط، وينفذ
+              كبير محللي حماية البيانات الشخصية — يحلل، يستنتج، يربط، وينفذ
             </motion.p>
 
             {/* Agent Architecture — Console Display */}
@@ -1059,8 +1109,8 @@ export default function SmartRasid() {
                     </button>
 
                     {msg.role === "assistant" ? (
-                      <div className="prose prose-invert prose-sm max-w-none [&_table]:text-xs [&_th]:bg-cyan-500/5 [&_td]:border-cyan-500/10 [&_th]:border-cyan-500/10 [&_th]:px-3 [&_th]:py-2 [&_td]:px-3 [&_td]:py-1.5 [&_a]:text-cyan-400 [&_strong]:text-cyan-200 [&_code]:text-cyan-300 [&_code]:bg-cyan-500/10">
-                        <Streamdown>{msg.content}</Streamdown>
+                      <div className="rasid-response prose prose-invert max-w-none text-[13px] leading-[1.7] [&_h1]:text-base [&_h1]:font-bold [&_h1]:text-cyan-200 [&_h1]:mt-4 [&_h1]:mb-2 [&_h2]:text-[14px] [&_h2]:font-bold [&_h2]:text-cyan-200 [&_h2]:mt-3 [&_h2]:mb-2 [&_h3]:text-[13px] [&_h3]:font-semibold [&_h3]:text-cyan-300 [&_h3]:mt-3 [&_h3]:mb-1.5 [&_h4]:text-[12px] [&_h4]:font-semibold [&_h4]:text-teal-300 [&_h4]:mt-2 [&_h4]:mb-1 [&_p]:text-[13px] [&_p]:text-slate-300 [&_p]:leading-[1.7] [&_p]:mb-2 [&_li]:text-[12px] [&_li]:text-slate-300 [&_li]:leading-[1.6] [&_ul]:space-y-0.5 [&_ol]:space-y-0.5 [&_table]:text-[11px] [&_table]:w-full [&_table]:border-collapse [&_th]:bg-cyan-500/10 [&_th]:text-cyan-300 [&_th]:text-[11px] [&_th]:font-semibold [&_th]:px-2.5 [&_th]:py-1.5 [&_th]:border [&_th]:border-cyan-500/15 [&_td]:px-2.5 [&_td]:py-1.5 [&_td]:border [&_td]:border-cyan-500/10 [&_td]:text-slate-400 [&_a]:text-cyan-400 [&_a]:underline [&_a]:underline-offset-2 [&_strong]:text-cyan-200 [&_strong]:font-semibold [&_em]:text-teal-300 [&_code]:text-[11px] [&_code]:text-cyan-300 [&_code]:bg-cyan-500/10 [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:rounded [&_pre]:text-[11px] [&_pre]:bg-[#060d1b] [&_pre]:border [&_pre]:border-cyan-500/10 [&_pre]:rounded-lg [&_pre]:p-3 [&_pre]:overflow-x-auto [&_blockquote]:border-r-2 [&_blockquote]:border-cyan-400/40 [&_blockquote]:pr-3 [&_blockquote]:pl-0 [&_blockquote]:text-[12px] [&_blockquote]:text-cyan-200/80 [&_blockquote]:italic [&_blockquote]:my-2 [&_hr]:border-cyan-500/15 [&_hr]:my-3 [&_img]:rounded-lg [&_img]:border [&_img]:border-cyan-500/20 [&_img]:shadow-lg [&_img]:shadow-cyan-500/5 [&_img]:max-w-full [&_img]:my-3">
+                        <TypewriterStreamdown isNew={newMessageIds.has(msg.id)}>{msg.content}</TypewriterStreamdown>
                         {/* Clickable Leak IDs */}
                         {extractLeakIds(msg.content).length > 0 && (
                           <div className="mt-3 pt-3 border-t border-cyan-500/10 flex flex-wrap gap-2">
@@ -1078,7 +1128,7 @@ export default function SmartRasid() {
                         )}
                       </div>
                     ) : (
-                      <p className="text-sm leading-relaxed font-[Tajawal]">{msg.content}</p>
+                      <p className="text-[13px] leading-relaxed font-[Tajawal]">{msg.content}</p>
                     )}
                   </div>
 
