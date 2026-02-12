@@ -669,3 +669,19 @@
 - [x] Ensure RTL support and Arabic text rendering (Tajawal font)
 - [x] All 196 tests passing after design changes
 - [x] Save checkpoint
+
+## Phase 42: Smart Question Suggestions for راصد الذكي
+- [x] Analyze current Smart Rasid UI (SmartRasid.tsx) and chat backend
+- [x] Create tRPC endpoint smartRasid.smartSuggestions (popular queries, KB topics, contextual, trending)
+- [x] Add suggestion categories: popular (from search logs), knowledge (KB topics), contextual (keyword-based), trending (defaults)
+- [x] Build smart suggestions UI in welcome screen with SMART_SUGGESTIONS header
+  - [x] الأسئلة الرائجة (Trending) with orange-themed icons
+  - [x] من قاعدة المعرفة (Knowledge Base) with blue-themed category-specific icons
+- [x] Show contextual smart suggestions after each AI response (with Lightbulb header)
+- [x] Allow clicking suggestions to auto-fill and send query
+- [x] Add animated entrance effects (framer-motion: opacity, x-slide, scale on hover)
+- [x] Fallback to static quick commands when API fails
+- [x] Category-specific icons: FileText (article), Lightbulb (faq), BookOpen (glossary), Target (instruction), Shield (policy), ShieldCheck (regulation)
+- [x] Write tests for suggestion logic (smartSuggestions.test.ts - 13 tests)
+- [x] All 209 tests passing (10 test files)
+- [x] Save checkpoint

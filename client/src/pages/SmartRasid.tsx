@@ -57,6 +57,10 @@ import {
   Radar,
   ShieldCheck,
   HeartHandshake,
+  Target,
+  Lightbulb,
+  Flame,
+  ArrowRight,
 } from "lucide-react";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
@@ -336,6 +340,25 @@ export default function SmartRasid() {
   const [conversationId] = useState(() => `conv-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`);
   const [isSaving, setIsSaving] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+
+  // Smart suggestions query
+  const lastAssistantMsg = messages.filter(m => m.role === "assistant").slice(-1)[0];
+  const conversationTopics = messages.filter(m => m.role === "user").map(m => m.content.slice(0, 50));
+  const smartSuggestionsQuery = trpc.smartRasid.smartSuggestions.useQuery(
+    {
+      context: messages.length === 0 ? "welcome" : "after_response",
+      lastAssistantMessage: lastAssistantMsg?.content?.slice(0, 500) ?? "",
+      conversationTopics: conversationTopics.slice(-3),
+    },
+    { refetchOnWindowFocus: false, staleTime: 60_000 }
+  );
+
+  // Icon mapping for smart suggestions
+  const suggestionIconMap: Record<string, React.ComponentType<any>> = {
+    TrendingUp, Shield, GitBranch, Fingerprint, BarChart3, Target, FileText,
+    BookOpen, Search, AlertTriangle, MapPin, Network, Users, Radio, Radar,
+    Activity, Lightbulb, Flame, Download, Eye, ShieldCheck, Zap,
+  };
 
   // Chat history queries/mutations
   const historyQuery = trpc.chatHistory.list.useQuery(undefined, { enabled: showHistory });
@@ -956,30 +979,122 @@ export default function SmartRasid() {
               </div>
             </motion.div>
 
-            {/* Quick Action Cards */}
+            {/* ═══ SMART SUGGESTIONS — AI-Powered ═══ */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.6 }}
-              className="w-full"
+              className="w-full space-y-4"
             >
-              <p className="text-xs text-slate-500 mb-3 text-center font-mono">// ابدأ بأحد هذه الأوامر أو اكتب أي سؤال</p>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                {quickCommands.slice(0, 4).map((cmd, i) => (
-                  <motion.button
-                    key={i}
-                    whileHover={{ scale: 1.03, y: -3 }}
-                    whileTap={{ scale: 0.97 }}
-                    onClick={() => sendMessage(cmd.query)}
-                    className={`flex flex-col items-center gap-2 p-4 rounded-xl bg-[#0a1628]/60 hover:bg-cyan-500/5 border border-cyan-500/10 hover:border-cyan-500/25 transition-all group`}
-                  >
-                    <div className={`w-10 h-10 rounded-xl ${cmd.bgColor} border flex items-center justify-center shadow-lg group-hover:shadow-xl transition-shadow`}>
-                      <cmd.icon className={`w-5 h-5 ${cmd.color}`} />
-                    </div>
-                    <span className="text-xs text-slate-400 group-hover:text-slate-200 transition-colors font-[Tajawal]">{cmd.label}</span>
-                  </motion.button>
-                ))}
+              {/* Section Header */}
+              <div className="flex items-center justify-center gap-2">
+                <div className="h-px flex-1 bg-gradient-to-r from-transparent via-cyan-500/20 to-transparent" />
+                <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-[#060d1b]/80 border border-cyan-500/15">
+                  <Lightbulb className="w-3.5 h-3.5 text-amber-400" />
+                  <span className="text-[10px] text-cyan-400/70 font-mono">SMART_SUGGESTIONS</span>
+                  <Sparkles className="w-3 h-3 text-cyan-400/50" />
+                </div>
+                <div className="h-px flex-1 bg-gradient-to-r from-transparent via-cyan-500/20 to-transparent" />
               </div>
+
+              {smartSuggestionsQuery.isLoading ? (
+                <div className="flex items-center justify-center py-6">
+                  <Loader2 className="w-5 h-5 text-cyan-400 animate-spin" />
+                  <span className="text-xs text-cyan-400/50 mr-2 font-mono">LOADING_SUGGESTIONS...</span>
+                </div>
+              ) : smartSuggestionsQuery.data ? (
+                <div className="space-y-3">
+                  {/* Trending / Popular Suggestions */}
+                  {(smartSuggestionsQuery.data.suggestions.popular.length > 0 || smartSuggestionsQuery.data.suggestions.trending.length > 0) && (
+                    <div>
+                      <div className="flex items-center gap-2 mb-2">
+                        <Flame className="w-3.5 h-3.5 text-orange-400" />
+                        <span className="text-[11px] text-slate-400 font-[Tajawal] font-medium">الأسئلة الرائجة</span>
+                        <span className="text-[9px] text-cyan-400/40 font-mono bg-cyan-500/5 px-1.5 py-0.5 rounded">
+                          {(smartSuggestionsQuery.data.suggestions.popular.length + smartSuggestionsQuery.data.suggestions.trending.length)} ITEMS
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                        {[...smartSuggestionsQuery.data.suggestions.popular, ...smartSuggestionsQuery.data.suggestions.trending].slice(0, 6).map((s, i) => {
+                          const IconComp = suggestionIconMap[s.icon] || TrendingUp;
+                          return (
+                            <motion.button
+                              key={`pop-${i}`}
+                              initial={{ opacity: 0, x: -10 }}
+                              animate={{ opacity: 1, x: 0 }}
+                              transition={{ delay: 0.7 + i * 0.05 }}
+                              whileHover={{ scale: 1.02, x: 3 }}
+                              whileTap={{ scale: 0.98 }}
+                              onClick={() => sendMessage(s.text)}
+                              className="flex items-center gap-3 p-3 rounded-xl bg-[#0a1628]/60 hover:bg-gradient-to-r hover:from-cyan-500/5 hover:to-teal-500/5 border border-cyan-500/10 hover:border-cyan-500/25 transition-all group text-right"
+                            >
+                              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-orange-500/15 to-amber-500/10 border border-orange-500/20 flex items-center justify-center flex-shrink-0 group-hover:shadow-[0_0_12px_rgba(251,146,60,0.15)] transition-shadow">
+                                <IconComp className="w-4 h-4 text-orange-400 group-hover:text-orange-300 transition-colors" />
+                              </div>
+                              <span className="text-xs text-slate-400 group-hover:text-slate-200 transition-colors font-[Tajawal] flex-1 text-right">{s.text}</span>
+                              <ArrowRight className="w-3.5 h-3.5 text-cyan-500/30 group-hover:text-cyan-400 transition-colors opacity-0 group-hover:opacity-100 flex-shrink-0" />
+                            </motion.button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Knowledge Base Suggestions */}
+                  {smartSuggestionsQuery.data.suggestions.knowledge.length > 0 && (
+                    <div>
+                      <div className="flex items-center gap-2 mb-2">
+                        <BookOpen className="w-3.5 h-3.5 text-blue-400" />
+                        <span className="text-[11px] text-slate-400 font-[Tajawal] font-medium">من قاعدة المعرفة</span>
+                        <span className="text-[9px] text-cyan-400/40 font-mono bg-cyan-500/5 px-1.5 py-0.5 rounded">
+                          {smartSuggestionsQuery.data.suggestions.knowledge.length} TOPICS
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                        {smartSuggestionsQuery.data.suggestions.knowledge.map((s, i) => {
+                          const IconComp = suggestionIconMap[s.icon] || BookOpen;
+                          return (
+                            <motion.button
+                              key={`kb-${i}`}
+                              initial={{ opacity: 0, x: -10 }}
+                              animate={{ opacity: 1, x: 0 }}
+                              transition={{ delay: 0.9 + i * 0.05 }}
+                              whileHover={{ scale: 1.02, x: 3 }}
+                              whileTap={{ scale: 0.98 }}
+                              onClick={() => sendMessage(s.text)}
+                              className="flex items-center gap-3 p-3 rounded-xl bg-[#0a1628]/60 hover:bg-gradient-to-r hover:from-blue-500/5 hover:to-indigo-500/5 border border-blue-500/10 hover:border-blue-500/25 transition-all group text-right"
+                            >
+                              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500/15 to-indigo-500/10 border border-blue-500/20 flex items-center justify-center flex-shrink-0 group-hover:shadow-[0_0_12px_rgba(59,130,246,0.15)] transition-shadow">
+                                <IconComp className="w-4 h-4 text-blue-400 group-hover:text-blue-300 transition-colors" />
+                              </div>
+                              <span className="text-xs text-slate-400 group-hover:text-slate-200 transition-colors font-[Tajawal] flex-1 text-right">{s.text}</span>
+                              <ArrowRight className="w-3.5 h-3.5 text-blue-500/30 group-hover:text-blue-400 transition-colors opacity-0 group-hover:opacity-100 flex-shrink-0" />
+                            </motion.button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                /* Fallback to static quick commands */
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  {quickCommands.slice(0, 4).map((cmd, i) => (
+                    <motion.button
+                      key={i}
+                      whileHover={{ scale: 1.03, y: -3 }}
+                      whileTap={{ scale: 0.97 }}
+                      onClick={() => sendMessage(cmd.query)}
+                      className={`flex flex-col items-center gap-2 p-4 rounded-xl bg-[#0a1628]/60 hover:bg-cyan-500/5 border border-cyan-500/10 hover:border-cyan-500/25 transition-all group`}
+                    >
+                      <div className={`w-10 h-10 rounded-xl ${cmd.bgColor} border flex items-center justify-center shadow-lg group-hover:shadow-xl transition-shadow`}>
+                        <cmd.icon className={`w-5 h-5 ${cmd.color}`} />
+                      </div>
+                      <span className="text-xs text-slate-400 group-hover:text-slate-200 transition-colors font-[Tajawal]">{cmd.label}</span>
+                    </motion.button>
+                  ))}
+                </div>
+              )}
             </motion.div>
           </div>
         ) : (
@@ -1120,20 +1235,56 @@ export default function SmartRasid() {
                     )}
                   </div>
 
-                  {/* Follow-up suggestions */}
-                  {msg.role === "assistant" && msg.id === messages[messages.length - 1]?.id && (
-                    <div className="flex flex-wrap gap-1.5 mt-3">
-                      {getFollowUpSuggestions(msg.content).map((suggestion, i) => (
-                        <motion.button
-                          key={i}
-                          whileHover={{ scale: 1.02 }}
-                          whileTap={{ scale: 0.98 }}
-                          onClick={() => sendMessage(suggestion)}
-                          className="text-[11px] px-3 py-1.5 rounded-lg bg-[#0a1628]/60 hover:bg-cyan-500/10 border border-cyan-500/10 hover:border-cyan-500/25 text-slate-400 hover:text-cyan-300 transition-all font-mono"
-                        >
-                          {suggestion}
-                        </motion.button>
-                      ))}
+                  {/* Smart Follow-up Suggestions */}
+                  {msg.role === "assistant" && msg.id === messages[messages.length - 1]?.id && !isLoading && (
+                    <div className="mt-3 space-y-2">
+                      {/* Contextual suggestions from smart endpoint */}
+                      {smartSuggestionsQuery.data?.suggestions?.contextual && smartSuggestionsQuery.data.suggestions.contextual.length > 0 ? (
+                        <div className="space-y-1.5">
+                          <div className="flex items-center gap-1.5 mb-1">
+                            <Lightbulb className="w-3 h-3 text-amber-400/70" />
+                            <span className="text-[9px] text-cyan-400/40 font-mono">اقتراحات ذكية</span>
+                          </div>
+                          <div className="flex flex-wrap gap-1.5">
+                            {smartSuggestionsQuery.data.suggestions.contextual.map((s, i) => {
+                              const IconComp = suggestionIconMap[s.icon] || Sparkles;
+                              return (
+                                <motion.button
+                                  key={`ctx-${i}`}
+                                  initial={{ opacity: 0, y: 5 }}
+                                  animate={{ opacity: 1, y: 0 }}
+                                  transition={{ delay: i * 0.1 }}
+                                  whileHover={{ scale: 1.03, y: -1 }}
+                                  whileTap={{ scale: 0.97 }}
+                                  onClick={() => sendMessage(s.text)}
+                                  className="flex items-center gap-2 text-[11px] px-3 py-2 rounded-xl bg-gradient-to-r from-[#0a1628]/80 to-[#0d1f3c]/60 hover:from-cyan-500/10 hover:to-teal-500/5 border border-cyan-500/15 hover:border-cyan-500/30 text-slate-400 hover:text-cyan-300 transition-all group"
+                                >
+                                  <IconComp className="w-3.5 h-3.5 text-cyan-400/60 group-hover:text-cyan-300 transition-colors flex-shrink-0" />
+                                  <span className="font-[Tajawal]">{s.text}</span>
+                                </motion.button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      ) : (
+                        /* Fallback to static suggestions */
+                        <div className="flex flex-wrap gap-1.5">
+                          {getFollowUpSuggestions(msg.content).map((suggestion, i) => (
+                            <motion.button
+                              key={i}
+                              initial={{ opacity: 0, y: 5 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              transition={{ delay: i * 0.1 }}
+                              whileHover={{ scale: 1.02 }}
+                              whileTap={{ scale: 0.98 }}
+                              onClick={() => sendMessage(suggestion)}
+                              className="text-[11px] px-3 py-1.5 rounded-lg bg-[#0a1628]/60 hover:bg-cyan-500/10 border border-cyan-500/10 hover:border-cyan-500/25 text-slate-400 hover:text-cyan-300 transition-all font-[Tajawal]"
+                            >
+                              {suggestion}
+                            </motion.button>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>

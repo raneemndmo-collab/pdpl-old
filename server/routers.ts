@@ -1461,6 +1461,164 @@ export const appRouter = router({
         return { suggestions: Array.from(new Set(suggestions)).slice(0, 8) };
       }),
 
+    // Smart suggestions: combines popular queries, KB topics, and contextual suggestions
+    smartSuggestions: publicProcedure
+      .input(z.object({
+        context: z.enum(["welcome", "after_response", "empty_input"]).optional().default("welcome"),
+        lastAssistantMessage: z.string().optional(),
+        conversationTopics: z.array(z.string()).optional(),
+      }).optional())
+      .query(async ({ input }) => {
+        const ctx = input?.context ?? "welcome";
+        const lastMsg = input?.lastAssistantMessage ?? "";
+        const topics = input?.conversationTopics ?? [];
+
+        // 1. Get popular queries from search logs
+        const popularQueries = await getPopularQueries(15);
+        const popularItems = popularQueries
+          .filter(q => q.count >= 1)
+          .map(q => ({
+            text: q.query,
+            category: "popular" as const,
+            score: q.count,
+            icon: "TrendingUp",
+          }));
+
+        // 2. Get KB topic-based suggestions
+        const kbEntries = await getKnowledgeBaseEntries({ isPublished: true, limit: 50 });
+        const kbCategories = new Map<string, string[]>();
+        for (const entry of kbEntries) {
+          const cat = entry.category || "عام";
+          if (!kbCategories.has(cat)) kbCategories.set(cat, []);
+          kbCategories.get(cat)!.push(entry.titleAr || entry.title);
+        }
+        const kbSuggestions: Array<{ text: string; category: "knowledge"; score: number; icon: string }> = [];
+        for (const [cat, titles] of Array.from(kbCategories.entries())) {
+          // Create question-style suggestions from KB topics
+          // Map actual DB categories to meaningful Arabic questions
+          const categoryQuestions: Record<string, string[]> = {
+            "article": ["ما هي أهم المقالات عن حماية البيانات الشخصية؟", "ابحث عن مقالات تتعلق بالتسريبات السيبرانية"],
+            "faq": ["ما هي الأسئلة الشائعة عن نظام PDPL؟", "كيف أتعامل مع حادثة تسريب بيانات؟", "ما هي حقوق أصحاب البيانات؟"],
+            "glossary": ["ما معنى البيانات الشخصية الحساسة؟", "ما الفرق بين التسريب والاختراق؟"],
+            "instruction": ["ما هي خطوات الإبلاغ عن تسريب؟", "كيف أستخدم منصة راصد بفعالية؟", "ما إجراءات الاستجابة للحوادث؟"],
+            "policy": ["ما هي سياسات حماية البيانات المعتمدة؟", "ما هي عقوبات مخالفة نظام PDPL؟"],
+            "regulation": ["ما هي متطلبات نظام حماية البيانات الشخصية؟", "ما هي اللوائح التنظيمية للبيانات الشخصية؟"],
+          };
+          const catKey = cat.toLowerCase();
+          const questions = categoryQuestions[catKey] || [];
+          const catIcons: Record<string, string> = {
+            "article": "FileText", "faq": "Lightbulb", "glossary": "BookOpen",
+            "instruction": "Target", "policy": "Shield", "regulation": "ShieldCheck",
+          };
+          const icon = catIcons[catKey] || "BookOpen";
+          for (const q of questions) {
+            kbSuggestions.push({ text: q, category: "knowledge", score: titles.length + 5, icon });
+          }
+          // Also add title-based suggestions for top articles (only short titles)
+          for (const title of titles.slice(0, 1)) {
+            if (title.length <= 40) {
+              kbSuggestions.push({ text: `اشرح لي عن: ${title}`, category: "knowledge", score: titles.length, icon });
+            }
+          }
+        }
+
+        // 3. Contextual suggestions based on last message
+        const contextualSuggestions: Array<{ text: string; category: "contextual"; score: number; icon: string }> = [];
+        if (ctx === "after_response" && lastMsg) {
+          const lower = lastMsg.toLowerCase();
+          const contextMap: Array<{ keywords: string[]; suggestions: Array<{ text: string; icon: string }> }> = [
+            { keywords: ["تسريب", "leak", "حادثة"], suggestions: [
+              { text: "ما هي التوصيات الأمنية لهذا التسريب؟", icon: "Shield" },
+              { text: "هل هناك تسريبات مشابهة من نفس المصدر؟", icon: "GitBranch" },
+              { text: "ما هي البيانات الشخصية المتأثرة؟", icon: "Fingerprint" },
+            ]},
+            { keywords: ["ملخص", "لوحة", "إحصائي", "dashboard"], suggestions: [
+              { text: "حلل الاتجاهات الشهرية بالتفصيل", icon: "TrendingUp" },
+              { text: "قارن بين أداء هذا الشهر والشهر الماضي", icon: "BarChart3" },
+              { text: "ما هي القطاعات الأكثر تعرضاً للتسريبات؟", icon: "Target" },
+            ]},
+            { keywords: ["تقرير", "مستند", "report"], suggestions: [
+              { text: "أنشئ تقرير أسبوعي شامل", icon: "FileText" },
+              { text: "ما هي التقارير المجدولة النشطة؟", icon: "CalendarClock" },
+              { text: "صدّر البيانات بصيغة CSV", icon: "Download" },
+            ]},
+            { keywords: ["حماية", "pdpl", "خصوصية", "نظام"], suggestions: [
+              { text: "ما هي مواد PDPL ذات الصلة بهذه الحالة؟", icon: "BookOpen" },
+              { text: "ما هي أفضل الممارسات للامتثال؟", icon: "CheckCircle" },
+              { text: "ما هي العقوبات المحتملة؟", icon: "AlertTriangle" },
+            ]},
+            { keywords: ["بائع", "seller", "مهدد"], suggestions: [
+              { text: "اعرض ملف البائع التفصيلي", icon: "UserX" },
+              { text: "ما هي القطاعات المستهدفة من هذا البائع؟", icon: "Target" },
+              { text: "تحليل ارتباطات البائع بتسريبات أخرى", icon: "Network" },
+            ]},
+            { keywords: ["تحليل", "اتجاه", "trend", "ارتباط", "نمط"], suggestions: [
+              { text: "اكتشف الأنماط غير العادية في البيانات", icon: "Radar" },
+              { text: "ما هي التهديدات الناشئة؟", icon: "AlertTriangle" },
+              { text: "حلل توزيع التسريبات جغرافياً", icon: "MapPin" },
+            ]},
+            { keywords: ["معرفة", "knowledge", "سياسة", "إرشاد"], suggestions: [
+              { text: "ابحث عن إرشادات حماية البيانات", icon: "Search" },
+              { text: "ما هي السياسات المتعلقة بالتسريبات؟", icon: "FileText" },
+              { text: "دليل الاستجابة للحوادث", icon: "BookOpen" },
+            ]},
+          ];
+          for (const ctx of contextMap) {
+            if (ctx.keywords.some(k => lower.includes(k))) {
+              for (const s of ctx.suggestions) {
+                contextualSuggestions.push({ text: s.text, category: "contextual", score: 10, icon: s.icon });
+              }
+            }
+          }
+          // Add topic-continuation suggestions
+          if (topics.length > 0) {
+            contextualSuggestions.push({ text: `تعمّق أكثر في ${topics[0]}`, category: "contextual", score: 8, icon: "Search" });
+          }
+        }
+
+        // 4. Default trending suggestions (always available)
+        const trendingSuggestions = [
+          { text: "ملخص شامل للوضع الأمني اليوم", category: "trending" as const, score: 20, icon: "Activity" },
+          { text: "ما هي أحدث التسريبات المكتشفة؟", category: "trending" as const, score: 19, icon: "ShieldAlert" },
+          { text: "تحليل ارتباطات شامل بين التسريبات", category: "trending" as const, score: 18, icon: "GitBranch" },
+          { text: "حالة مهام الرصد النشطة", category: "trending" as const, score: 17, icon: "Radio" },
+          { text: "ما هي التوصيات الأمنية العاجلة؟", category: "trending" as const, score: 16, icon: "Shield" },
+          { text: "تقرير أسبوعي عن التسريبات", category: "trending" as const, score: 15, icon: "FileText" },
+          { text: "خريطة التهديدات الجغرافية", category: "trending" as const, score: 14, icon: "MapPin" },
+          { text: "تحليل نشاط المستخدمين على المنصة", category: "trending" as const, score: 13, icon: "Users" },
+        ];
+
+        // Combine and deduplicate
+        const allSuggestions = [
+          ...contextualSuggestions,
+          ...popularItems,
+          ...kbSuggestions,
+          ...trendingSuggestions,
+        ];
+
+        // Deduplicate by text similarity
+        const seen = new Set<string>();
+        const unique = allSuggestions.filter(s => {
+          const key = s.text.toLowerCase().trim();
+          if (seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        });
+
+        // Group by category
+        const grouped = {
+          contextual: unique.filter(s => s.category === "contextual").slice(0, 3),
+          popular: unique.filter(s => s.category === "popular").slice(0, 5),
+          knowledge: unique.filter(s => s.category === "knowledge").slice(0, 4),
+          trending: unique.filter(s => s.category === "trending").slice(0, 4),
+        };
+
+        return {
+          suggestions: grouped,
+          totalCount: Object.values(grouped).reduce((sum, arr) => sum + arr.length, 0),
+        };
+      }),
+
     chat: protectedProcedure
       .input(z.object({
         message: z.string().min(1),
