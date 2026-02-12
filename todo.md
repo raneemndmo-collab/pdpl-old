@@ -725,11 +725,25 @@
 - [x] Save checkpoint
 
 ## Phase 58: Smart Rasid - Rewrite as Operational Tool (NOT awareness tool)
-- [ ] Rewrite system prompt: Remove all awareness/educational content
-- [ ] System prompt: Focus on fetching data, analyzing, executing tasks, explaining platform functions
-- [ ] System prompt: Must answer ALL questions about platform data directly
-- [ ] System prompt: Must execute platform tasks (create reports, update statuses, search data)
-- [ ] System prompt: Must explain how to use any platform feature step-by-step
-- [ ] System prompt: Must show images/screenshots when available
-- [ ] System prompt: Must display sample data directly without refusing
-- [ ] Update KB entries to focus on platform how-to guides and function explanations only
+- [x] Rewrite system prompt: Remove all awareness/educational content
+- [x] System prompt: Focus on fetching data, analyzing, executing tasks, explaining platform functions
+- [x] System prompt: Must answer ALL questions about platform data directly
+- [x] System prompt: Must execute platform tasks (create reports, update statuses, search data)
+- [x] System prompt: Must explain how to use any platform feature step-by-step
+- [x] System prompt: Must show images/screenshots when available
+- [x] System prompt: Must display sample data directly without refusing
+- [x] Update KB entries to focus on platform how-to guides and function explanations only
+
+## Phase 59: PDF Export + Smart QR Verification + Console Animation
+- [x] Convert incident documentation export from HTML to PDF format
+- [x] Build QR scanner component with camera support (getUserMedia)
+- [x] Build QR scanner with file/image upload support
+- [x] Create dramatic scan animation effect on QR/image
+- [x] Create console-style verification screen with step-by-step typing effect
+- [x] Step 1: Verify code number with typing animation
+- [x] Step 2: Verify QR code with typing animation  
+- [x] Step 3: Verify content integrity with typing animation
+- [x] Show dramatic final result (valid/invalid) with effects
+- [x] Integrate into PublicVerify and VerifyDocument pages
+- [x] Replace manual code input with smart QR scan
+- [x] Test PDF generation and QR scanning

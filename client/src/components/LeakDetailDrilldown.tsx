@@ -156,15 +156,70 @@ export default function LeakDetailDrilldown({ leak, open, onClose, onBack, showB
     }
   }, [generatedDoc]);
 
-  const handleDownloadDoc = useCallback(() => {
+  const handleDownloadDoc = useCallback(async () => {
     if (!generatedDoc || !leakId) return;
-    const blob = new Blob([generatedDoc.htmlContent], { type: "text/html;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `incident-${leakId}-${generatedDoc.verificationCode}.html`;
-    a.click();
-    URL.revokeObjectURL(url);
+    try {
+      toast.info("جاري إنشاء ملف PDF...");
+      // Create hidden iframe to render HTML
+      const iframe = document.createElement("iframe");
+      iframe.style.position = "fixed";
+      iframe.style.left = "-9999px";
+      iframe.style.top = "-9999px";
+      iframe.style.width = "820px";
+      iframe.style.height = "1200px";
+      document.body.appendChild(iframe);
+      
+      const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
+      if (!iframeDoc) throw new Error("Cannot access iframe");
+      iframeDoc.open();
+      iframeDoc.write(generatedDoc.htmlContent);
+      iframeDoc.close();
+      
+      // Wait for content and fonts to load
+      await new Promise(r => setTimeout(r, 2000));
+      
+      const { default: html2canvas } = await import("html2canvas");
+      const { default: jsPDF } = await import("jspdf");
+      
+      const pageEl = iframeDoc.querySelector(".page") as HTMLElement || iframeDoc.body;
+      
+      const canvas = await html2canvas(pageEl, {
+        scale: 2,
+        useCORS: true,
+        allowTaint: true,
+        logging: false,
+        backgroundColor: "#ffffff",
+        width: 820,
+        windowWidth: 820,
+      });
+      
+      const imgData = canvas.toDataURL("image/jpeg", 0.95);
+      const pdfWidth = 210; // A4 width in mm
+      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+      
+      const pdf = new jsPDF({
+        orientation: pdfHeight > 297 ? "portrait" : "portrait",
+        unit: "mm",
+        format: [pdfWidth, Math.max(pdfHeight, 297)],
+      });
+      
+      pdf.addImage(imgData, "JPEG", 0, 0, pdfWidth, pdfHeight);
+      pdf.save(`incident-${leakId}-${generatedDoc.verificationCode}.pdf`);
+      
+      document.body.removeChild(iframe);
+      toast.success("تم تحميل ملف PDF بنجاح");
+    } catch (err) {
+      console.error("PDF generation error:", err);
+      // Fallback to HTML download
+      const blob = new Blob([generatedDoc.htmlContent], { type: "text/html;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `incident-${leakId}-${generatedDoc.verificationCode}.html`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.warning("تم التحميل كملف HTML (فشل إنشاء PDF)");
+    }
   }, [generatedDoc, leakId]);
 
   if (!open || !leak) return null;
@@ -266,7 +321,7 @@ export default function LeakDetailDrilldown({ leak, open, onClose, onBack, showB
                             </Button>
                             <Button size="sm" variant="outline" onClick={handleDownloadDoc} className="text-xs gap-1">
                               <Download className="w-3 h-3" />
-                              تحميل
+                              تحميل PDF
                             </Button>
                             <a
                               href={`/public/verify/${generatedDoc.verificationCode}`}

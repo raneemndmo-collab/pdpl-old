@@ -135,10 +135,10 @@ describe("rasidAI — Smart Rasid AI v6.0", () => {
 
   describe("buildSystemPrompt", () => {
     it("should build a comprehensive system prompt with Smart Rasid identity", () => {
-      const stats = { totalLeaks: 256, criticalAlerts: 56, totalRecords: 229200000, activeMonitors: 27 };
+      const stats = { totalLeaks: 256, criticalAlerts: 56, totalRecords: 229200000, activeMonitors: 27, newLeaks: 56 };
       const prompt = buildSystemPrompt("TestUser", stats, "");
       expect(prompt).toContain("راصد الذكي");
-      expect(prompt).toContain("NDMO");
+      expect(prompt).toContain("راصد");
       expect(prompt).toContain("TestUser");
       expect(prompt).toContain("256");
       expect(prompt).toContain("56");
