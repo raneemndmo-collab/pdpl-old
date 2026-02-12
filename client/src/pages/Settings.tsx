@@ -272,9 +272,9 @@ export default function Settings() {
             </CardHeader>
             <CardContent className="space-y-6">
               {[
-                { key: "criticalAlerts" as const, label: "تنبيهات حرجة", desc: "إشعار فوري عند اكتشاف تسريب حرج", color: "text-red-400" },
-                { key: "highAlerts" as const, label: "تنبيهات عالية", desc: "إشعار عند اكتشاف تسريب عالي الخطورة", color: "text-amber-400" },
-                { key: "mediumAlerts" as const, label: "تنبيهات متوسطة", desc: "إشعار عند اكتشاف تسريب متوسط الخطورة", color: "text-yellow-400" },
+                { key: "criticalAlerts" as const, label: "تسريبات واسعة النطاق", desc: "إشعار فوري عند اكتشاف تسريب واسع النطاق", color: "text-red-400" },
+                { key: "highAlerts" as const, label: "تسريبات مرتفعة التأثير", desc: "إشعار عند اكتشاف تسريب مرتفع التأثير", color: "text-amber-400" },
+                { key: "mediumAlerts" as const, label: "تسريبات متوسطة التأثير", desc: "إشعار عند اكتشاف تسريب متوسط التأثير", color: "text-yellow-400" },
                 { key: "dailyDigest" as const, label: "ملخص يومي", desc: "تقرير يومي بالتسريبات المرصودة", color: "text-cyan-400" },
                 { key: "weeklyReport" as const, label: "تقرير أسبوعي", desc: "تقرير أسبوعي شامل بالإحصائيات", color: "text-violet-400" },
               ].map((item) => (

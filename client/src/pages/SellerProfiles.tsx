@@ -35,7 +35,7 @@ const riskColors: Record<string, string> = {
 };
 
 const riskLabels: Record<string, string> = {
-  critical: "حرج",
+  critical: "واسع النطاق",
   high: "عالي",
   medium: "متوسط",
   low: "منخفض",
@@ -100,7 +100,7 @@ export default function SellerProfiles() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
           { key: "total", label: "إجمالي البائعين", value: stats.total, icon: UserX, color: "text-primary", borderColor: "border-primary/20", bgColor: "bg-primary/5" },
-          { key: "critical", label: "بائعون حرجون", value: stats.critical, icon: AlertTriangle, color: "text-red-400", borderColor: "border-red-500/20", bgColor: "bg-red-500/5" },
+          { key: "critical", label: "بائعون واسعو النطاق", value: stats.critical, icon: AlertTriangle, color: "text-red-400", borderColor: "border-red-500/20", bgColor: "bg-red-500/5" },
           { key: "active", label: "بائعون نشطون", value: stats.active, icon: Activity, color: "text-emerald-400", borderColor: "border-emerald-500/20", bgColor: "bg-emerald-500/5" },
           { key: "totalLeaks", label: "تسريبات مرتبطة", value: stats.totalLeaks, icon: TrendingUp, color: "text-amber-400", borderColor: "border-amber-500/20", bgColor: "bg-amber-500/5" },
         ].map((stat, i) => (
@@ -209,7 +209,7 @@ export default function SellerProfiles() {
                   {/* Risk Score Bar */}
                   <div className="mb-3">
                     <div className="flex items-center justify-between mb-1">
-                      <span className="text-[10px] text-muted-foreground">درجة الخطورة</span>
+                      <span className="text-[10px] text-muted-foreground">حجم التأثير</span>
                       <span className="text-xs font-bold text-foreground">{seller.riskScore}/100</span>
                     </div>
                     <div className="w-full h-1.5 rounded-full bg-secondary/50 overflow-hidden">
@@ -263,7 +263,7 @@ export default function SellerProfiles() {
       </DetailModal>
 
       {/* Critical Sellers Modal */}
-      <DetailModal open={activeModal === "critical"} onClose={() => setActiveModal(null)} title="البائعون الحرجون" icon={<AlertTriangle className="w-5 h-5 text-red-400" />}>
+      <DetailModal open={activeModal === "critical"} onClose={() => setActiveModal(null)} title="بائعون واسعو النطاق" icon={<AlertTriangle className="w-5 h-5 text-red-400" />}>
         <div className="space-y-3">
           {sellers?.filter(s => s.riskLevel === "critical").map(seller => (
             <div
@@ -368,7 +368,7 @@ export default function SellerProfiles() {
             {/* Stats Grid */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               <div className="bg-secondary/50 rounded-xl p-3 border border-border/50 text-center">
-                <p className="text-xs text-muted-foreground">درجة الخطورة</p>
+                <p className="text-xs text-muted-foreground">حجم التأثير</p>
                 <p className={`text-xl font-bold mt-1 ${
                   (selectedSeller.riskScore || 0) >= 80 ? "text-red-400" :
                   (selectedSeller.riskScore || 0) >= 60 ? "text-amber-400" :

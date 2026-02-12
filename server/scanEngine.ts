@@ -545,7 +545,7 @@ async function analyzeScanResults(
           role: "system",
           content: `أنت محلل أمن معلومات متخصص في تسريبات البيانات الشخصية. قم بتحليل نتائج المسح التالية وقدم:
 1. ملخص تنفيذي للمخاطر
-2. تصنيف مستوى الخطورة الإجمالي
+2. تصنيف مستوى التأثير الإجمالي
 3. توصيات فورية
 4. البيانات الأكثر عرضة للخطر
 
@@ -598,7 +598,7 @@ async function analyzeScanResults(
             sourceIcon: "brain",
             type: "exposure",
             severity: analysis.overallRisk as any,
-            title: `تحليل ذكي: مستوى الخطورة ${analysis.overallRisk === "critical" ? "حرج" : analysis.overallRisk === "high" ? "عالي" : analysis.overallRisk === "medium" ? "متوسط" : "منخفض"} (${analysis.riskScore}/100)`,
+            title: `تحليل ذكي: تصنيف التأثير ${analysis.overallRisk === "critical" ? "واسع النطاق" : analysis.overallRisk === "high" ? "مرتفع" : analysis.overallRisk === "medium" ? "متوسط" : "محدود"} (${analysis.riskScore}/100)`,
             description: analysis.executiveSummary,
             details: {
               recommendations: analysis.recommendations,
@@ -612,7 +612,7 @@ async function analyzeScanResults(
         progress: {
           source,
           status: "completed",
-          message: `تحليل ذكي مكتمل — مستوى الخطورة: ${analysis.riskScore}/100`,
+          message: `تحليل ذكي مكتمل — تصنيف التأثير: ${analysis.riskScore}/100`,
           resultsCount: 1,
           timestamp: new Date(),
         },

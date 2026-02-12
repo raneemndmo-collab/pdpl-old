@@ -169,7 +169,7 @@ export async function dispatchLeakAlerts(payload: AlertPayload): Promise<{
 
 function severityLabelAr(s: string): string {
   switch (s) {
-    case "critical": return "حرج";
+    case "critical": return "واسع النطاق";
     case "high": return "عالي";
     case "medium": return "متوسط";
     default: return "منخفض";
@@ -185,7 +185,7 @@ function buildEmailBody(payload: AlertPayload, recipientName: string): string {
 • معرّف التسريب: ${payload.leakId}
 • العنوان: ${payload.titleAr}
 • المصدر: ${payload.source === "telegram" ? "تليجرام" : payload.source === "darkweb" ? "الدارك ويب" : "موقع لصق"}
-• مستوى الخطورة: ${severityLabelAr(payload.severity)}
+• تصنيف الحادثة: ${severityLabelAr(payload.severity)}
 • القطاع: ${payload.sectorAr}
 • عدد السجلات: ${payload.recordCount.toLocaleString()}
 • أنواع البيانات الشخصية: ${payload.piiTypes.join("، ")}

@@ -400,7 +400,7 @@ export default function PIIClassifier() {
                     {/* Risk score + alerts */}
                     <div className="space-y-2">
                       <div className="flex items-center justify-between p-3 rounded-lg bg-secondary/20 border border-border">
-                        <span className="text-sm text-foreground">درجة الخطورة</span>
+                        <span className="text-sm text-foreground">درجة التأثير</span>
                         <div className="flex items-center gap-3">
                           <div className="w-24 h-2 rounded-full bg-secondary/50 overflow-hidden">
                             <motion.div
@@ -635,7 +635,7 @@ export default function PIIClassifier() {
                         <th className="text-right py-3 px-4 text-xs font-medium text-muted-foreground">التاريخ</th>
                         <th className="text-right py-3 px-4 text-xs font-medium text-muted-foreground">حجم النص</th>
                         <th className="text-right py-3 px-4 text-xs font-medium text-muted-foreground">النتائج</th>
-                        <th className="text-right py-3 px-4 text-xs font-medium text-muted-foreground">الخطورة</th>
+                        <th className="text-right py-3 px-4 text-xs font-medium text-muted-foreground">التأثير</th>
                       </tr>
                     </thead>
                     <tbody>

@@ -41,9 +41,9 @@ const riskColor = (r: string) => {
 
 const riskLabel = (r: string) => {
   switch (r) {
-    case "high": return "خطورة عالية";
-    case "medium": return "خطورة متوسطة";
-    default: return "خطورة منخفضة";
+    case "high": return "تأثير عالي";
+    case "medium": return "تأثير متوسط";
+    default: return "تأثير محدود";
   }
 };
 
@@ -74,7 +74,7 @@ const severityColor = (s: string) => {
 
 const severityLabel = (s: string) => {
   switch (s) {
-    case "critical": return "حرج";
+    case "critical": return "واسع النطاق";
     case "high": return "عالي";
     case "medium": return "متوسط";
     default: return "منخفض";
@@ -140,7 +140,7 @@ export default function TelegramMonitor() {
           { key: "allChannels", label: "قنوات مراقبة", value: telegramChannels.length, color: "text-cyan-400", borderColor: "border-cyan-500/20", bgColor: "bg-cyan-500/5" },
           { key: "activeChannels", label: "قنوات نشطة", value: activeChannels.length, color: "text-emerald-400", borderColor: "border-emerald-500/20", bgColor: "bg-emerald-500/5" },
           { key: "detectedLeaks", label: "تسريبات مكتشفة", value: totalLeaksDetected, color: "text-amber-400", borderColor: "border-amber-500/20", bgColor: "bg-amber-500/5" },
-          { key: "highRisk", label: "قنوات عالية الخطورة", value: highRiskChannels.length, color: "text-red-400", borderColor: "border-red-500/20", bgColor: "bg-red-500/5" },
+          { key: "highRisk", label: "قنوات عالية التأثير", value: highRiskChannels.length, color: "text-red-400", borderColor: "border-red-500/20", bgColor: "bg-red-500/5" },
         ].map((stat, i) => (
           <motion.div key={stat.key} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
             <Card
@@ -257,7 +257,7 @@ export default function TelegramMonitor() {
                     <th className="text-right py-3 px-4 text-xs font-medium text-muted-foreground">العنوان</th>
                     <th className="text-right py-3 px-4 text-xs font-medium text-muted-foreground">القطاع</th>
                     <th className="text-right py-3 px-4 text-xs font-medium text-muted-foreground">السجلات</th>
-                    <th className="text-right py-3 px-4 text-xs font-medium text-muted-foreground">الخطورة</th>
+                    <th className="text-right py-3 px-4 text-xs font-medium text-muted-foreground">التأثير</th>
                     <th className="text-right py-3 px-4 text-xs font-medium text-muted-foreground">التاريخ</th>
                   </tr>
                 </thead>
@@ -378,14 +378,14 @@ export default function TelegramMonitor() {
       </DetailModal>
 
       {/* High Risk Channels Modal */}
-      <DetailModal open={activeModal === "highRisk"} onClose={() => setActiveModal(null)} title="القنوات عالية الخطورة" icon={<ShieldAlert className="w-5 h-5 text-red-400" />}>
+      <DetailModal open={activeModal === "highRisk"} onClose={() => setActiveModal(null)} title="القنوات عالية التأثير" icon={<ShieldAlert className="w-5 h-5 text-red-400" />}>
         <div className="space-y-3">
           {highRiskChannels.length === 0 ? (
-            <p className="text-center text-muted-foreground text-sm py-8">لا توجد قنوات عالية الخطورة</p>
+            <p className="text-center text-muted-foreground text-sm py-8">لا توجد قنوات عالية التأثير</p>
           ) : (
             <>
               <div className="bg-red-500/5 rounded-xl p-3 border border-red-500/20">
-                <p className="text-xs text-red-400">{highRiskChannels.length} قناة مصنفة بخطورة عالية — تتطلب مراقبة مكثفة</p>
+                <p className="text-xs text-red-400">{highRiskChannels.length} قناة مصنفة بتأثير عالي — تتطلب مراقبة مكثفة</p>
               </div>
               {highRiskChannels.map(ch => (
                 <div

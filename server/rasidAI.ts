@@ -12,12 +12,6 @@
  */
 import { invokeLLM } from "./_core/llm";
 import {
-  semanticSearch,
-  prepareEmbeddingText,
-  rerankWithLLM,
-  type KnowledgeEntry,
-} from "./semanticSearch";
-import {
   getLeaks,
   getLeakById,
   getDashboardStats,
@@ -54,8 +48,6 @@ import {
   getPersonalityScenarios,
   getCustomActions,
   getTrainingDocuments,
-  getKnowledgeBaseEntriesWithEmbeddings,
-  logSearchQuery,
 } from "./db";
 
 // ═══════════════════════════════════════════════════════════════
@@ -104,7 +96,7 @@ export function buildSystemPrompt(userName: string, stats: any, knowledgeContext
 
 # بيانات المنصة الحية
 - إجمالي التسريبات: ${stats?.totalLeaks ?? 0}
-- التنبيهات الحرجة: ${stats?.criticalAlerts ?? 0}
+- التسريبات واسعة النطاق: ${stats?.newLeaks ?? 0}
 - إجمالي السجلات المكشوفة: ${stats?.totalRecords?.toLocaleString() ?? 0}
 - أجهزة الرصد النشطة: ${stats?.activeMonitors ?? 0}
 - بيانات PII المكتشفة: ${stats?.piiDetected?.toLocaleString() ?? 0}
@@ -122,15 +114,15 @@ export function buildSystemPrompt(userName: string, stats: any, knowledgeContext
    - **إدارة سيناريوهات الترحيب والشخصية؟** → **وكيل الشخصية**
 3. **تفكيك المشكلة:** قسّم الطلب المعقد إلى خطوات أصغر. قد تحتاج إلى استدعاء أدوات متعددة بالتسلسل.
 4. **الربط (Connect):** ابحث دائمًا عن روابط خفية. هل هذا البائع مرتبط بتسريب آخر؟ هل هذا القطاع يُستهدف بشكل متكرر؟
-5. **المقارنة (Compare):** قارن الفترات الزمنية (هذا الشهر مقابل الشهر الماضي)، المصادر (الدارك ويب مقابل تليجرام)، ومستويات الخطورة.
-6. **الاستنتاج (Infer):** لا تعرض البيانات فقط، بل استنتج الأنماط والشذوذ. مثال: "ألاحظ زيادة بنسبة 30% في تسريبات القطاع المالي هذا الأسبوع، معظمها من بائع جديد اسمه X"
-7. **تقييم الأثر (Assess Impact):** عند تحليل تسريب، قيّم أثره التنظيمي. هل يتطلب إبلاغًا خلال 72 ساعة؟ ما هي مواد PDPL المنطبقة؟
+5. **المقارنة (Compare):** قارن الفترات الزمنية (هذا الشهر مقابل الشهر الماضي)، المصادر (الدارك ويب مقابل تليجرام)، وتصنيفات التأثير.
+6. **الاستنتاج (Infer):** لا تعرض البيانات فقط، بل استنتج الأنماط غير الاعتيادية. مثال: "ألاحظ زيادة بنسبة 30% في تسريبات القطاع المالي هذا الأسبوع، معظمها من بائع جديد اسمه X"
+7. **تقييم الأثر (Assess Impact):** عند تحليل تسريب، قيّم أثره التنظيمي. هل يتطلب توثيقًا خلال 72 ساعة؟ ما هي مواد PDPL المنطبقة؟
 
 # أمثلة على قدراتك التحليلية المتقدمة
-- **تحليل بائع:** "حلل لي نمط البائع @dark_seller. ما هي القطاعات التي يركز عليها؟ ما مدى خطورته؟ هل هو مرتبط ببائعين آخرين؟"
+- **تحليل بائع:** "حلل لي نمط البائع @dark_seller. ما هي القطاعات التي يركز عليها؟ ما مدى تأثيره؟ هل هو مرتبط ببائعين آخرين؟"
 - **تحليل ارتباطات:** "هل هناك أي ارتباط بين تسريب بيانات شركة X الأخير وتسريب بيانات شركة Y قبل شهر؟"
-- **تحليل استراتيجي:** "ما هي أكبر ثلاثة تهديدات تواجه القطاع المصرفي السعودي بناءً على بيانات آخر 6 أشهر؟"
-- **تحليل شذوذ:** "هل هناك أي أنماط غير عادية في تسريبات اليوم؟"
+- **تحليل استراتيجي:** "ما هي أكبر ثلاثة تسريبات تواجه القطاع المصرفي السعودي بناءً على بيانات آخر 6 أشهر؟"
+- **تحليل أنماط:** "هل هناك أي أنماط غير اعتيادية في تسريبات اليوم؟"
 - **مراقبة الأنشطة:** "كم تقرير أصدر محمد اليوم؟" أو "ما آخر إجراء قام به المستخدم أحمد؟"
 - **إدارة المعرفة:** "أضف هذا المستند لقاعدة المعرفة" أو "ما هو نظام PDPL؟"
 
@@ -154,7 +146,7 @@ audit_log, notifications, monitoring_jobs, alert_contacts, alert_rules, alert_hi
 retention_policies, api_keys, scheduled_reports, threat_rules, evidence_chain,
 seller_profiles, osint_queries, feedback_entries, knowledge_graph_nodes, knowledge_graph_edges,
 platform_users, incident_documents, report_audit, knowledge_base, ai_response_ratings,
-personality_scenarios, user_sessions, custom_actions, training_documents, chat_conversations, chat_messages
+personality_scenarios, user_sessions
 
 # وظائف المنصة
 📊 لوحة القيادة — إحصائيات شاملة
@@ -176,13 +168,12 @@ personality_scenarios, user_sessions, custom_actions, training_documents, chat_c
 🗺️ خريطة التهديدات — خريطة جغرافية للتهديدات
 📋 سجل المراجعة — تتبع كل العمليات
 📚 قاعدة المعرفة — مقالات وأسئلة وأجوبة وسياسات
-🏫 مركز التدريب — إجراءات مخصصة + مستندات تدريبية + سيناريوهات شخصية
 
-# مستويات الخطورة
-- critical: تسريب يشمل بيانات حساسة جداً (هوية وطنية، بيانات مالية) لأكثر من 10,000 سجل
-- high: تسريب يشمل بيانات شخصية حساسة لأكثر من 1,000 سجل
-- medium: تسريب يشمل بيانات شخصية عامة أو أقل من 1,000 سجل
-- low: تسريب محدود أو بيانات غير حساسة
+# تصنيف حوادث التسرب
+- critical: تسريب واسع النطاق — بيانات حساسة جداً (هوية وطنية، بيانات مالية) لأكثر من 10,000 سجل
+- high: تسريب كبير — بيانات شخصية حساسة لأكثر من 1,000 سجل
+- medium: تسريب متوسط — بيانات شخصية عامة أو أقل من 1,000 سجل
+- low: تسريب محدود — بيانات غير حساسة أو عدد محدود من السجلات
 
 # القطاعات المراقبة
 حكومي، مالي/بنكي، اتصالات، صحي، تعليمي، طاقة، تجزئة، نقل، سياحة، عقاري، تقني، أخرى
@@ -194,7 +185,7 @@ medical_record (سجل طبي), salary (راتب), gosi (تأمينات), licens
 
 # مواد نظام حماية البيانات الشخصية (PDPL) ذات الصلة
 - المادة 10: حماية البيانات الشخصية
-- المادة 14: الإفصاح عن التسريبات (إبلاغ خلال 72 ساعة)
+- المادة 14: الإفصاح عن التسريبات (إشعار خلال 72 ساعة)
 - المادة 19: حقوق أصحاب البيانات
 - المادة 24: العقوبات والغرامات (حتى 5 ملايين ريال)
 - المادة 32: الالتزامات الأمنية
@@ -206,7 +197,7 @@ ${knowledgeContext ? `\n# قاعدة المعرفة المحدّثة\n${knowledg
 - تجيب بنفس لغة السؤال
 - مختصر للأسئلة البسيطة، مفصّل للمعقدة
 - أرقام دقيقة من البيانات — لا تخمّن
-- تطلب تأكيد للإجراءات التي تغيّر بيانات (تحديث، حذف، إبلاغ)
+- تطلب تأكيد للإجراءات التي تغيّر بيانات (تحديث، حذف، توثيق)
 - استخدم الجداول والتنسيق Markdown عند الحاجة لعرض بيانات منظمة
 - استخدم الإيموجي بشكل مقتصد ومهني
 
@@ -225,11 +216,11 @@ export const RASID_TOOLS = [
     type: "function" as const,
     function: {
       name: "query_leaks",
-      description: "استعلام عن التسريبات. يدعم: بحث بالخطورة، الحالة، المصدر، بحث نصي حر. يجيب على: هل فيه تسريب اليوم؟ أعطني التسريبات الحرجة. ابحث عن تسريبات تخص بنك الراجحي.",
+      description: "استعلام عن التسريبات. يدعم: بحث بالتصنيف، الحالة، المصدر، بحث نصي حر. يجيب على: هل فيه تسريب اليوم؟ أعطني التسريبات واسعة النطاق. ابحث عن تسريبات تخص بنك الراجحي.",
       parameters: {
         type: "object",
         properties: {
-          severity: { type: "string", enum: ["critical", "high", "medium", "low", "all"], description: "فلتر الخطورة" },
+          severity: { type: "string", enum: ["critical", "high", "medium", "low", "all"], description: "فلتر التصنيف" },
           status: { type: "string", enum: ["new", "analyzing", "documented", "reported", "all"], description: "فلتر الحالة" },
           source: { type: "string", enum: ["telegram", "darkweb", "paste", "all"], description: "فلتر المصدر" },
           search: { type: "string", description: "بحث نصي حر في العناوين" },
@@ -256,7 +247,7 @@ export const RASID_TOOLS = [
     type: "function" as const,
     function: {
       name: "get_dashboard_stats",
-      description: "إحصائيات لوحة القيادة الشاملة: إجمالي التسريبات، الحرجة، السجلات، أجهزة الرصد، PII، مع توزيعات حسب الخطورة والمصدر والقطاع.",
+      description: "إحصائيات لوحة القيادة الشاملة: إجمالي التسريبات، واسعة النطاق، السجلات، أجهزة الرصد، PII، مع توزيعات حسب التصنيف والمصدر والقطاع.",
       parameters: { type: "object", properties: {} },
     },
   },
@@ -386,7 +377,7 @@ export const RASID_TOOLS = [
     type: "function" as const,
     function: {
       name: "analyze_trends",
-      description: "تحليل اتجاهات التسريبات: مقارنات زمنية، أنماط، توزيعات حسب القطاع والخطورة والمصدر.",
+      description: "تحليل اتجاهات التسريبات: مقارنات زمنية، أنماط، توزيعات حسب القطاع والتصنيف والمصدر.",
       parameters: {
         type: "object",
         properties: {
@@ -454,7 +445,7 @@ export const RASID_TOOLS = [
     type: "function" as const,
     function: {
       name: "search_knowledge_base",
-      description: "البحث الدلالي في قاعدة المعرفة باستخدام الذكاء الاصطناعي. يبحث عن مقالات، أسئلة وأجوبة، سياسات، وتعليمات بناءً على المعنى وليس مجرد تطابق الكلمات. استخدم هذه الأداة للإجابة على أسئلة إرشادية عامة أو البحث عن معلومات محددة.",
+      description: "البحث في قاعدة المعرفة عن مقالات، أسئلة وأجوبة، سياسات، وتعليمات. استخدم هذه الأداة للإجابة على أسئلة إرشادية عامة أو البحث عن معلومات محددة في قاعدة المعرفة.",
       parameters: {
         type: "object",
         properties: {
@@ -558,64 +549,6 @@ export const RASID_TOOLS = [
       },
     },
   },
-  // ── Training Center Tools ──
-  {
-    type: "function" as const,
-    function: {
-      name: "get_custom_actions",
-      description: "جلب الإجراءات المخصصة المعرّفة في مركز التدريب. هذه إجراءات جاهزة يمكن تنفيذها مباشرة عند طلب المستخدم.",
-      parameters: {
-        type: "object",
-        properties: {
-          category: { type: "string", description: "تصفية حسب الفئة (اختياري)" },
-          activeOnly: { type: "boolean", description: "جلب النشطة فقط (افتراضي: true)" },
-        },
-        required: [],
-      },
-    },
-  },
-  {
-    type: "function" as const,
-    function: {
-      name: "execute_custom_action",
-      description: "تنفيذ إجراء مخصص من مركز التدريب بناءً على اسمه أو معرفه. يُرجع قالب الرد المحدد مسبقاً.",
-      parameters: {
-        type: "object",
-        properties: {
-          actionName: { type: "string", description: "اسم الإجراء المخصص للتنفيذ" },
-          actionId: { type: "number", description: "معرف الإجراء (بديل عن الاسم)" },
-        },
-        required: [],
-      },
-    },
-  },
-  {
-    type: "function" as const,
-    function: {
-      name: "search_training_documents",
-      description: "البحث في المستندات التدريبية المرفوعة في مركز التدريب. يبحث في العنوان والمحتوى المستخرج.",
-      parameters: {
-        type: "object",
-        properties: {
-          query: { type: "string", description: "نص البحث في المستندات التدريبية" },
-          docType: { type: "string", enum: ["pdf", "docx", "txt", "url"], description: "تصفية حسب نوع المستند (اختياري)" },
-        },
-        required: ["query"],
-      },
-    },
-  },
-  {
-    type: "function" as const,
-    function: {
-      name: "get_training_stats",
-      description: "جلب إحصائيات مركز التدريب: عدد المستندات، الإجراءات المخصصة، سيناريوهات الشخصية، وإدخالات قاعدة المعرفة.",
-      parameters: {
-        type: "object",
-        properties: {},
-        required: [],
-      },
-    },
-  },
 ];
 
 // ═══════════════════════════════════════════════════════════════
@@ -653,10 +586,6 @@ async function executeTool(toolName: string, params: any, thinkingSteps: Thinkin
     get_personality_greeting: "وكيل الشخصية",
     check_leader_mention: "وكيل الشخصية",
     manage_personality_scenarios: "وكيل الشخصية",
-    get_custom_actions: "وكيل التدريب",
-    execute_custom_action: "وكيل التدريب",
-    search_training_documents: "وكيل التدريب",
-    get_training_stats: "وكيل التدريب",
   };
 
   const toolDescriptions: Record<string, string> = {
@@ -686,10 +615,6 @@ async function executeTool(toolName: string, params: any, thinkingSteps: Thinkin
     get_personality_greeting: "جلب ترحيب شخصي",
     check_leader_mention: "فحص إشارة لقائد",
     manage_personality_scenarios: "إدارة سيناريوهات الشخصية",
-    get_custom_actions: "جلب الإجراءات المخصصة",
-    execute_custom_action: "تنفيذ إجراء مخصص",
-    search_training_documents: "البحث في المستندات التدريبية",
-    get_training_stats: "جلب إحصائيات مركز التدريب",
   };
 
   const step: ThinkingStep = {
@@ -1127,143 +1052,38 @@ async function executeToolInternal(toolName: string, params: any): Promise<any> 
       };
     }
 
-    // ─── Knowledge Agent — Semantic Search ───────────────────
+    // ─── Knowledge Agent ────────────────────────────────────
     case "search_knowledge_base": {
-      try {
-        // Get all published entries with embeddings
-        const allEntries = await getKnowledgeBaseEntriesWithEmbeddings();
-        
-        // Map to KnowledgeEntry format for semantic search
-        const knowledgeEntries: KnowledgeEntry[] = allEntries.map(e => ({
-          entryId: e.entryId,
-          category: e.category,
-          title: e.title,
-          titleAr: e.titleAr,
-          content: e.content,
-          contentAr: e.contentAr,
-          tags: e.tags,
-          embedding: e.embedding,
-          viewCount: e.viewCount,
-          helpfulCount: e.helpfulCount,
-        }));
+      const entries = await getKnowledgeBaseEntries({
+        search: params.search_query,
+        category: params.category !== "all" ? params.category : undefined,
+        isPublished: true,
+        limit: 10,
+      });
 
-        // Perform semantic search
-        const startTime = Date.now();
-        let results = await semanticSearch(
-          params.search_query,
-          knowledgeEntries,
-          {
-            topK: 5,
-            category: params.category !== "all" ? params.category : undefined,
-            threshold: 0.6,
-          }
-        );
-
-        if (results.length === 0) {
-          // Log zero-result query
-          const responseTimeMs = Date.now() - startTime;
-          logSearchQuery({
-            query: params.search_query,
-            source: "rasid_ai",
-            searchMethod: "semantic",
-            resultCount: 0,
-            topScore: 0,
-            avgScore: 0,
-            reranked: false,
-            responseTimeMs,
-          }).catch(() => {});
-
-          // Fall back to platform guide
-          const guide = getPlatformGuide(params.search_query);
-          return {
-            source: "platform_guide",
-            searchMethod: "semantic_fallback",
-            entries: [],
-            fallbackGuide: guide,
-          };
-        }
-
-        // Re-rank results using LLM for better relevance
-        let reranked = false;
-        if (results.length > 1) {
-          try {
-            results = await rerankWithLLM(params.search_query, results);
-            reranked = true;
-          } catch (e) {
-            console.error("[RasidAI] Re-ranking failed, using original order", e);
-          }
-        }
-
-        const responseTimeMs = Date.now() - startTime;
-        const topScore = results.length > 0 ? results[0].similarity : 0;
-        const avgScore = results.length > 0
-          ? results.reduce((sum, r) => sum + r.similarity, 0) / results.length
-          : 0;
-
-        // Log the search query (non-blocking)
-        logSearchQuery({
-          query: params.search_query,
-          source: "rasid_ai",
-          searchMethod: "semantic",
-          resultCount: results.length,
-          topScore,
-          avgScore,
-          reranked,
-          responseTimeMs,
-        }).catch(() => {});
-
+      if (entries.length === 0) {
+        // Fall back to platform guide
+        const guide = getPlatformGuide(params.search_query);
         return {
-          source: "knowledge_base",
-          searchMethod: reranked ? "semantic_reranked" : "semantic",
-          total: results.length,
-          entries: results.map((r) => ({
-            entryId: r.entry.entryId,
-            category: r.entry.category,
-            title: r.entry.titleAr || r.entry.title,
-            content: (r.entry.contentAr || r.entry.content)?.substring(0, 2000),
-            tags: r.entry.tags,
-            viewCount: r.entry.viewCount,
-            helpfulCount: r.entry.helpfulCount,
-            similarityScore: Math.round(r.similarity * 100) / 100,
-            rank: r.rank,
-            rerankedScore: r.rerankedScore ? Math.round(r.rerankedScore * 100) / 100 : undefined,
-          })),
-        };
-      } catch (error) {
-        // If semantic search fails, fall back to keyword search
-        console.error("Semantic search failed, falling back to keyword:", error);
-        const entries = await getKnowledgeBaseEntries({
-          search: params.search_query,
-          category: params.category !== "all" ? params.category : undefined,
-          isPublished: true,
-          limit: 10,
-        });
-
-        if (entries.length === 0) {
-          const guide = getPlatformGuide(params.search_query);
-          return {
-            source: "platform_guide",
-            searchMethod: "keyword_fallback",
-            entries: [],
-            fallbackGuide: guide,
-          };
-        }
-
-        return {
-          source: "knowledge_base",
-          searchMethod: "keyword_fallback",
-          total: entries.length,
-          entries: entries.map((e) => ({
-            entryId: e.entryId,
-            category: e.category,
-            title: e.titleAr || e.title,
-            content: (e.contentAr || e.content)?.substring(0, 2000),
-            tags: e.tags,
-            viewCount: e.viewCount,
-            helpfulCount: e.helpfulCount,
-          })),
+          source: "platform_guide",
+          entries: [],
+          fallbackGuide: guide,
         };
       }
+
+      return {
+        source: "knowledge_base",
+        total: entries.length,
+        entries: entries.map((e) => ({
+          entryId: e.entryId,
+          category: e.category,
+          title: e.titleAr || e.title,
+          content: (e.contentAr || e.content)?.substring(0, 2000),
+          tags: e.tags,
+          viewCount: e.viewCount,
+          helpfulCount: e.helpfulCount,
+        })),
+      };
     }
 
     // ─── Analytics Agent — Correlations ─────────────────────
@@ -1360,7 +1180,7 @@ async function executeToolInternal(toolName: string, params: any): Promise<any> 
 
         const recentCritical = recentLeaks.filter((l: any) => l.severity === "critical");
         if (recentCritical.length > 3) {
-          anomalies.push(`تنبيه: ${recentCritical.length} تسريبات حرجة هذا الأسبوع — يتطلب اهتمام فوري`);
+          anomalies.push(`تنبيه: ${recentCritical.length} تسريبات واسعة النطاق هذا الأسبوع — يتطلب اهتمام فوري`);
         }
 
         // Check for new sources
@@ -1477,110 +1297,6 @@ async function executeToolInternal(toolName: string, params: any): Promise<any> 
       }
     }
 
-    // ── Training Center Tools ──
-    case "get_custom_actions": {
-      const actions = await getCustomActions();
-      const filtered = params.category
-        ? actions.filter((a: any) => a.category === params.category)
-        : params.activeOnly !== false
-          ? actions.filter((a: any) => a.isActive)
-          : actions;
-      return {
-        actions: filtered.map((a: any) => ({
-          id: a.id,
-          name: a.name,
-          nameAr: a.nameAr,
-          description: a.description,
-          category: a.category,
-          triggerPhrases: a.triggerPhrases,
-          responseTemplate: a.responseTemplate,
-          isActive: a.isActive,
-        })),
-        total: filtered.length,
-      };
-    }
-
-    case "execute_custom_action": {
-      const allActions = await getCustomActions();
-      let action: any = null;
-      if (params.actionId) {
-        action = allActions.find((a: any) => a.id === params.actionId);
-      } else if (params.actionName) {
-        const searchName = params.actionName.toLowerCase();
-        action = allActions.find((a: any) =>
-          a.name.toLowerCase().includes(searchName) ||
-          (a.nameAr && a.nameAr.includes(params.actionName)) ||
-          (a.triggerPhrases && JSON.parse(a.triggerPhrases || "[]").some((p: string) => p.includes(searchName)))
-        );
-      }
-      if (!action) return { error: "لم يتم العثور على الإجراء المخصص" };
-      if (!action.isActive) return { error: "هذا الإجراء غير مفعل حالياً" };
-      return {
-        actionName: action.nameAr || action.name,
-        response: action.responseTemplate,
-        category: action.category,
-        executed: true,
-      };
-    }
-
-    case "search_training_documents": {
-      const docs = await getTrainingDocuments();
-      const query = (params.query || "").toLowerCase();
-      const filtered = docs.filter((d: any) => {
-        const matchesQuery = d.title.toLowerCase().includes(query) ||
-          (d.extractedContent && d.extractedContent.toLowerCase().includes(query));
-        const matchesType = params.docType ? d.docType === params.docType : true;
-        return matchesQuery && matchesType && d.status === "processed";
-      });
-      return {
-        documents: filtered.map((d: any) => ({
-          id: d.id,
-          title: d.title,
-          docType: d.docType,
-          excerpt: d.extractedContent
-            ? d.extractedContent.substring(0, 500) + (d.extractedContent.length > 500 ? "..." : "")
-            : "لا يوجد محتوى مستخرج",
-          uploadedAt: d.createdAt,
-        })),
-        total: filtered.length,
-        searchQuery: params.query,
-      };
-    }
-
-    case "get_training_stats": {
-      const [allDocs, allActions, allScenarios, allKB] = await Promise.all([
-        getTrainingDocuments(),
-        getCustomActions(),
-        getPersonalityScenarios(),
-        getKnowledgeBaseEntries(),
-      ]);
-      return {
-        trainingDocuments: {
-          total: allDocs.length,
-          processed: allDocs.filter((d: any) => d.status === "processed").length,
-          pending: allDocs.filter((d: any) => d.status === "pending").length,
-          byType: {
-            pdf: allDocs.filter((d: any) => d.docType === "pdf").length,
-            docx: allDocs.filter((d: any) => d.docType === "docx").length,
-            txt: allDocs.filter((d: any) => d.docType === "txt").length,
-            url: allDocs.filter((d: any) => d.docType === "url").length,
-          },
-        },
-        customActions: {
-          total: allActions.length,
-          active: allActions.filter((a: any) => a.isActive).length,
-        },
-        personalityScenarios: {
-          total: allScenarios.length,
-          active: allScenarios.filter((s: any) => s.isActive).length,
-        },
-        knowledgeBase: {
-          total: allKB.length,
-          published: allKB.filter((k: any) => k.status === "published").length,
-        },
-      };
-    }
-
     default:
       return { error: `أداة غير معروفة: ${toolName}` };
   }
@@ -1593,22 +1309,22 @@ async function executeToolInternal(toolName: string, params: any): Promise<any> 
 function getPlatformGuide(topic: string): any {
   const guides: Record<string, any> = {
     severity_levels: {
-      title: "مستويات الخطورة",
+      title: "تصنيف حوادث التسرب",
       content: `
-مستويات الخطورة في منصة راصد:
+تصنيف حوادث التسرب في منصة راصد:
 
 | المستوى | الوصف | المعايير |
-|---------|-------|---------|
-| critical | حرج | بيانات حساسة جداً (هوية، مالية) + أكثر من 10,000 سجل |
-| high | عالي | بيانات شخصية حساسة + أكثر من 1,000 سجل |
+|---------|-------|----------|
+| critical | واسع النطاق | بيانات حساسة جداً (هوية، مالية) + أكثر من 10,000 سجل |
+| high | كبير | بيانات شخصية حساسة + أكثر من 1,000 سجل |
 | medium | متوسط | بيانات شخصية عامة أو أقل من 1,000 سجل |
-| low | منخفض | تسريب محدود أو بيانات غير حساسة |
+| low | محدود | تسريب محدود أو بيانات غير حساسة |
 
 الإجراءات المطلوبة:
-- critical: إبلاغ فوري + تحقيق عاجل + تقرير خلال 24 ساعة
+- critical: توثيق فوري + تحقيق عاجل + تقرير خلال 24 ساعة
 - high: تحقيق خلال 48 ساعة + تقرير أسبوعي
 - medium: مراجعة خلال أسبوع
-- low: أرشفة ومتابعة`,
+- low: أرشفة ومتابعة`
     },
     pdpl_compliance: {
       title: "نظام حماية البيانات الشخصية PDPL",
@@ -1616,7 +1332,7 @@ function getPlatformGuide(topic: string): any {
 نظام حماية البيانات الشخصية (PDPL) — المواد ذات الصلة:
 
 المادة 10: حماية البيانات الشخصية — يجب اتخاذ التدابير اللازمة لحماية البيانات
-المادة 14: الإفصاح عن التسريبات — يجب إبلاغ الجهة المختصة خلال 72 ساعة
+المادة 14: الإفصاح عن التسريبات — يجب إشعار الجهة المختصة خلال 72 ساعة
 المادة 19: حقوق أصحاب البيانات — حق الوصول والتصحيح والحذف
 المادة 24: العقوبات — غرامات تصل إلى 5 ملايين ريال
 المادة 32: الالتزامات الأمنية — تطبيق معايير أمنية مناسبة`,
@@ -1687,10 +1403,10 @@ function getPlatformGuide(topic: string): any {
       title: "أفضل الممارسات",
       content: `
 أفضل ممارسات إدارة التسريبات:
-1. مراجعة التسريبات الحرجة فوراً
+1. مراجعة التسريبات واسعة النطاق فوراً
 2. توثيق الأدلة قبل أي إجراء
 3. تحديث الحالة بانتظام
-4. إبلاغ الجهات المعنية خلال 72 ساعة
+4. إشعار الجهات المعنية خلال 72 ساعة
 5. مراجعة دقة النظام أسبوعياً
 6. تحديث قواعد الكشف شهرياً
 7. نسخ احتياطي يومي`,

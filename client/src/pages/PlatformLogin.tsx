@@ -9,6 +9,17 @@ const RASID_LOGO_LIGHT = "https://files.manuscdn.com/user_upload_by_module/sessi
 const RASID_LOGO_DARK = "https://files.manuscdn.com/user_upload_by_module/session_file/310519663296955420/kuCEchYUSnPsbhZS.png";
 const RASID_CHARACTER = "https://files.manuscdn.com/user_upload_by_module/session_file/310519663296955420/qTFgtbWZjShuewJe.png";
 
+/* SDAIA Colors */
+const SDAIA = {
+  navy: "#273470",
+  purple: "#6459A7",
+  teal: "#3DB1AC",
+  danger: "#EB3D63",
+  bgDark: "#0D1529",
+  cardDark: "#1A2550",
+  textDark: "#E1DEF5",
+};
+
 // ─── 3D Particle Canvas Background ───────────────────────────
 function ParticleBackground({ isDark }: { isDark: boolean }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -29,7 +40,7 @@ function ParticleBackground({ isDark }: { isDark: boolean }) {
     };
     window.addEventListener("resize", handleResize);
 
-    // Particles
+    // Particles with SDAIA teal/purple hues
     const particles: Array<{
       x: number; y: number; z: number;
       vx: number; vy: number; vz: number;
@@ -48,7 +59,8 @@ function ParticleBackground({ isDark }: { isDark: boolean }) {
         vz: (Math.random() - 0.5) * 0.3,
         size: Math.random() * 3 + 1,
         opacity: Math.random() * 0.5 + 0.2,
-        hue: 210 + Math.random() * 40,
+        // SDAIA teal-purple range: hue 170-270
+        hue: 170 + Math.random() * 100,
       });
     }
 
@@ -65,7 +77,8 @@ function ParticleBackground({ isDark }: { isDark: boolean }) {
         radius: Math.random() * 120 + 60,
         vx: (Math.random() - 0.5) * 0.3,
         vy: (Math.random() - 0.5) * 0.3,
-        hue: 210 + Math.random() * 30,
+        // Alternate between teal (175) and purple (260)
+        hue: i % 2 === 0 ? 175 + Math.random() * 15 : 255 + Math.random() * 15,
         opacity: isDark ? 0.06 + Math.random() * 0.04 : 0.03 + Math.random() * 0.03,
       });
     }
@@ -87,13 +100,13 @@ function ParticleBackground({ isDark }: { isDark: boolean }) {
 
         const gradient = ctx.createRadialGradient(orb.x, orb.y, 0, orb.x, orb.y, orb.radius);
         if (isDark) {
-          gradient.addColorStop(0, `hsla(${orb.hue}, 80%, 50%, ${orb.opacity * 1.5})`);
-          gradient.addColorStop(0.5, `hsla(${orb.hue}, 70%, 40%, ${orb.opacity * 0.5})`);
-          gradient.addColorStop(1, `hsla(${orb.hue}, 60%, 30%, 0)`);
+          gradient.addColorStop(0, `hsla(${orb.hue}, 70%, 50%, ${orb.opacity * 1.5})`);
+          gradient.addColorStop(0.5, `hsla(${orb.hue}, 60%, 40%, ${orb.opacity * 0.5})`);
+          gradient.addColorStop(1, `hsla(${orb.hue}, 50%, 30%, 0)`);
         } else {
-          gradient.addColorStop(0, `hsla(${orb.hue}, 60%, 70%, ${orb.opacity * 1.5})`);
-          gradient.addColorStop(0.5, `hsla(${orb.hue}, 50%, 80%, ${orb.opacity * 0.5})`);
-          gradient.addColorStop(1, `hsla(${orb.hue}, 40%, 90%, 0)`);
+          gradient.addColorStop(0, `hsla(${orb.hue}, 50%, 70%, ${orb.opacity * 1.5})`);
+          gradient.addColorStop(0.5, `hsla(${orb.hue}, 40%, 80%, ${orb.opacity * 0.5})`);
+          gradient.addColorStop(1, `hsla(${orb.hue}, 30%, 90%, 0)`);
         }
         ctx.fillStyle = gradient;
         ctx.beginPath();
@@ -107,7 +120,6 @@ function ParticleBackground({ isDark }: { isDark: boolean }) {
         p.y += p.vy;
         p.z += p.vz;
 
-        // Wrap around
         if (p.x < 0) p.x = w;
         if (p.x > w) p.x = 0;
         if (p.y < 0) p.y = h;
@@ -122,9 +134,9 @@ function ParticleBackground({ isDark }: { isDark: boolean }) {
         const alpha = p.opacity * (1 - p.z / 800);
 
         if (isDark) {
-          ctx.fillStyle = `hsla(${p.hue}, 80%, 70%, ${alpha})`;
+          ctx.fillStyle = `hsla(${p.hue}, 70%, 65%, ${alpha})`;
         } else {
-          ctx.fillStyle = `hsla(${p.hue}, 60%, 50%, ${alpha * 0.6})`;
+          ctx.fillStyle = `hsla(${p.hue}, 50%, 50%, ${alpha * 0.6})`;
         }
         ctx.beginPath();
         ctx.arc(screenX, screenY, Math.max(screenSize, 0.5), 0, Math.PI * 2);
@@ -140,9 +152,9 @@ function ParticleBackground({ isDark }: { isDark: boolean }) {
           if (dist < 150) {
             const alpha = (1 - dist / 150) * 0.15;
             if (isDark) {
-              ctx.strokeStyle = `hsla(220, 70%, 60%, ${alpha})`;
+              ctx.strokeStyle = `rgba(61, 177, 172, ${alpha})`;
             } else {
-              ctx.strokeStyle = `hsla(220, 50%, 50%, ${alpha * 0.5})`;
+              ctx.strokeStyle = `rgba(39, 52, 112, ${alpha * 0.5})`;
             }
             ctx.lineWidth = 0.5;
             ctx.beginPath();
@@ -162,7 +174,7 @@ function ParticleBackground({ isDark }: { isDark: boolean }) {
         for (let col = -1; col < w / (hexSize * 1.5) + 1; col++) {
           const cx = col * hexSize * 1.5 + (time * 20 % (hexSize * 1.5));
           const cy = row * hexH + (col % 2 === 0 ? 0 : hexH / 2);
-          ctx.strokeStyle = isDark ? "#60a5fa" : "#3b82f6";
+          ctx.strokeStyle = isDark ? SDAIA.teal : SDAIA.navy;
           ctx.lineWidth = 0.5;
           ctx.beginPath();
           for (let s = 0; s < 6; s++) {
@@ -207,8 +219,8 @@ function AnimatedLogo({ src, isDark }: { src: string; isDark: boolean }) {
         className="absolute inset-0 rounded-full"
         style={{
           background: isDark
-            ? "radial-gradient(circle, rgba(59,130,246,0.2) 0%, transparent 70%)"
-            : "radial-gradient(circle, rgba(59,130,246,0.1) 0%, transparent 70%)",
+            ? `radial-gradient(circle, rgba(61,177,172,0.2) 0%, transparent 70%)`
+            : `radial-gradient(circle, rgba(39,52,112,0.1) 0%, transparent 70%)`,
           animation: "logo-pulse 3s ease-in-out infinite",
           transform: "scale(1.8)",
         }}
@@ -217,8 +229,8 @@ function AnimatedLogo({ src, isDark }: { src: string; isDark: boolean }) {
       <div
         className="absolute inset-0"
         style={{
-          border: isDark ? "2px solid rgba(59,130,246,0.15)" : "2px solid rgba(59,130,246,0.08)",
-          borderTopColor: isDark ? "rgba(96,165,250,0.5)" : "rgba(59,130,246,0.3)",
+          border: isDark ? "2px solid rgba(61,177,172,0.15)" : "2px solid rgba(39,52,112,0.08)",
+          borderTopColor: isDark ? "rgba(61,177,172,0.5)" : "rgba(39,52,112,0.3)",
           borderRadius: "50%",
           animation: "spin-slow 8s linear infinite",
           transform: "scale(1.4)",
@@ -235,11 +247,11 @@ function AnimatedLogo({ src, isDark }: { src: string; isDark: boolean }) {
           className="w-6 h-6 rounded-full flex items-center justify-center"
           style={{
             background: isDark
-              ? "linear-gradient(135deg, #2563eb, #3b82f6)"
-              : "linear-gradient(135deg, #3b82f6, #60a5fa)",
+              ? `linear-gradient(135deg, ${SDAIA.teal}, ${SDAIA.purple})`
+              : `linear-gradient(135deg, ${SDAIA.navy}, ${SDAIA.purple})`,
             boxShadow: isDark
-              ? "0 0 12px rgba(59,130,246,0.4)"
-              : "0 0 8px rgba(59,130,246,0.2)",
+              ? `0 0 12px rgba(61,177,172,0.4)`
+              : `0 0 8px rgba(39,52,112,0.2)`,
           }}
         >
           <Shield className="w-3.5 h-3.5 text-white" />
@@ -252,8 +264,8 @@ function AnimatedLogo({ src, isDark }: { src: string; isDark: boolean }) {
         className="h-24 object-contain relative z-[1]"
         style={{
           filter: isDark
-            ? "drop-shadow(0 0 20px rgba(59,130,246,0.2))"
-            : "drop-shadow(0 0 15px rgba(59,130,246,0.1))",
+            ? "drop-shadow(0 0 20px rgba(61,177,172,0.2))"
+            : "drop-shadow(0 0 15px rgba(39,52,112,0.1))",
           animation: "logo-float 4s ease-in-out infinite",
         }}
       />
@@ -270,38 +282,37 @@ function AnimatedCharacter({ isDark }: { isDark: boolean }) {
         className="absolute inset-0 rounded-full"
         style={{
           background: isDark
-            ? "radial-gradient(circle, rgba(59,130,246,0.12) 0%, transparent 60%)"
-            : "radial-gradient(circle, rgba(59,130,246,0.06) 0%, transparent 60%)",
+            ? "radial-gradient(circle, rgba(61,177,172,0.12) 0%, transparent 60%)"
+            : "radial-gradient(circle, rgba(39,52,112,0.06) 0%, transparent 60%)",
           transform: "scale(1.3)",
           animation: "logo-pulse 4s ease-in-out infinite",
         }}
       />
       {/* Orbiting particles around character */}
-      {[0, 1, 2].map((i) => (
-        <div
-          key={i}
-          className="absolute w-2 h-2 rounded-full"
-          style={{
-            background: isDark
-              ? `hsla(${210 + i * 20}, 80%, 60%, 0.6)`
-              : `hsla(${210 + i * 20}, 60%, 50%, 0.4)`,
-            boxShadow: isDark
-              ? `0 0 8px hsla(${210 + i * 20}, 80%, 60%, 0.4)`
-              : `0 0 6px hsla(${210 + i * 20}, 60%, 50%, 0.2)`,
-            animation: `orbit-particle ${6 + i * 2}s linear infinite`,
-            animationDelay: `${i * -2}s`,
-            top: "50%",
-            left: "50%",
-          }}
-        />
-      ))}
+      {[0, 1, 2].map((i) => {
+        const colors = [SDAIA.teal, SDAIA.purple, SDAIA.navy];
+        return (
+          <div
+            key={i}
+            className="absolute w-2 h-2 rounded-full"
+            style={{
+              background: colors[i],
+              boxShadow: `0 0 8px ${colors[i]}80`,
+              animation: `orbit-particle ${6 + i * 2}s linear infinite`,
+              animationDelay: `${i * -2}s`,
+              top: "50%",
+              left: "50%",
+            }}
+          />
+        );
+      })}
       <img
         src={RASID_CHARACTER}
         alt="راصد"
         className="w-80 h-80 object-contain relative z-[1]"
         style={{
           filter: isDark
-            ? "brightness(0.95) drop-shadow(0 0 40px rgba(59, 130, 246, 0.15))"
+            ? "brightness(0.95) drop-shadow(0 0 40px rgba(61, 177, 172, 0.15))"
             : "drop-shadow(0 10px 40px rgba(0, 0, 0, 0.1))",
           animation: "character-float 6s ease-in-out infinite",
         }}
@@ -365,14 +376,10 @@ export default function PlatformLogin() {
 
   const utils = trpc.useUtils();
 
-  // Get redirect URL from query params
-  const searchParams = new URLSearchParams(window.location.search);
-  const redirectTo = searchParams.get("redirect") || "/";
-
   const loginMutation = trpc.platformAuth.login.useMutation({
     onSuccess: async () => {
       await utils.auth.me.invalidate();
-      window.location.href = redirectTo;
+      window.location.href = "/";
     },
     onError: (err) => {
       setError(err.message || "فشل تسجيل الدخول");
@@ -399,8 +406,8 @@ export default function PlatformLogin() {
         dir="rtl"
         style={{
           background: isDark
-            ? "linear-gradient(135deg, #060e1f 0%, #0a1628 20%, #0d1f3c 50%, #132b52 80%, #0f2340 100%)"
-            : "linear-gradient(135deg, #eef2f7 0%, #e8eef5 30%, #f0f4f9 60%, #e5ecf4 100%)",
+            ? `linear-gradient(135deg, ${SDAIA.bgDark} 0%, #0a1230 20%, #101e45 50%, ${SDAIA.cardDark} 80%, #132040 100%)`
+            : "linear-gradient(135deg, #F7F9F9 0%, #EEF2F7 30%, #F0F4F9 60%, #E8EEF5 100%)",
         }}
       >
         {/* 3D Particle Canvas */}
@@ -415,8 +422,8 @@ export default function PlatformLogin() {
             className="absolute w-full h-px"
             style={{
               background: isDark
-                ? "linear-gradient(90deg, transparent, rgba(59,130,246,0.3), transparent)"
-                : "linear-gradient(90deg, transparent, rgba(59,130,246,0.1), transparent)",
+                ? `linear-gradient(90deg, transparent, rgba(61,177,172,0.3), transparent)`
+                : `linear-gradient(90deg, transparent, rgba(39,52,112,0.1), transparent)`,
               animation: "scan-line 8s linear infinite",
             }}
           />
@@ -428,8 +435,8 @@ export default function PlatformLogin() {
             onClick={toggleTheme}
             className="absolute top-5 left-5 z-20 p-2.5 rounded-xl transition-all duration-300 hover:scale-110"
             style={{
-              background: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.06)",
-              border: isDark ? "1px solid rgba(255,255,255,0.1)" : "1px solid rgba(0,0,0,0.08)",
+              background: isDark ? "rgba(61,177,172,0.08)" : "rgba(39,52,112,0.06)",
+              border: isDark ? "1px solid rgba(61,177,172,0.15)" : "1px solid rgba(39,52,112,0.08)",
               backdropFilter: "blur(10px)",
             }}
             title={isDark ? "الوضع الفاتح" : "الوضع الداكن"}
@@ -463,13 +470,13 @@ export default function PlatformLogin() {
               </div>
               <h1
                 className="text-xl font-bold mb-1"
-                style={{ color: isDark ? "#e2e8f0" : "#1e293b" }}
+                style={{ color: isDark ? SDAIA.textDark : "#1C2833" }}
               >
                 منصة راصد
               </h1>
               <p
                 className="text-sm"
-                style={{ color: isDark ? "#94a3b8" : "#64748b" }}
+                style={{ color: isDark ? "rgba(225,222,245,0.6)" : "rgba(28,40,51,0.6)" }}
               >
                 منصة رصد تسريبات البيانات الشخصية
               </p>
@@ -480,15 +487,15 @@ export default function PlatformLogin() {
               className="rounded-2xl p-8 relative overflow-hidden"
               style={{
                 background: isDark
-                  ? "rgba(10, 22, 50, 0.7)"
+                  ? "rgba(26, 37, 80, 0.7)"
                   : "rgba(255, 255, 255, 0.85)",
                 backdropFilter: "blur(24px)",
                 border: isDark
-                  ? "1px solid rgba(59, 130, 246, 0.15)"
-                  : "1px solid rgba(0, 0, 0, 0.08)",
+                  ? "1px solid rgba(61, 177, 172, 0.15)"
+                  : "1px solid rgba(39, 52, 112, 0.08)",
                 boxShadow: isDark
-                  ? "0 8px 40px rgba(0, 0, 0, 0.4), 0 0 80px rgba(59, 130, 246, 0.06), inset 0 1px 0 rgba(255,255,255,0.03)"
-                  : "0 8px 40px rgba(0, 0, 0, 0.08), inset 0 1px 0 rgba(255,255,255,0.5)",
+                  ? "0 8px 40px rgba(0, 0, 0, 0.4), 0 0 80px rgba(61, 177, 172, 0.06), inset 0 1px 0 rgba(255,255,255,0.03)"
+                  : "0 8px 40px rgba(39, 52, 112, 0.08), inset 0 1px 0 rgba(255,255,255,0.5)",
               }}
             >
               {/* Subtle gradient border glow */}
@@ -496,17 +503,17 @@ export default function PlatformLogin() {
                 className="absolute inset-0 rounded-2xl pointer-events-none"
                 style={{
                   background: isDark
-                    ? "linear-gradient(135deg, rgba(59,130,246,0.08) 0%, transparent 50%, rgba(96,165,250,0.05) 100%)"
+                    ? "linear-gradient(135deg, rgba(61,177,172,0.08) 0%, transparent 50%, rgba(100,89,167,0.05) 100%)"
                     : "none",
                 }}
               />
 
               <div className="relative z-[1]">
                 <div className="flex items-center justify-center gap-2 mb-6">
-                  <Lock className="w-4 h-4" style={{ color: isDark ? "#60a5fa" : "#3b82f6" }} />
+                  <Lock className="w-4 h-4" style={{ color: isDark ? SDAIA.teal : SDAIA.navy }} />
                   <h2
                     className="text-lg font-semibold"
-                    style={{ color: isDark ? "#e2e8f0" : "#1e293b" }}
+                    style={{ color: isDark ? SDAIA.textDark : "#1C2833" }}
                   >
                     تسجيل الدخول
                   </h2>
@@ -517,9 +524,9 @@ export default function PlatformLogin() {
                     <div
                       className="flex items-center gap-2 p-3 rounded-lg text-sm"
                       style={{
-                        background: isDark ? "rgba(239,68,68,0.1)" : "rgba(239,68,68,0.05)",
-                        border: "1px solid rgba(239,68,68,0.2)",
-                        color: isDark ? "#fca5a5" : "#dc2626",
+                        background: isDark ? "rgba(235,61,99,0.1)" : "rgba(235,61,99,0.05)",
+                        border: `1px solid rgba(235,61,99,0.2)`,
+                        color: isDark ? "#fca5a5" : SDAIA.danger,
                       }}
                     >
                       <AlertCircle className="w-4 h-4 shrink-0" />
@@ -530,7 +537,7 @@ export default function PlatformLogin() {
                   <div className="space-y-2">
                     <label
                       className="text-sm font-medium"
-                      style={{ color: isDark ? "#cbd5e1" : "#374151" }}
+                      style={{ color: isDark ? "rgba(225,222,245,0.8)" : "#374151" }}
                     >
                       اسم المستخدم
                     </label>
@@ -539,11 +546,11 @@ export default function PlatformLogin() {
                       value={userId}
                       onChange={(e) => setUserId(e.target.value)}
                       placeholder="أدخل اسم المستخدم"
-                      className="h-11 transition-all duration-300 focus:ring-2 focus:ring-blue-500/30"
+                      className="h-11 transition-all duration-300 focus:ring-2"
                       style={{
-                        background: isDark ? "rgba(15, 30, 60, 0.5)" : "rgba(241, 245, 249, 0.8)",
-                        borderColor: isDark ? "rgba(59, 130, 246, 0.2)" : "rgba(0, 0, 0, 0.1)",
-                        color: isDark ? "#e2e8f0" : "#1e293b",
+                        background: isDark ? "rgba(13, 21, 41, 0.5)" : "rgba(241, 245, 249, 0.8)",
+                        borderColor: isDark ? "rgba(61, 177, 172, 0.2)" : "rgba(39, 52, 112, 0.1)",
+                        color: isDark ? SDAIA.textDark : "#1C2833",
                       }}
                       dir="ltr"
                       autoComplete="username"
@@ -554,7 +561,7 @@ export default function PlatformLogin() {
                   <div className="space-y-2">
                     <label
                       className="text-sm font-medium"
-                      style={{ color: isDark ? "#cbd5e1" : "#374151" }}
+                      style={{ color: isDark ? "rgba(225,222,245,0.8)" : "#374151" }}
                     >
                       كلمة المرور
                     </label>
@@ -564,11 +571,11 @@ export default function PlatformLogin() {
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         placeholder="أدخل كلمة المرور"
-                        className="h-11 pl-10 transition-all duration-300 focus:ring-2 focus:ring-blue-500/30"
+                        className="h-11 pl-10 transition-all duration-300 focus:ring-2"
                         style={{
-                          background: isDark ? "rgba(15, 30, 60, 0.5)" : "rgba(241, 245, 249, 0.8)",
-                          borderColor: isDark ? "rgba(59, 130, 246, 0.2)" : "rgba(0, 0, 0, 0.1)",
-                          color: isDark ? "#e2e8f0" : "#1e293b",
+                          background: isDark ? "rgba(13, 21, 41, 0.5)" : "rgba(241, 245, 249, 0.8)",
+                          borderColor: isDark ? "rgba(61, 177, 172, 0.2)" : "rgba(39, 52, 112, 0.1)",
+                          color: isDark ? SDAIA.textDark : "#1C2833",
                         }}
                         dir="ltr"
                         autoComplete="current-password"
@@ -577,7 +584,7 @@ export default function PlatformLogin() {
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
                         className="absolute left-3 top-1/2 -translate-y-1/2 transition-colors hover:opacity-80"
-                        style={{ color: isDark ? "#94a3b8" : "#64748b" }}
+                        style={{ color: isDark ? "rgba(225,222,245,0.5)" : "#64748b" }}
                       >
                         {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                       </button>
@@ -595,7 +602,7 @@ export default function PlatformLogin() {
                       />
                       <span
                         className="text-sm"
-                        style={{ color: isDark ? "#94a3b8" : "#64748b" }}
+                        style={{ color: isDark ? "rgba(225,222,245,0.5)" : "#64748b" }}
                       >
                         تذكرني
                       </span>
@@ -603,7 +610,7 @@ export default function PlatformLogin() {
                     <button
                       type="button"
                       className="text-sm hover:underline transition-colors"
-                      style={{ color: isDark ? "#60a5fa" : "#3b82f6" }}
+                      style={{ color: isDark ? SDAIA.teal : SDAIA.navy }}
                       onClick={() => {}}
                     >
                       نسيت كلمة المرور؟
@@ -615,11 +622,13 @@ export default function PlatformLogin() {
                     disabled={loginMutation.isPending}
                     className="w-full h-12 text-base font-semibold text-white shadow-lg transition-all duration-300 hover:shadow-xl hover:scale-[1.02] active:scale-[0.98]"
                     style={{
-                      background: "linear-gradient(135deg, #1d4ed8 0%, #2563eb 40%, #3b82f6 100%)",
+                      background: isDark
+                        ? `linear-gradient(135deg, ${SDAIA.navy} 0%, ${SDAIA.purple} 50%, ${SDAIA.teal} 100%)`
+                        : `linear-gradient(135deg, ${SDAIA.navy} 0%, ${SDAIA.purple} 100%)`,
                       border: "none",
                       boxShadow: isDark
-                        ? "0 4px 20px rgba(37, 99, 235, 0.3), 0 0 40px rgba(59, 130, 246, 0.1)"
-                        : "0 4px 20px rgba(37, 99, 235, 0.2)",
+                        ? "0 4px 20px rgba(61, 177, 172, 0.3), 0 0 40px rgba(100, 89, 167, 0.1)"
+                        : "0 4px 20px rgba(39, 52, 112, 0.2)",
                     }}
                   >
                     {loginMutation.isPending ? (
@@ -638,16 +647,16 @@ export default function PlatformLogin() {
 
                 <div
                   className="mt-6 pt-4 border-t"
-                  style={{ borderColor: isDark ? "rgba(59, 130, 246, 0.1)" : "rgba(0, 0, 0, 0.06)" }}
+                  style={{ borderColor: isDark ? "rgba(61, 177, 172, 0.1)" : "rgba(39, 52, 112, 0.06)" }}
                 >
-                  <p className="text-xs text-center" style={{ color: isDark ? "#64748b" : "#94a3b8" }}>
+                  <p className="text-xs text-center" style={{ color: isDark ? "rgba(225,222,245,0.35)" : "#94a3b8" }}>
                     هذا النظام مخصص للمستخدمين المصرح لهم فقط. أي محاولة وصول غير مصرح بها ستتم مراقبتها وتسجيلها.
                   </p>
                 </div>
               </div>
             </div>
 
-            <p className="text-center text-xs mt-6" style={{ color: isDark ? "#475569" : "#94a3b8" }}>
+            <p className="text-center text-xs mt-6" style={{ color: isDark ? "rgba(225,222,245,0.25)" : "#94a3b8" }}>
               مكتب إدارة البيانات الوطنية — منصة راصد
             </p>
           </div>

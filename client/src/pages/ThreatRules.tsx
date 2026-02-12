@@ -78,7 +78,7 @@ export default function ThreatRules() {
   const statItems = [
     { key: "total_rules", label: "إجمالي القواعد", value: stats.total, icon: Crosshair, color: "text-primary", description: "إجمالي القواعد يمثل العدد الكلي لقواعد الصيد والكشف عن التهديدات المتاحة في النظام. هذه القواعد مصممة لتحديد الأنشطة المشبوهة وتسريب البيانات والتهديدات الأمنية الأخرى." },
     { key: "enabled_rules", label: "قواعد نشطة", value: stats.enabled, icon: CheckCircle2, color: "text-emerald-400", description: "القواعد النشطة هي القواعد التي يتم تطبيقها حاليًا للمراقبة والتحليل. يمكن تمكين أو تعطيل القواعد بناءً على احتياجات الأمان والأداء." },
-    { key: "critical_rules", label: "قواعد حرجة", value: stats.critical, icon: AlertTriangle, color: "text-red-400", description: "القواعد الحرجة هي القواعد ذات الأولوية القصوى والتي تشير إلى تهديدات خطيرة تتطلب استجابة فورية. يتم تصنيفها بناءً على التأثير المحتمل للتهديد." },
+    { key: "critical_rules", label: "قواعد واسعة النطاق", value: stats.critical, icon: AlertTriangle, color: "text-red-400", description: "القواعد واسعة النطاق هي القواعد ذات الأولوية القصوى والتي تشير إلى تسريبات كبيرة تتطلب متابعة فورية. يتم تصنيفها بناءً على حجم التأثير المحتمل." },
     { key: "total_matches", label: "إجمالي التطابقات", value: stats.totalMatches.toLocaleString(), icon: Zap, color: "text-amber-400", description: "إجمالي التطابقات يمثل عدد المرات التي تم فيها تفعيل قواعد الكشف نتيجة تطابقها مع بيانات أو أنشطة محددة. هذا الرقم يساعد في قياس فعالية القواعد وتحديد حجم التهديدات." },
   ];
 
@@ -204,7 +204,7 @@ export default function ThreatRules() {
                       </div>
                       <div className="flex items-center gap-2">
                         <Badge variant="outline" className={`text-[10px] ${severityColors[rule.severity]}`}>
-                          {rule.severity === "critical" ? "حرج" : rule.severity === "high" ? "عالي" : rule.severity === "medium" ? "متوسط" : "منخفض"}
+                          {rule.severity === "critical" ? "واسع النطاق" : rule.severity === "high" ? "مرتفع" : rule.severity === "medium" ? "متوسط" : "محدود"}
                         </Badge>
                         {rule.isEnabled ? (
                           <CheckCircle2 className="w-4 h-4 text-emerald-400" />
@@ -299,7 +299,7 @@ export default function ThreatRules() {
                 <div className="text-xs space-y-1 text-muted-foreground">
                   <p><strong className="text-foreground">المعرّف:</strong> <span className="font-mono">{rule.ruleId}</span></p>
                   <p><strong className="text-foreground">الحالة:</strong> {rule.isEnabled ? <span className="text-emerald-400">نشطة</span> : <span>معطلة</span>}</p>
-                  <p><strong className="text-foreground">الخطورة:</strong> <span className={severityColors[rule.severity]}>{rule.severity}</span></p>
+                  <p><strong className="text-foreground">التصنيف:</strong> <span className={severityColors[rule.severity]}>{rule.severity}</span></p>
                   <p><strong className="text-foreground">الفئة:</strong> {catConfig.label}</p>
                 </div>
               </div>

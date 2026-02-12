@@ -97,14 +97,14 @@ const policyGaps = [
   },
   {
     id: "PG-003",
-    title: "إطار الإبلاغ عن الحوادث",
+    title: "إطار توثيق الحوادث",
     titleEn: "Incident Reporting Framework",
     sector: "عام",
     urgency: "high",
-    description: "لا يوجد إطار موحد لإبلاغ الجهات عن تسريبات البيانات الشخصية",
-    recommendation: "إنشاء إطار إبلاغ موحد مع جداول زمنية محددة",
+    description: "لا يوجد إطار موحد لتوثيق ورصد تسريبات البيانات الشخصية",
+    recommendation: "إنشاء إطار توثيق موحد مع جداول زمنية محددة",
     progress: 60,
-    details: "حالياً لا يوجد إطار موحد يلزم الجهات بالإبلاغ عن حوادث تسريب البيانات خلال فترة زمنية محددة. هذا يؤدي لتأخر الاستجابة وزيادة الأضرار. الإطار المقترح يشمل: إبلاغ خلال 72 ساعة، تصنيف الحوادث، وخطة استجابة.",
+    details: "حالياً لا يوجد إطار موحد لتوثيق حوادث تسريب البيانات خلال فترة زمنية محددة. هذا يؤدي لتأخر الرصد وزيادة الأضرار. الإطار المقترح يشمل: توثيق خلال 72 ساعة، تصنيف الحوادث، وخطة متابعة.",
     affectedEntities: ["جميع الجهات الحكومية", "القطاع الخاص", "الجهات التنظيمية"],
     timeline: "Q1 2026",
   },
@@ -192,15 +192,15 @@ export default function Reports() {
         "",
         "=== إحصائيات عامة ===",
         `إجمالي التسريبات: ${data.stats.totalLeaks}`,
-        `تنبيهات حرجة: ${data.stats.criticalAlerts}`,
+        `تسريبات جديدة: ${data.stats.newLeaks}`,
         `إجمالي السجلات المكشوفة: ${data.stats.totalRecords}`,
-        `أجهزة الرصد النشطة: ${data.stats.activeMonitors}`,
+        `مصادر الرصد النشطة: ${data.stats.activeMonitors}`,
         `بيانات شخصية مكتشفة: ${data.stats.piiDetected}`,
         "",
         "=== ملخص التسريبات ===",
         ...data.leaksSummary.map(
           (l) =>
-            `[${l.severity.toUpperCase()}] ${l.title} | المصدر: ${l.source} | القطاع: ${l.sector} | السجلات: ${l.records} | الحالة: ${l.status}`
+            `[التصنيف: ${l.severity.toUpperCase()}] ${l.title} | المصدر: ${l.source} | القطاع: ${l.sector} | السجلات: ${l.records} | الحالة: ${l.status}`
         ),
         "",
         `إجمالي التقارير المنشأة: ${data.totalReports}`,
@@ -563,7 +563,7 @@ export default function Reports() {
                   sector.A >= 70 ? "text-red-400" : sector.A >= 50 ? "text-amber-400" : "text-emerald-400"
                 }`}>{sector.A}%</p>
                 <p className="text-[10px] text-muted-foreground">
-                  {sector.A >= 70 ? "خطورة عالية" : sector.A >= 50 ? "خطورة متوسطة" : "خطورة منخفضة"}
+                  {sector.A >= 70 ? "تأثير عالي" : sector.A >= 50 ? "تأثير متوسط" : "تأثير محدود"}
                 </p>
               </div>
             ))}

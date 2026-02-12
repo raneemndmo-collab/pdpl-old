@@ -91,7 +91,7 @@ const SCAN_SOURCES = [
 ];
 
 const SEVERITY_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
-  critical: { label: "حرج", color: "text-red-400", bg: "bg-red-500/20 border-red-500/30" },
+  critical: { label: "واسع النطاق", color: "text-red-400", bg: "bg-red-500/20 border-red-500/30" },
   high: { label: "عالي", color: "text-orange-400", bg: "bg-orange-500/20 border-orange-500/30" },
   medium: { label: "متوسط", color: "text-yellow-400", bg: "bg-yellow-500/20 border-yellow-500/30" },
   low: { label: "منخفض", color: "text-blue-400", bg: "bg-blue-500/20 border-blue-500/30" },
@@ -533,7 +533,7 @@ export default function LiveScan() {
                 <div className="glass-card rounded-xl p-4 border-red-500/20">
                   <div className="flex items-center gap-2 mb-1">
                     <ShieldAlert className="w-4 h-4 text-red-400" />
-                    <span className="text-xs text-white/50">حرج</span>
+                    <span className="text-xs text-white/50">واسع النطاق</span>
                   </div>
                   <span className="text-2xl font-bold text-red-400">{criticalCount}</span>
                 </div>

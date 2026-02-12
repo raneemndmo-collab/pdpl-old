@@ -63,7 +63,7 @@ describe("Smart Rasid AI Assistant", () => {
       (invokeLLM as any).mockResolvedValue({
         choices: [{
           message: {
-            content: "مرحباً! إليك ملخص لوحة المعلومات:\n- إجمالي التسريبات: 247\n- التسريبات الحرجة: 56",
+            content: "مرحباً! إليك ملخص لوحة المعلومات:\n- إجمالي التسريبات: 247\n- التسريبات واسعة النطاق: 56",
           },
         }],
       });
@@ -101,7 +101,7 @@ describe("Smart Rasid AI Assistant", () => {
     it("should generate relevant suggestions based on input", () => {
       const input = "تسريب";
       const allSuggestions = [
-        "ابحث عن تسريبات حرجة",
+        "ابحث عن تسريبات واسعة النطاق",
         "أظهر تسريبات هذا الأسبوع",
         "تسريبات القطاع الحكومي",
         "تسريبات الاتصالات",
@@ -121,7 +121,7 @@ describe("Smart Rasid AI Assistant", () => {
       const corrections: Record<string, string> = {
         "تسربات": "تسريبات",
         "الاتصلات": "الاتصالات",
-        "حرجه": "حرجة",
+        "واسعه": "واسعة النطاق",
         "الداكر ويب": "الدارك ويب",
       };
 
@@ -132,7 +132,7 @@ describe("Smart Rasid AI Assistant", () => {
     it("should suggest quick commands based on context", () => {
       const quickCommands = [
         { label: "ملخص لوحة المعلومات", keywords: ["ملخص", "لوحة", "إحصائيات"] },
-        { label: "تسريبات حرجة", keywords: ["حرجة", "خطيرة", "عاجل"] },
+        { label: "تسريبات واسعة النطاق", keywords: ["واسعة", "كبيرة", "عاجل"] },
         { label: "أنشئ تقرير أسبوعي", keywords: ["تقرير", "أسبوعي", "إنشاء"] },
         { label: "حالة الحماية", keywords: ["حماية", "حالة", "تهديد"] },
         { label: "تقرير استخباراتي", keywords: ["استخبارات", "تحليل", "تهديد"] },
@@ -155,7 +155,7 @@ describe("Smart Rasid AI Assistant", () => {
 
       history.push({ role: "user", content: "ملخص لوحة المعلومات" });
       history.push({ role: "assistant", content: "إليك ملخص لوحة المعلومات..." });
-      history.push({ role: "user", content: "أظهر التسريبات الحرجة" });
+      history.push({ role: "user", content: "أظهر التسريبات واسعة النطاق" });
 
       expect(history).toHaveLength(3);
       expect(history[0].role).toBe("user");

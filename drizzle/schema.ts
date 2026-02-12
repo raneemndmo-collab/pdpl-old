@@ -11,26 +11,19 @@ import {
 } from "drizzle-orm/mysql-core";
 
 /**
- * Core user table — extended with NDMO roles and local authentication
+ * Core user table — extended with NDMO roles
  * Roles: admin (full access), manager (reports + leaks), analyst (read + classify), viewer (dashboard only)
- * Auth: Local username/password authentication (no OAuth)
  */
 export const users = mysqlTable("users", {
   id: int("id").autoincrement().primaryKey(),
   openId: varchar("openId", { length: 64 }).notNull().unique(),
-  userId: varchar("userId", { length: 64 }).unique(), // Local login username (e.g., MRUHAILY)
-  passwordHash: varchar("passwordHash", { length: 255 }), // bcrypt hashed password
   name: text("name"),
-  displayName: varchar("displayName", { length: 255 }), // Display name (e.g., Admin Rasid System)
-  displayNameAr: varchar("displayNameAr", { length: 255 }), // Arabic display name
   email: varchar("email", { length: 320 }),
-  mobile: varchar("mobile", { length: 20 }), // Mobile number (e.g., +966553445533)
   loginMethod: varchar("loginMethod", { length: 64 }),
   role: mysqlEnum("role", ["user", "admin"]).default("user").notNull(),
   ndmoRole: mysqlEnum("ndmoRole", ["executive", "manager", "analyst", "viewer"])
     .default("viewer")
     .notNull(),
-  isActive: boolean("isActive").default(true).notNull(), // Account active status
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   lastSignedIn: timestamp("lastSignedIn").defaultNow().notNull(),
@@ -666,34 +659,10 @@ export const knowledgeBase = mysqlTable("knowledge_base", {
   updatedBy: int("kbUpdatedBy"),
   createdAt: timestamp("kbCreatedAt").defaultNow().notNull(),
   updatedAt: timestamp("kbUpdatedAt").defaultNow().onUpdateNow().notNull(),
-  embedding: json("kbEmbedding").$type<number[]>(),
-  embeddingModel: varchar("kbEmbeddingModel", { length: 64 }),
 });
 
 export type KnowledgeBaseEntry = typeof knowledgeBase.$inferSelect;
 export type InsertKnowledgeBaseEntry = typeof knowledgeBase.$inferInsert;
-
-/**
- * Search Query Log — tracks all knowledge base search queries
- * Used for analytics, popular queries, content gap analysis
- */
-export const searchQueryLog = mysqlTable("search_query_log", {
-  id: int("id").autoincrement().primaryKey(),
-  query: text("sqlQuery").notNull(),
-  source: mysqlEnum("sqlSource", ["rasid_ai", "knowledge_base_ui", "api"]).default("rasid_ai").notNull(),
-  searchMethod: mysqlEnum("sqlSearchMethod", ["semantic", "keyword", "hybrid"]).default("semantic").notNull(),
-  resultCount: int("sqlResultCount").default(0).notNull(),
-  topScore: varchar("sqlTopScore", { length: 10 }),
-  avgScore: varchar("sqlAvgScore", { length: 10 }),
-  reranked: boolean("sqlReranked").default(false).notNull(),
-  userId: int("sqlUserId"),
-  userName: varchar("sqlUserName", { length: 255 }),
-  category: varchar("sqlCategory", { length: 64 }),
-  responseTimeMs: int("sqlResponseTimeMs"),
-  createdAt: timestamp("sqlCreatedAt").defaultNow().notNull(),
-});
-export type SearchQueryLog = typeof searchQueryLog.$inferSelect;
-export type InsertSearchQueryLog = typeof searchQueryLog.$inferInsert;
 
 
 /**

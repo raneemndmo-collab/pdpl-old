@@ -56,25 +56,11 @@ vi.mock("./db", () => ({
   getAllIncidentDocuments: vi.fn().mockResolvedValue([]),
   getReportAuditEntries: vi.fn().mockResolvedValue([]),
   getApiKeys: vi.fn().mockResolvedValue([]),
-  getCustomActions: vi.fn().mockResolvedValue([
-    { id: 1, name: "explain_pdpl", nameAr: "شرح PDPL", description: "شرح نظام حماية البيانات", category: "knowledge", triggerPhrases: '["pdpl","حماية البيانات"]', responseTemplate: "PDPL هو نظام حماية البيانات الشخصية", isActive: true },
-  ]),
-  getTrainingDocuments: vi.fn().mockResolvedValue([
-    { id: 1, title: "دليل المنصة", docType: "pdf", status: "processed", extractedContent: "دليل استخدام منصة راصد", createdAt: Date.now() },
-  ]),
-  getPersonalityScenarios: vi.fn().mockResolvedValue([
-    { id: 1, scenarioType: "greeting_first", triggerKeyword: null, responseTemplate: "مرحباً {userName}!", isActive: true },
-  ]),
-  getGreetingForUser: vi.fn().mockResolvedValue({ greeting: "مرحباً!", isFirstVisit: true }),
-  checkLeaderMention: vi.fn().mockResolvedValue({ mentioned: false }),
   getPublishedKnowledgeForAI: vi.fn().mockResolvedValue([
     { id: 1, title: "PDPL Overview", titleAr: "نظرة عامة على PDPL", content: "PDPL is the Personal Data Protection Law", category: "policy" },
   ]),
   getKnowledgeBaseEntries: vi.fn().mockResolvedValue([
     { id: 1, title: "PDPL Overview", titleAr: "نظرة عامة على PDPL", content: "PDPL is the Personal Data Protection Law", category: "policy" },
-  ]),
-  getKnowledgeBaseEntriesWithEmbeddings: vi.fn().mockResolvedValue([
-    { id: 1, entryId: "KB-001", title: "PDPL Overview", titleAr: "نظرة عامة على PDPL", content: "PDPL is the Personal Data Protection Law", contentAr: "نظام حماية البيانات الشخصية", category: "policy", tags: ["PDPL"], embedding: null, viewCount: 10, helpfulCount: 5 },
   ]),
   getAllPlatformUsers: vi.fn().mockResolvedValue([
     { id: 1, name: "Admin User", role: "admin", lastLoginAt: Date.now() },
@@ -94,9 +80,9 @@ describe("rasidAI — Smart Rasid AI v6.0", () => {
   });
 
   describe("RASID_TOOLS", () => {
-    it("should have 30 tool definitions (upgraded with training center tools)", () => {
+    it("should have 26 tool definitions (upgraded with personality tools)", () => {
       expect(RASID_TOOLS).toBeDefined();
-      expect(RASID_TOOLS.length).toBe(30);
+      expect(RASID_TOOLS.length).toBe(26);
     });
 
     it("each tool should have required properties", () => {
@@ -162,7 +148,7 @@ describe("rasidAI — Smart Rasid AI v6.0", () => {
       const stats = { totalLeaks: 256, criticalAlerts: 56, totalRecords: 229200000, activeMonitors: 27 };
       const prompt = buildSystemPrompt("Admin", stats, "");
       expect(prompt).toContain("إجمالي التسريبات");
-      expect(prompt).toContain("التنبيهات الحرجة");
+      expect(prompt).toContain("التسريبات");
       expect(prompt).toContain("السجلات المكشوفة");
     });
 
@@ -261,7 +247,7 @@ describe("rasidAI — Smart Rasid AI v6.0", () => {
         choices: [
           {
             message: {
-              content: "إجمالي التسريبات: 256 تسريب. التنبيهات الحرجة: 56.",
+              content: "إجمالي التسريبات: 256 تسريب. التسريبات واسعة النطاق: 56.",
               role: "assistant",
             },
             index: 0,
@@ -307,7 +293,7 @@ describe("rasidAI — Smart Rasid AI v6.0", () => {
         choices: [
           {
             message: {
-              content: "إجمالي التسريبات: 256 تسريب. التنبيهات الحرجة: 56.",
+              content: "إجمالي التسريبات: 256 تسريب. التسريبات واسعة النطاق: 56.",
               role: "assistant",
             },
             index: 0,
@@ -357,7 +343,7 @@ describe("rasidAI — Smart Rasid AI v6.0", () => {
         choices: [
           {
             message: {
-              content: "تحليل شامل: 256 تسريب، منها 2 حرجة.",
+              content: "تحليل شامل: 256 تسريب، منها 2 واسعة النطاق.",
               role: "assistant",
             },
             index: 0,
@@ -394,8 +380,8 @@ describe("rasidAI — Smart Rasid AI v6.0", () => {
       } as any);
 
       const history = [
-        { role: "user" as const, content: "ما هي التسريبات الحرجة؟" },
-        { role: "assistant" as const, content: "هناك 56 تنبيه حرج." },
+        { role: "user" as const, content: "ما هي التسريبات واسعة النطاق؟" },
+        { role: "assistant" as const, content: "هناك 56 تسريب واسع النطاق." },
       ];
 
       const result = await rasidAIChat("أعطني تفاصيل أكثر", history, "TestUser", 1);

@@ -40,10 +40,10 @@ import ComplianceWarningDialog from "./ComplianceWarningDialog";
 
 const severityLabel = (s: string) => {
   switch (s) {
-    case "critical": return "حرج";
-    case "high": return "عالي";
-    case "medium": return "متوسط";
-    default: return "منخفض";
+    case "critical": return "واسع النطاق";
+    case "high": return "مرتفع التأثير";
+    case "medium": return "متوسط التأثير";
+    default: return "محدود التأثير";
   }
 };
 
@@ -69,7 +69,7 @@ const statusLabel = (s: string) => {
     case "new": return "جديد";
     case "analyzing": return "قيد التحليل";
     case "documented": return "موثّق";
-    default: return "تم الإبلاغ";
+    default: return "مكتمل";
   }
 };
 
@@ -269,7 +269,7 @@ export default function LeakDetailDrilldown({ leak, open, onClose, onBack, showB
                               تحميل
                             </Button>
                             <a
-                              href={`/verify/${generatedDoc.verificationCode}`}
+                              href={`/public/verify/${generatedDoc.verificationCode}`}
                               target="_blank"
                               rel="noopener noreferrer"
                               className="inline-flex items-center gap-1 text-[10px] text-teal-400 hover:text-teal-300 px-2 py-1 rounded bg-teal-500/10 border border-teal-500/20"

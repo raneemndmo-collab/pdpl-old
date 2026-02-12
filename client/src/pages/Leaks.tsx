@@ -67,10 +67,10 @@ const severityColor = (s: string) => {
 
 const severityLabel = (s: string) => {
   switch (s) {
-    case "critical": return "حرج";
-    case "high": return "عالي";
-    case "medium": return "متوسط";
-    default: return "منخفض";
+    case "critical": return "واسع النطاق";
+    case "high": return "مرتفع التأثير";
+    case "medium": return "متوسط التأثير";
+    default: return "محدود التأثير";
   }
 };
 
@@ -103,7 +103,7 @@ const statusLabel = (s: string) => {
     case "new": return "جديد";
     case "analyzing": return "قيد التحليل";
     case "documented": return "موثّق";
-    default: return "تم الإبلاغ";
+    default: return "تم التوثيق";
   }
 };
 
@@ -314,9 +314,9 @@ export default function Leaks() {
   // Stats data for clickable cards
   const statsData = useMemo(() => [
     { label: "إجمالي التسريبات", value: allLeaks.length, color: "text-red-400", borderColor: "border-red-500/20", bgColor: "bg-red-500/5", icon: ShieldAlert, filter: () => allLeaks },
-    { label: "حرجة", value: allLeaks.filter((l) => l.severity === "critical").length, color: "text-red-400", borderColor: "border-red-500/20", bgColor: "bg-red-500/5", icon: AlertTriangle, filter: () => allLeaks.filter((l) => l.severity === "critical") },
+    { label: "واسعة النطاق", value: allLeaks.filter((l) => l.severity === "critical").length, color: "text-red-400", borderColor: "border-red-500/20", bgColor: "bg-red-500/5", icon: AlertTriangle, filter: () => allLeaks.filter((l) => l.severity === "critical") },
     { label: "قيد التحليل", value: allLeaks.filter((l) => l.status === "analyzing").length, color: "text-amber-400", borderColor: "border-amber-500/20", bgColor: "bg-amber-500/5", icon: Clock, filter: () => allLeaks.filter((l) => l.status === "analyzing") },
-    { label: "تم الإبلاغ", value: allLeaks.filter((l) => l.status === "reported").length, color: "text-emerald-400", borderColor: "border-emerald-500/20", bgColor: "bg-emerald-500/5", icon: CheckCircle, filter: () => allLeaks.filter((l) => l.status === "reported") },
+    { label: "مكتملة", value: allLeaks.filter((l) => l.status === "reported").length, color: "text-emerald-400", borderColor: "border-emerald-500/20", bgColor: "bg-emerald-500/5", icon: CheckCircle, filter: () => allLeaks.filter((l) => l.status === "reported") },
   ], [allLeaks]);
 
   if (isLoading) {
@@ -336,18 +336,22 @@ export default function Leaks() {
           return (
             <motion.div key={stat.label} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
               <Card
-                className={`border ${stat.borderColor} ${stat.bgColor} cursor-pointer hover:scale-[1.02] transition-all`}
+                className={`border ${stat.borderColor} ${stat.bgColor} cursor-pointer hover:scale-[1.03] transition-all duration-300 dark:bg-[rgba(26,37,80,0.6)] dark:backdrop-blur-xl dark:border-[rgba(61,177,172,0.12)] hover:shadow-lg hover:shadow-primary/5 group relative overflow-hidden`}
                 onClick={() => setStatsModal({ title: stat.label, leaks: stat.filter() })}
               >
-                <CardContent className="p-4">
+                {/* Shimmer effect */}
+                <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500" style={{ background: 'linear-gradient(135deg, transparent 40%, rgba(61,177,172,0.08) 50%, transparent 60%)', backgroundSize: '200% 200%', animation: 'shimmer 2s infinite' }} />
+                <CardContent className="p-4 relative z-10">
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-xs text-muted-foreground">{stat.label}</p>
                       <p className={`text-2xl font-bold mt-1 ${stat.color}`}>{stat.value}</p>
                     </div>
-                    <Icon className={`w-8 h-8 ${stat.color} opacity-30`} />
+                    <motion.div whileHover={{ rotate: -10, scale: 1.1 }} transition={{ type: 'spring', stiffness: 300 }}>
+                      <Icon className={`w-8 h-8 ${stat.color} opacity-40 group-hover:opacity-70 transition-opacity`} />
+                    </motion.div>
                   </div>
-                  <p className="text-[10px] text-muted-foreground mt-2">اضغط للتفاصيل</p>
+                  <p className="text-[10px] text-muted-foreground mt-2 group-hover:text-primary/60 transition-colors">اضغط للتفاصيل ←</p>
                 </CardContent>
               </Card>
             </motion.div>
@@ -356,7 +360,7 @@ export default function Leaks() {
       </div>
 
       {/* Filters */}
-      <Card className="border-border">
+      <Card className="border-border dark:bg-[rgba(22,33,70,0.6)] dark:backdrop-blur-xl dark:border-[rgba(61,177,172,0.1)]">
         <CardContent className="p-4">
           <div className="flex flex-wrap gap-3">
             <div className="flex-1 min-w-[200px]">
@@ -372,11 +376,11 @@ export default function Leaks() {
             </div>
             <Select value={severityFilter} onValueChange={setSeverityFilter}>
               <SelectTrigger className="w-[140px] bg-secondary/50 border-border">
-                <SelectValue placeholder="الخطورة" />
+                <SelectValue placeholder="التأثير" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">جميع المستويات</SelectItem>
-                <SelectItem value="critical">حرج</SelectItem>
+                <SelectItem value="critical">واسع النطاق</SelectItem>
                 <SelectItem value="high">عالي</SelectItem>
                 <SelectItem value="medium">متوسط</SelectItem>
                 <SelectItem value="low">منخفض</SelectItem>
@@ -402,7 +406,7 @@ export default function Leaks() {
                 <SelectItem value="new">جديد</SelectItem>
                 <SelectItem value="analyzing">قيد التحليل</SelectItem>
                 <SelectItem value="documented">موثّق</SelectItem>
-                <SelectItem value="reported">تم الإبلاغ</SelectItem>
+                <SelectItem value="reported">تم التوثيق</SelectItem>
               </SelectContent>
             </Select>
             <Button variant="outline" onClick={handleExportCsv} className="gap-2">
@@ -425,7 +429,7 @@ export default function Leaks() {
               transition={{ delay: idx * 0.02 }}
             >
               <Card
-                className="border-border hover:border-primary/30 cursor-pointer transition-all hover:shadow-lg hover:shadow-primary/5"
+                className="border-border hover:border-primary/30 cursor-pointer transition-all duration-300 hover:shadow-lg hover:shadow-primary/5 dark:bg-[rgba(22,33,70,0.5)] dark:backdrop-blur-xl dark:border-[rgba(61,177,172,0.12)] dark:hover:border-[rgba(61,177,172,0.3)] dark:hover:bg-[rgba(26,37,80,0.6)] group relative overflow-hidden"
                 onClick={() => { setSelectedLeak(leak.leakId); setActiveTab("overview"); }}
               >
                 <CardContent className="p-4">
@@ -1014,7 +1018,7 @@ export default function Leaks() {
                                 <p className={`text-lg font-bold ${severityColor(leakDetail.aiSeverity || leakDetail.severity).split(' ')[0]}`}>
                                   {severityLabel(leakDetail.aiSeverity || leakDetail.severity)}
                                 </p>
-                                <p className="text-[10px] text-muted-foreground mt-1">تقييم الخطورة AI</p>
+                                <p className="text-[10px] text-muted-foreground mt-1">تقييم التأثير AI</p>
                               </div>
                               <div className="bg-secondary/50 rounded-xl p-4 border border-border/50 text-center">
                                 <Calendar className="w-5 h-5 mx-auto mb-2 text-cyan-400" />

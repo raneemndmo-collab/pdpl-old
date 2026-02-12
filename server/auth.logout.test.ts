@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { appRouter } from "./routers";
+import { COOKIE_NAME } from "../shared/const";
 import type { TrpcContext } from "./_core/context";
 
 type CookieCall = {
@@ -7,27 +8,26 @@ type CookieCall = {
   options: Record<string, unknown>;
 };
 
+type AuthenticatedUser = NonNullable<TrpcContext["user"]>;
+
 function createAuthContext(): { ctx: TrpcContext; clearedCookies: CookieCall[] } {
   const clearedCookies: CookieCall[] = [];
 
-  const platformUser = {
+  const user: AuthenticatedUser = {
     id: 1,
-    userId: "MRUHAILY",
-    passwordHash: "$2a$12$test",
-    name: "Test Admin",
-    email: "test@ndmo.gov.sa",
-    mobile: "+966553445533",
-    displayName: "Admin Rasid System",
-    platformRole: "root_admin" as const,
-    status: "active" as const,
-    lastLoginAt: new Date(),
+    openId: "sample-user",
+    email: "sample@example.com",
+    name: "Sample User",
+    loginMethod: "manus",
+    role: "user",
     createdAt: new Date(),
     updatedAt: new Date(),
+    lastSignedIn: new Date(),
   };
 
   const ctx: TrpcContext = {
-    user: null,
-    platformUser,
+    user,
+    platformUser: null,
     req: {
       protocol: "https",
       headers: {},
@@ -43,15 +43,15 @@ function createAuthContext(): { ctx: TrpcContext; clearedCookies: CookieCall[] }
 }
 
 describe("auth.logout", () => {
-  it("clears the platform session cookie and reports success", async () => {
+  it("clears the session cookie and reports success", async () => {
     const { ctx, clearedCookies } = createAuthContext();
     const caller = appRouter.createCaller(ctx);
 
     const result = await caller.auth.logout();
 
     expect(result).toEqual({ success: true });
-    expect(clearedCookies).toHaveLength(1);
-    expect(clearedCookies[0]?.name).toBe("platform_session");
+    expect(clearedCookies).toHaveLength(2);
+    expect(clearedCookies[0]?.name).toBe(COOKIE_NAME);
     expect(clearedCookies[0]?.options).toMatchObject({
       maxAge: -1,
       secure: true,

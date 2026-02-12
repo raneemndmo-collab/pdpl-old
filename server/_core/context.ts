@@ -1,5 +1,6 @@
 import type { CreateExpressContextOptions } from "@trpc/server/adapters/express";
 import type { User, PlatformUser } from "../../drizzle/schema";
+import { sdk } from "./sdk";
 import { parse as parseCookieHeader } from "cookie";
 import { jwtVerify } from "jose";
 import { ENV } from "./env";
@@ -44,15 +45,25 @@ async function authenticatePlatformUser(
 export async function createContext(
   opts: CreateExpressContextOptions
 ): Promise<TrpcContext> {
+  let user: User | null = null;
   let platformUser: PlatformUser | null = null;
 
-  // Local platform auth only (userId + password based sessions)
+  // Try platform auth first (custom userId + password)
   platformUser = await authenticatePlatformUser(opts.req);
+
+  // If no platform user, try OAuth
+  if (!platformUser) {
+    try {
+      user = await sdk.authenticateRequest(opts.req);
+    } catch (error) {
+      user = null;
+    }
+  }
 
   return {
     req: opts.req,
     res: opts.res,
-    user: null, // OAuth user is no longer used
+    user,
     platformUser,
   };
 }

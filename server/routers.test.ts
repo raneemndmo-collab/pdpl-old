@@ -12,7 +12,6 @@ type CookieCall = {
 function createPublicContext(): TrpcContext {
   return {
     user: null,
-    platformUser: null,
     req: {
       protocol: "https",
       headers: {},
@@ -26,24 +25,20 @@ function createPublicContext(): TrpcContext {
 function createAuthContext(): { ctx: TrpcContext; clearedCookies: CookieCall[] } {
   const clearedCookies: CookieCall[] = [];
 
-  const platformUser = {
+  const user: AuthenticatedUser = {
     id: 1,
-    userId: "MRUHAILY",
-    passwordHash: "$2a$12$test",
-    name: "Test Admin",
+    openId: "test-user-001",
     email: "test@ndmo.gov.sa",
-    mobile: "+966553445533",
-    displayName: "Admin Rasid System",
-    platformRole: "root_admin" as const,
-    status: "active" as const,
-    lastLoginAt: new Date(),
+    name: "Test User",
+    loginMethod: "manus",
+    role: "admin",
     createdAt: new Date(),
     updatedAt: new Date(),
+    lastSignedIn: new Date(),
   };
 
   const ctx: TrpcContext = {
-    user: null,
-    platformUser,
+    user,
     req: {
       protocol: "https",
       headers: {},
@@ -68,10 +63,10 @@ describe("dashboard.stats", () => {
 
     expect(stats).toBeDefined();
     expect(typeof stats.totalLeaks).toBe("number");
-    expect(typeof stats.criticalAlerts).toBe("number");
     expect(typeof stats.totalRecords).toBe("number");
     expect(typeof stats.activeMonitors).toBe("number");
     expect(typeof stats.piiDetected).toBe("number");
+    expect(typeof stats.newLeaks).toBe("number");
   });
 });
 
@@ -310,7 +305,7 @@ describe("users.list (admin only)", () => {
   it("rejects non-admin users", async () => {
     const { ctx } = createAuthContext();
     // Override role to non-admin
-    ctx.platformUser = { ...ctx.platformUser!, platformRole: "viewer" };
+    (ctx.user as AuthenticatedUser).role = "user";
 
     const caller = appRouter.createCaller(ctx);
 
@@ -411,7 +406,7 @@ describe("audit.list (admin only)", () => {
 
   it("rejects non-admin users", async () => {
     const { ctx } = createAuthContext();
-    ctx.platformUser = { ...ctx.platformUser!, platformRole: "viewer" };
+    (ctx.user as AuthenticatedUser).role = "user";
     const caller = appRouter.createCaller(ctx);
 
     await expect(caller.audit.list()).rejects.toThrow();
@@ -441,7 +436,7 @@ describe("audit.exportCsv (admin only)", () => {
 
   it("rejects non-admin users", async () => {
     const { ctx } = createAuthContext();
-    ctx.platformUser = { ...ctx.platformUser!, platformRole: "viewer" };
+    (ctx.user as AuthenticatedUser).role = "user";
     const caller = appRouter.createCaller(ctx);
 
     await expect(caller.audit.exportCsv()).rejects.toThrow();
@@ -727,7 +722,7 @@ describe("enrichment.enrichAll (admin only)", () => {
 
   it("rejects non-admin users", async () => {
     const { ctx } = createAuthContext();
-    ctx.platformUser = { ...ctx.platformUser!, platformRole: "viewer" };
+    (ctx.user as AuthenticatedUser).role = "user";
     const caller = appRouter.createCaller(ctx);
 
     await expect(caller.enrichment.enrichAll()).rejects.toThrow();
@@ -824,7 +819,7 @@ describe("scheduledReports", () => {
 
   it("rejects non-admin for create", async () => {
     const { ctx } = createAuthContext();
-    ctx.platformUser = { ...ctx.platformUser!, platformRole: "viewer" };
+    (ctx.user as AuthenticatedUser).role = "user";
     const caller = appRouter.createCaller(ctx);
 
     await expect(
@@ -891,7 +886,7 @@ describe("apiKeys", () => {
 
   it("rejects non-admin for API key creation", async () => {
     const { ctx } = createAuthContext();
-    ctx.platformUser = { ...ctx.platformUser!, platformRole: "viewer" };
+    (ctx.user as AuthenticatedUser).role = "user";
     const caller = appRouter.createCaller(ctx);
 
     await expect(
@@ -906,7 +901,7 @@ describe("apiKeys", () => {
 
   it("rejects non-admin for API key listing", async () => {
     const { ctx } = createAuthContext();
-    ctx.platformUser = { ...ctx.platformUser!, platformRole: "viewer" };
+    (ctx.user as AuthenticatedUser).role = "user";
     const caller = appRouter.createCaller(ctx);
 
     await expect(caller.apiKeys.list()).rejects.toThrow();

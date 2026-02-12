@@ -39,7 +39,7 @@ const statusText = (s: string) => {
     case "flagged": return "مُعلَّم";
     case "analyzing": return "قيد التحليل";
     case "documented": return "موثّق";
-    default: return "تم الإبلاغ";
+    default: return "تم التوثيق";
   }
 };
 
@@ -65,7 +65,7 @@ export default function PasteSites() {
     { id: "monitored-sites", label: "مواقع مراقبة", value: pasteChannels.length, color: "text-amber-400", icon: Server, description: "إجمالي عدد مواقع اللصق التي تتم مراقبتها حاليًا بحثًا عن تسريبات محتملة." },
     { id: "pastes-found", label: "لصقات مرصودة", value: pasteEntries.length, color: "text-cyan-400", icon: ScanLine, description: "إجمالي عدد اللصقات (Pastes) التي تم رصدها عبر جميع المواقع المراقبة." },
     { id: "analyzing", label: "قيد التحليل", value: pasteEntries.filter((p) => p.status === "analyzing").length, color: "text-violet-400", icon: Loader2, description: "عدد اللصقات التي يتم تحليلها حاليًا لتحديد ما إذا كانت تحتوي على بيانات حساسة." },
-    { id: "flagged", label: "مُبلَّغة", value: pasteEntries.filter((p) => p.status === "flagged").length, color: "text-red-400", icon: ShieldAlert, description: "عدد اللصقات التي تم تحديدها على أنها تحتوي على تسريبات وتم الإبلاغ عنها لاتخاذ إجراء." },
+    { id: "flagged", label: "موثّقة", value: pasteEntries.filter((p) => p.status === "flagged").length, color: "text-red-400", icon: ShieldAlert, description: "عدد اللصقات التي تم تحديدها على أنها تحتوي على بيانات شخصية مسربة وتم توثيقها." },
   ];
 
   return (
@@ -252,7 +252,7 @@ export default function PasteSites() {
                     <p className="font-bold text-lg">{channel.status === "active" ? "نشط" : "متوقف"}</p>
                 </div>
                 <div className="p-3 bg-secondary/30 rounded-lg">
-                    <p className="text-xs text-muted-foreground">مستوى الخطورة</p>
+                    <p className="text-xs text-muted-foreground">مستوى التأثير</p>
                     <p className="font-bold text-lg">{channel.riskLevel === "high" ? "عالي" : channel.riskLevel === "medium" ? "متوسط" : "منخفض"}</p>
                 </div>
             </div>

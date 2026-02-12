@@ -79,7 +79,7 @@ async function generateReportContent(
         "",
         "## ملخص تنفيذي",
         `- إجمالي التسريبات: ${stats?.totalLeaks ?? 0}`,
-        `- التنبيهات الحرجة: ${stats?.criticalAlerts ?? 0}`,
+        `- التسريبات الجديدة: ${stats?.newLeaks ?? 0}`,
         `- السجلات المتأثرة: ${(stats?.totalRecords ?? 0).toLocaleString()}`,
         `- أجهزة الرصد النشطة: ${stats?.activeMonitors ?? 0}`,
         "",
@@ -99,7 +99,7 @@ async function generateReportContent(
         "## جميع التسريبات",
         ...leaks.map(
           (l) =>
-            `### ${l.leakId}: ${l.titleAr}\n- المصدر: ${l.source}\n- الخطورة: ${l.severity}\n- القطاع: ${l.sectorAr}\n- السجلات: ${l.recordCount.toLocaleString()}\n- الحالة: ${l.status}`
+            `### ${l.leakId}: ${l.titleAr}\n- المصدر: ${l.source}\n- التصنيف: ${l.severity}\n- القطاع: ${l.sectorAr}\n- السجلات: ${l.recordCount.toLocaleString()}\n- الحالة: ${l.status}`
         ),
       ].join("\n");
 
@@ -139,7 +139,7 @@ async function generateReportContent(
         "## تحليل القطاعات",
         ...Array.from(sectorMap.entries()).map(
           ([sector, data]) =>
-            `### ${sector}\n- عدد التسريبات: ${data.count}\n- السجلات المتأثرة: ${data.records.toLocaleString()}\n- التسريبات الحرجة: ${data.critical}`
+            `### ${sector}\n- عدد التسريبات: ${data.count}\n- السجلات المتأثرة: ${data.records.toLocaleString()}\n- التسريبات واسعة النطاق: ${data.critical}`
         ),
       ].join("\n");
 

@@ -39,7 +39,7 @@ const severityColor = (s: string) => {
 
 const severityLabel = (s: string) => {
   switch (s) {
-    case "critical": return "حرج";
+    case "critical": return "واسع النطاق";
     case "high": return "عالي";
     case "medium": return "متوسط";
     default: return "منخفض";
@@ -168,7 +168,7 @@ export default function DarkWebMonitor() {
                     source.riskLevel === "medium" ? "text-amber-400 bg-amber-500/10 border-amber-500/30" :
                     "text-cyan-400 bg-cyan-500/10 border-cyan-500/30"
                   }`}>
-                    {source.riskLevel === "high" ? "خطورة عالية" : source.riskLevel === "medium" ? "خطورة متوسطة" : "خطورة منخفضة"}
+                    {source.riskLevel === "high" ? "تأثير عالي" : source.riskLevel === "medium" ? "تأثير متوسط" : "تأثير محدود"}
                   </span>
                 </div>
                 <p className="text-[9px] text-primary/50 mt-2">اضغط للتفاصيل ←</p>
@@ -401,7 +401,7 @@ export default function DarkWebMonitor() {
           <div className="space-y-4">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               <div className="bg-secondary/50 rounded-xl p-3 border border-border/50 text-center">
-                <p className="text-xs text-muted-foreground">الخطورة</p>
+                <p className="text-xs text-muted-foreground">التأثير</p>
                 <p className={`text-sm font-bold mt-1 ${severityColor(selectedListing.severity).split(" ")[0]}`}>{severityLabel(selectedListing.severity)}</p>
               </div>
               <div className="bg-secondary/50 rounded-xl p-3 border border-border/50 text-center">
@@ -434,7 +434,7 @@ export default function DarkWebMonitor() {
             <div className="bg-red-500/5 rounded-xl p-4 border border-red-500/20">
               <h4 className="text-xs font-semibold text-red-400 mb-2">تحذير أمني</h4>
               <p className="text-xs text-muted-foreground leading-relaxed">
-                هذا العرض تم رصده على الدارك ويب ويحتوي على بيانات شخصية مسربة. يجب اتخاذ إجراءات فورية للتحقق من صحة البيانات وإبلاغ الجهات المختصة.
+                هذا العرض تم رصده على الدارك ويب ويحتوي على بيانات شخصية مسربة. يجب التحقق من صحة البيانات وتوثيق الحادثة وتحليلها.
               </p>
             </div>
           </div>

@@ -47,7 +47,7 @@ const SECTORS = [
 ];
 
 const SEVERITY_OPTIONS = [
-  { value: "critical", label: "حرج", color: "text-red-400 bg-red-500/10 border-red-500/30" },
+  { value: "critical", label: "واسع النطاق", color: "text-red-400 bg-red-500/10 border-red-500/30" },
   { value: "high", label: "عالي", color: "text-amber-400 bg-amber-500/10 border-amber-500/30" },
   { value: "medium", label: "متوسط", color: "text-yellow-400 bg-yellow-500/10 border-yellow-500/30" },
   { value: "low", label: "منخفض", color: "text-cyan-400 bg-cyan-500/10 border-cyan-500/30" },
@@ -116,7 +116,7 @@ export default function ReportCustomizer({ open, onClose }: ReportCustomizerProp
 
   const handleProceedToWarning = () => {
     if (selectedSeverities.length === 0) {
-      toast.error("يرجى اختيار مستوى خطورة واحد على الأقل");
+      toast.error("يرجى اختيار مستوى تأثير واحد على الأقل");
       return;
     }
     if (selectedSources.length === 0) {
@@ -142,7 +142,7 @@ export default function ReportCustomizer({ open, onClose }: ReportCustomizerProp
 
       const filterDescription = [
         selectedSectors.length > 0 ? `القطاعات: ${selectedSectors.join("، ")}` : "جميع القطاعات",
-        `مستويات الخطورة: ${selectedSeverities.map((s) => SEVERITY_OPTIONS.find((o) => o.value === s)?.label).join("، ")}`,
+        `مستويات التأثير: ${selectedSeverities.map((s) => SEVERITY_OPTIONS.find((o) => o.value === s)?.label).join("، ")}`,
         `المصادر: ${selectedSources.map((s) => SOURCE_OPTIONS.find((o) => o.value === s)?.label).join("، ")}`,
         dateFrom ? `من: ${dateFrom}` : "",
         dateTo ? `إلى: ${dateTo}` : "",
@@ -227,7 +227,7 @@ export default function ReportCustomizer({ open, onClose }: ReportCustomizerProp
     <p style="font-size:13px;line-height:1.8;color:#cbd5e1;">
       يقدم هذا التقرير نظرة شاملة على حوادث تسريب البيانات الشخصية المرصودة عبر منصة راصد التابعة لمكتب إدارة البيانات الوطنية.
       تم رصد ${data.stats.totalLeaks} حادثة تسريب أثرت على ${data.stats.totalRecords.toLocaleString()} سجل بيانات شخصية.
-      يتضمن التقرير تحليلاً تفصيلياً للتسريبات حسب القطاعات والمصادر ومستويات الخطورة، مع توصيات لتعزيز حماية البيانات.
+      يتضمن التقرير تحليلاً تفصيلياً للتسريبات حسب القطاعات والمصادر ومستويات التأثير، مع توصيات لتعزيز حماية البيانات.
     </p>
   </div>` : ""}
 
@@ -244,8 +244,8 @@ export default function ReportCustomizer({ open, onClose }: ReportCustomizerProp
         <div class="stat-label">السجلات المكشوفة</div>
       </div>
       <div class="stat-card">
-        <div class="stat-value">${data.stats.criticalAlerts}</div>
-        <div class="stat-label">تنبيهات حرجة</div>
+        <div class="stat-value">${data.stats.newLeaks}</div>
+        <div class="stat-label">تسريبات جديدة</div>
       </div>
       <div class="stat-card">
         <div class="stat-value">${data.stats.piiDetected}</div>
@@ -263,7 +263,7 @@ export default function ReportCustomizer({ open, onClose }: ReportCustomizerProp
           <th>الرمز</th>
           <th>العنوان</th>
           <th>القطاع</th>
-          <th>الخطورة</th>
+          <th>حجم التأثير</th>
           <th>السجلات</th>
           <th>المصدر</th>
           <th>الحالة</th>
@@ -275,10 +275,10 @@ export default function ReportCustomizer({ open, onClose }: ReportCustomizerProp
           <td style="font-family:monospace;color:#06b6d4;font-size:10px;">${l.leakId || "—"}</td>
           <td>${l.title}</td>
           <td>${l.sector}</td>
-          <td><span class="severity-badge severity-${l.severity}">${l.severity === "critical" ? "حرج" : l.severity === "high" ? "عالي" : l.severity === "medium" ? "متوسط" : "منخفض"}</span></td>
+          <td><span class="severity-badge severity-${l.severity}">${l.severity === "critical" ? "واسع النطاق" : l.severity === "high" ? "عالي" : l.severity === "medium" ? "متوسط" : "منخفض"}</span></td>
           <td>${Number(l.records).toLocaleString()}</td>
           <td>${l.source === "telegram" ? "تليجرام" : l.source === "darkweb" ? "دارك ويب" : "موقع لصق"}</td>
-          <td>${l.status === "new" ? "جديد" : l.status === "analyzing" ? "قيد التحليل" : l.status === "documented" ? "موثّق" : "تم الإبلاغ"}</td>
+          <td>${l.status === "new" ? "جديد" : l.status === "analyzing" ? "قيد التحليل" : l.status === "documented" ? "موثّق" : "تم التوثيق"}</td>
         </tr>`).join("")}
       </tbody>
     </table>
@@ -292,7 +292,7 @@ export default function ReportCustomizer({ open, onClose }: ReportCustomizerProp
       <div class="rec-item"><div class="rec-bullet"></div><div>تطبيق التشفير الإلزامي للبيانات الحساسة في جميع القطاعات</div></div>
       <div class="rec-item"><div class="rec-bullet"></div><div>إنشاء فريق استجابة وطني لحوادث تسريب البيانات الشخصية</div></div>
       <div class="rec-item"><div class="rec-bullet"></div><div>تحديث معايير PDPL للقطاع الصحي وقطاع الاتصالات</div></div>
-      <div class="rec-item"><div class="rec-bullet"></div><div>إلزام الجهات بالإبلاغ عن حوادث التسريب خلال 72 ساعة</div></div>
+      <div class="rec-item"><div class="rec-bullet"></div><div>إلزام الجهات بتوثيق حوادث التسريب خلال 72 ساعة</div></div>
       <div class="rec-item"><div class="rec-bullet"></div><div>تطوير نظام إنذار مبكر متكامل مع منصة راصد</div></div>
       <div class="rec-item"><div class="rec-bullet"></div><div>إطلاق برنامج توعية وطني لحماية البيانات الشخصية</div></div>
       <div class="rec-item"><div class="rec-bullet"></div><div>تعزيز ضوابط الوصول لقواعد البيانات الحساسة</div></div>
@@ -493,7 +493,7 @@ export default function ReportCustomizer({ open, onClose }: ReportCustomizerProp
                     <div>
                       <label className="text-xs font-semibold text-muted-foreground mb-2 flex items-center gap-1.5">
                         <Shield className="w-3.5 h-3.5" />
-                        مستويات الخطورة
+                        مستويات التأثير
                       </label>
                       <div className="flex flex-wrap gap-2">
                         {SEVERITY_OPTIONS.map((sev) => (

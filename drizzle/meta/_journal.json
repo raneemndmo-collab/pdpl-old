@@ -120,27 +120,6 @@
       "when": 1770846921763,
       "tag": "0016_minor_brood",
       "breakpoints": true
-    },
-    {
-      "idx": 17,
-      "version": "5",
-      "when": 1770856996903,
-      "tag": "0017_watery_killraven",
-      "breakpoints": true
-    },
-    {
-      "idx": 18,
-      "version": "5",
-      "when": 1770857736912,
-      "tag": "0018_last_morbius",
-      "breakpoints": true
-    },
-    {
-      "idx": 19,
-      "version": "5",
-      "when": 1770864454579,
-      "tag": "0019_futuristic_red_ghost",
-      "breakpoints": true
     }
   ]
 }

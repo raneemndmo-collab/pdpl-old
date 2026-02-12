@@ -181,7 +181,7 @@ function generateFallbackEnrichment(leak: {
   return {
     aiSeverity,
     aiSummary: `This ${leak.severity}-severity data leak from the ${leak.sector} sector exposes ${leak.recordCount.toLocaleString()} records containing ${leak.piiTypes.slice(0, 3).join(", ")}. Immediate incident response is recommended.`,
-    aiSummaryAr: `تسريب بيانات بمستوى خطورة ${leak.severity === "critical" ? "حرج" : leak.severity === "high" ? "عالي" : leak.severity === "medium" ? "متوسط" : "منخفض"} من قطاع ${leak.sectorAr} يكشف ${leak.recordCount.toLocaleString()} سجل. يوصى بالاستجابة الفورية للحادث.`,
+    aiSummaryAr: `تسريب بيانات بتصنيف ${leak.severity === "critical" ? "واسع النطاق" : leak.severity === "high" ? "مرتفع" : leak.severity === "medium" ? "متوسط" : "محدود"} من قطاع ${leak.sectorAr} يكشف ${leak.recordCount.toLocaleString()} سجل. يوصى بالمتابعة الفورية للحادثة.`,
     aiRecommendations: [
       "Initiate incident response procedure per NDMO guidelines",
       "Notify affected data subjects within 72 hours per PDPL requirements",

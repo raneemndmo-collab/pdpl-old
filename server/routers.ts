@@ -136,24 +136,7 @@ import {
   deleteTrainingDocument,
   getAiFeedbackStats,
   getTrainingDocumentContent,
-  getKnowledgeBaseEntriesWithEmbeddings,
-  updateKnowledgeBaseEmbedding,
-  getEntriesWithoutEmbeddings,
-  logSearchQuery,
-  getSearchQueryLogs,
-  getSearchAnalytics,
-  getPopularQueries,
-  getLowCoverageQueries,
-  getSearchActivityTimeline,
 } from "./db";
-import {
-  generateEmbedding,
-  prepareEmbeddingText,
-  clearEmbeddingCache,
-  getEmbeddingCacheStats,
-  rerankWithLLM,
-  semanticSearch,
-} from "./semanticSearch";
 
 // Helper to get current user info from either auth source
 function getAuthUser(ctx: { user: any; platformUser: any }) {
@@ -174,35 +157,40 @@ export const appRouter = router({
 
   auth: router({
     me: publicProcedure.query((opts) => {
-      // Local platform auth only
-      if (!opts.ctx.platformUser) return null;
-      return {
-        id: opts.ctx.platformUser.id,
-        openId: `platform_${opts.ctx.platformUser.userId}`,
-        name: opts.ctx.platformUser.name,
-        email: opts.ctx.platformUser.email,
-        loginMethod: "platform",
-        role: opts.ctx.platformUser.platformRole === "root_admin" ? "admin" as const : "admin" as const,
-        ndmoRole: opts.ctx.platformUser.platformRole === "root_admin" ? "executive" as const
-          : opts.ctx.platformUser.platformRole === "director" ? "executive" as const
-          : opts.ctx.platformUser.platformRole === "vice_president" ? "manager" as const
-          : opts.ctx.platformUser.platformRole === "manager" ? "manager" as const
-          : "analyst" as const,
-        createdAt: opts.ctx.platformUser.createdAt,
-        updatedAt: opts.ctx.platformUser.updatedAt,
-        lastSignedIn: opts.ctx.platformUser.lastLoginAt ?? opts.ctx.platformUser.createdAt,
-        displayName: opts.ctx.platformUser.displayName,
-        platformRole: opts.ctx.platformUser.platformRole,
-        userId: opts.ctx.platformUser.userId,
-        mobile: opts.ctx.platformUser.mobile,
-        status: opts.ctx.platformUser.status,
-      };
+      // Return platform user if available, otherwise OAuth user
+      if (opts.ctx.platformUser) {
+        return {
+          id: opts.ctx.platformUser.id,
+          openId: `platform_${opts.ctx.platformUser.userId}`,
+          name: opts.ctx.platformUser.name,
+          email: opts.ctx.platformUser.email,
+          loginMethod: "platform",
+          role: opts.ctx.platformUser.platformRole === "root_admin" ? "admin" as const : "admin" as const,
+          ndmoRole: opts.ctx.platformUser.platformRole === "root_admin" ? "executive" as const
+            : opts.ctx.platformUser.platformRole === "director" ? "executive" as const
+            : opts.ctx.platformUser.platformRole === "vice_president" ? "manager" as const
+            : opts.ctx.platformUser.platformRole === "manager" ? "manager" as const
+            : "analyst" as const,
+          createdAt: opts.ctx.platformUser.createdAt,
+          updatedAt: opts.ctx.platformUser.updatedAt,
+          lastSignedIn: opts.ctx.platformUser.lastLoginAt ?? opts.ctx.platformUser.createdAt,
+          displayName: opts.ctx.platformUser.displayName,
+          platformRole: opts.ctx.platformUser.platformRole,
+          userId: opts.ctx.platformUser.userId,
+          mobile: opts.ctx.platformUser.mobile,
+          status: opts.ctx.platformUser.status,
+        };
+      }
+      return opts.ctx.user;
     }),
     logout: publicProcedure.mutation(({ ctx }) => {
       const cookieOptions = getSessionCookieOptions(ctx.req);
+      ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });
       ctx.res.clearCookie("platform_session", { ...cookieOptions, maxAge: -1 });
       if (ctx.platformUser) {
         logAudit(ctx.platformUser.id, "auth.logout", `Platform user ${ctx.platformUser.displayName} logged out`, "auth", ctx.platformUser.displayName);
+      } else if (ctx.user) {
+        logAudit(getAuthUser(ctx).id, "auth.logout", `User ${ctx.user.name} logged out`, "auth", getAuthUser(ctx).name);
       }
       return { success: true } as const;
     }),
@@ -383,10 +371,25 @@ export const appRouter = router({
       if (!stats) {
         return {
           totalLeaks: 0,
-          criticalAlerts: 0,
           totalRecords: 0,
+          newLeaks: 0,
+          analyzingLeaks: 0,
+          documentedLeaks: 0,
+          completedLeaks: 0,
+          telegramLeaks: 0,
+          darkwebLeaks: 0,
+          pasteLeaks: 0,
+          enrichedLeaks: 0,
           activeMonitors: 0,
+          totalChannels: 0,
           piiDetected: 0,
+          distinctSectors: 0,
+          distinctPiiTypes: 0,
+          sectorDistribution: [] as { sector: string | null; count: number; records: number }[],
+          sourceDistribution: [] as { source: string | null; count: number; records: number }[],
+          monthlyTrend: [] as { yearMonth: string; count: number; records: number }[],
+          piiDistribution: [] as { type: string; count: number }[],
+          recentLeaks: [] as any[],
         };
       }
       return stats;
@@ -463,7 +466,7 @@ export const appRouter = router({
         broadcastNotification({
           type: "status_change",
           title: `Leak ${input.leakId} status updated to ${input.status}`,
-          titleAr: `تم تحديث حالة التسريب ${input.leakId} إلى ${input.status === "analyzing" ? "قيد التحليل" : input.status === "documented" ? "موثق" : input.status === "reported" ? "تم الإبلاغ" : "جديد"}`,
+          titleAr: `تم تحديث حالة التسريب ${input.leakId} إلى ${input.status === "analyzing" ? "قيد التحليل" : input.status === "documented" ? "موثق" : input.status === "reported" ? "تم التوثيق" : "جديد"}`,
           severity: "info",
           relatedId: input.leakId,
           createdAt: new Date().toISOString(),
@@ -666,7 +669,7 @@ export const appRouter = router({
         const summary = {
           title: "NDMO — تقرير تسريبات البيانات الشخصية",
           generatedAt: new Date().toISOString(),
-          stats: stats ?? { totalLeaks: 0, criticalAlerts: 0, totalRecords: 0, activeMonitors: 0, piiDetected: 0 },
+          stats: stats ?? { totalLeaks: 0, newLeaks: 0, totalRecords: 0, activeMonitors: 0, piiDetected: 0, analyzingLeaks: 0, documentedLeaks: 0, completedLeaks: 0, telegramLeaks: 0, darkwebLeaks: 0, pasteLeaks: 0, enrichedLeaks: 0, totalChannels: 0, distinctSectors: 0, distinctPiiTypes: 0, sectorDistribution: [], sourceDistribution: [], monthlyTrend: [], piiDistribution: [], recentLeaks: [] },
           leaksSummary: allLeaks.map((l) => ({
             id: l.leakId,
             title: l.titleAr,
@@ -1272,7 +1275,7 @@ export const appRouter = router({
         // Notify supervisor
         await notifyOwner({
           title: `📋 توثيق حادثة جديد — ${result.documentId}`,
-          content: `قام ${who.name} بإصدار توثيق حادثة تسرب\nالحادثة: ${input.leakId}\nالقطاع: ${leak.sectorAr || leak.sector}\nالخطورة: ${leak.severity}\nكود التحقق: ${result.verificationCode}\nالتاريخ: ${new Date().toLocaleString("ar-SA")}`,
+          content: `قام ${who.name} بإصدار توثيق حادثة تسرب\nالحادثة: ${input.leakId}\nالقطاع: ${leak.sectorAr || leak.sector}\nالتصنيف: ${leak.severity}\nكود التحقق: ${result.verificationCode}\nالتاريخ: ${new Date().toLocaleString("ar-SA")}`,
         }).catch(() => {/* notification failure should not block */});
 
         // Log report audit with compliance
@@ -1391,7 +1394,7 @@ export const appRouter = router({
         const reportTypeLabels: Record<string, string> = {
           executive_summary: "ملخص تنفيذي",
           sector_analysis: "تحليل قطاعي",
-          severity_report: "تقرير الخطورة",
+          severity_report: "تقرير التصنيف",
           compliance_report: "تقرير الامتثال",
           custom_report: "تقرير مخصص",
         };
@@ -1444,7 +1447,7 @@ export const appRouter = router({
           if (suggestions.length >= 8) break;
         }
         const commonTerms = [
-          "تسريبات حرجة", "القطاع الحكومي", "القطاع الصحي", "القطاع المالي",
+          "تسريبات واسعة النطاق", "القطاع الحكومي", "القطاع الصحي", "القطاع المالي",
           "تليجرام", "دارك ويب", "مواقع لصق", "بيانات شخصية",
           "هوية وطنية", "أرقام هواتف", "بريد إلكتروني", "سجلات طبية",
           "ملخص لوحة المعلومات", "تقرير أسبوعي", "حالة الحماية",
@@ -1454,164 +1457,6 @@ export const appRouter = router({
           if (term.includes(q) && !suggestions.includes(term)) suggestions.push(term);
         }
         return { suggestions: Array.from(new Set(suggestions)).slice(0, 8) };
-      }),
-
-    // Smart suggestions: combines popular queries, KB topics, and contextual suggestions
-    smartSuggestions: publicProcedure
-      .input(z.object({
-        context: z.enum(["welcome", "after_response", "empty_input"]).optional().default("welcome"),
-        lastAssistantMessage: z.string().optional(),
-        conversationTopics: z.array(z.string()).optional(),
-      }).optional())
-      .query(async ({ input }) => {
-        const ctx = input?.context ?? "welcome";
-        const lastMsg = input?.lastAssistantMessage ?? "";
-        const topics = input?.conversationTopics ?? [];
-
-        // 1. Get popular queries from search logs
-        const popularQueries = await getPopularQueries(15);
-        const popularItems = popularQueries
-          .filter(q => q.count >= 1)
-          .map(q => ({
-            text: q.query,
-            category: "popular" as const,
-            score: q.count,
-            icon: "TrendingUp",
-          }));
-
-        // 2. Get KB topic-based suggestions
-        const kbEntries = await getKnowledgeBaseEntries({ isPublished: true, limit: 50 });
-        const kbCategories = new Map<string, string[]>();
-        for (const entry of kbEntries) {
-          const cat = entry.category || "عام";
-          if (!kbCategories.has(cat)) kbCategories.set(cat, []);
-          kbCategories.get(cat)!.push(entry.titleAr || entry.title);
-        }
-        const kbSuggestions: Array<{ text: string; category: "knowledge"; score: number; icon: string }> = [];
-        for (const [cat, titles] of Array.from(kbCategories.entries())) {
-          // Create question-style suggestions from KB topics
-          // Map actual DB categories to meaningful Arabic questions
-          const categoryQuestions: Record<string, string[]> = {
-            "article": ["ما هي أهم المقالات عن حماية البيانات الشخصية؟", "ابحث عن مقالات تتعلق بالتسريبات السيبرانية"],
-            "faq": ["ما هي الأسئلة الشائعة عن نظام PDPL؟", "كيف أتعامل مع حادثة تسريب بيانات؟", "ما هي حقوق أصحاب البيانات؟"],
-            "glossary": ["ما معنى البيانات الشخصية الحساسة؟", "ما الفرق بين التسريب والاختراق؟"],
-            "instruction": ["ما هي خطوات الإبلاغ عن تسريب؟", "كيف أستخدم منصة راصد بفعالية؟", "ما إجراءات الاستجابة للحوادث؟"],
-            "policy": ["ما هي سياسات حماية البيانات المعتمدة؟", "ما هي عقوبات مخالفة نظام PDPL؟"],
-            "regulation": ["ما هي متطلبات نظام حماية البيانات الشخصية؟", "ما هي اللوائح التنظيمية للبيانات الشخصية؟"],
-          };
-          const catKey = cat.toLowerCase();
-          const questions = categoryQuestions[catKey] || [];
-          const catIcons: Record<string, string> = {
-            "article": "FileText", "faq": "Lightbulb", "glossary": "BookOpen",
-            "instruction": "Target", "policy": "Shield", "regulation": "ShieldCheck",
-          };
-          const icon = catIcons[catKey] || "BookOpen";
-          for (const q of questions) {
-            kbSuggestions.push({ text: q, category: "knowledge", score: titles.length + 5, icon });
-          }
-          // Also add title-based suggestions for top articles (only short titles)
-          for (const title of titles.slice(0, 1)) {
-            if (title.length <= 40) {
-              kbSuggestions.push({ text: `اشرح لي عن: ${title}`, category: "knowledge", score: titles.length, icon });
-            }
-          }
-        }
-
-        // 3. Contextual suggestions based on last message
-        const contextualSuggestions: Array<{ text: string; category: "contextual"; score: number; icon: string }> = [];
-        if (ctx === "after_response" && lastMsg) {
-          const lower = lastMsg.toLowerCase();
-          const contextMap: Array<{ keywords: string[]; suggestions: Array<{ text: string; icon: string }> }> = [
-            { keywords: ["تسريب", "leak", "حادثة"], suggestions: [
-              { text: "ما هي التوصيات الأمنية لهذا التسريب؟", icon: "Shield" },
-              { text: "هل هناك تسريبات مشابهة من نفس المصدر؟", icon: "GitBranch" },
-              { text: "ما هي البيانات الشخصية المتأثرة؟", icon: "Fingerprint" },
-            ]},
-            { keywords: ["ملخص", "لوحة", "إحصائي", "dashboard"], suggestions: [
-              { text: "حلل الاتجاهات الشهرية بالتفصيل", icon: "TrendingUp" },
-              { text: "قارن بين أداء هذا الشهر والشهر الماضي", icon: "BarChart3" },
-              { text: "ما هي القطاعات الأكثر تعرضاً للتسريبات؟", icon: "Target" },
-            ]},
-            { keywords: ["تقرير", "مستند", "report"], suggestions: [
-              { text: "أنشئ تقرير أسبوعي شامل", icon: "FileText" },
-              { text: "ما هي التقارير المجدولة النشطة؟", icon: "CalendarClock" },
-              { text: "صدّر البيانات بصيغة CSV", icon: "Download" },
-            ]},
-            { keywords: ["حماية", "pdpl", "خصوصية", "نظام"], suggestions: [
-              { text: "ما هي مواد PDPL ذات الصلة بهذه الحالة؟", icon: "BookOpen" },
-              { text: "ما هي أفضل الممارسات للامتثال؟", icon: "CheckCircle" },
-              { text: "ما هي العقوبات المحتملة؟", icon: "AlertTriangle" },
-            ]},
-            { keywords: ["بائع", "seller", "مهدد"], suggestions: [
-              { text: "اعرض ملف البائع التفصيلي", icon: "UserX" },
-              { text: "ما هي القطاعات المستهدفة من هذا البائع؟", icon: "Target" },
-              { text: "تحليل ارتباطات البائع بتسريبات أخرى", icon: "Network" },
-            ]},
-            { keywords: ["تحليل", "اتجاه", "trend", "ارتباط", "نمط"], suggestions: [
-              { text: "اكتشف الأنماط غير العادية في البيانات", icon: "Radar" },
-              { text: "ما هي التهديدات الناشئة؟", icon: "AlertTriangle" },
-              { text: "حلل توزيع التسريبات جغرافياً", icon: "MapPin" },
-            ]},
-            { keywords: ["معرفة", "knowledge", "سياسة", "إرشاد"], suggestions: [
-              { text: "ابحث عن إرشادات حماية البيانات", icon: "Search" },
-              { text: "ما هي السياسات المتعلقة بالتسريبات؟", icon: "FileText" },
-              { text: "دليل الاستجابة للحوادث", icon: "BookOpen" },
-            ]},
-          ];
-          for (const ctx of contextMap) {
-            if (ctx.keywords.some(k => lower.includes(k))) {
-              for (const s of ctx.suggestions) {
-                contextualSuggestions.push({ text: s.text, category: "contextual", score: 10, icon: s.icon });
-              }
-            }
-          }
-          // Add topic-continuation suggestions
-          if (topics.length > 0) {
-            contextualSuggestions.push({ text: `تعمّق أكثر في ${topics[0]}`, category: "contextual", score: 8, icon: "Search" });
-          }
-        }
-
-        // 4. Default trending suggestions (always available)
-        const trendingSuggestions = [
-          { text: "ملخص شامل للوضع الأمني اليوم", category: "trending" as const, score: 20, icon: "Activity" },
-          { text: "ما هي أحدث التسريبات المكتشفة؟", category: "trending" as const, score: 19, icon: "ShieldAlert" },
-          { text: "تحليل ارتباطات شامل بين التسريبات", category: "trending" as const, score: 18, icon: "GitBranch" },
-          { text: "حالة مهام الرصد النشطة", category: "trending" as const, score: 17, icon: "Radio" },
-          { text: "ما هي التوصيات الأمنية العاجلة؟", category: "trending" as const, score: 16, icon: "Shield" },
-          { text: "تقرير أسبوعي عن التسريبات", category: "trending" as const, score: 15, icon: "FileText" },
-          { text: "خريطة التهديدات الجغرافية", category: "trending" as const, score: 14, icon: "MapPin" },
-          { text: "تحليل نشاط المستخدمين على المنصة", category: "trending" as const, score: 13, icon: "Users" },
-        ];
-
-        // Combine and deduplicate
-        const allSuggestions = [
-          ...contextualSuggestions,
-          ...popularItems,
-          ...kbSuggestions,
-          ...trendingSuggestions,
-        ];
-
-        // Deduplicate by text similarity
-        const seen = new Set<string>();
-        const unique = allSuggestions.filter(s => {
-          const key = s.text.toLowerCase().trim();
-          if (seen.has(key)) return false;
-          seen.add(key);
-          return true;
-        });
-
-        // Group by category
-        const grouped = {
-          contextual: unique.filter(s => s.category === "contextual").slice(0, 3),
-          popular: unique.filter(s => s.category === "popular").slice(0, 5),
-          knowledge: unique.filter(s => s.category === "knowledge").slice(0, 4),
-          trending: unique.filter(s => s.category === "trending").slice(0, 4),
-        };
-
-        return {
-          suggestions: grouped,
-          totalCount: Object.values(grouped).reduce((sum, arr) => sum + arr.length, 0),
-        };
       }),
 
     chat: protectedProcedure
@@ -1730,20 +1575,6 @@ export const appRouter = router({
           createdByName: who.name,
         });
         await logAudit(who.id, "knowledgeBase.create", `Created knowledge base entry: ${input.titleAr}`, "system", who.name);
-        // Auto-generate embedding for new entry (non-blocking)
-        if (input.isPublished !== false) {
-          const embText = prepareEmbeddingText({
-            title: input.title,
-            titleAr: input.titleAr,
-            content: input.content,
-            contentAr: input.contentAr,
-            category: input.category,
-            tags: input.tags,
-          });
-          generateEmbedding(embText)
-            .then(emb => updateKnowledgeBaseEmbedding(entryId, emb, "text-embedding-ada-002"))
-            .catch(err => console.error("Auto-embedding failed for new entry:", err));
-        }
         return { id, entryId };
       }),
     update: protectedProcedure
@@ -1762,23 +1593,6 @@ export const appRouter = router({
         const { entryId, ...data } = input;
         await updateKnowledgeBaseEntry(entryId, { ...data, updatedBy: who.id } as any);
         await logAudit(who.id, "knowledgeBase.update", `Updated knowledge base entry: ${entryId}`, "system", who.name);
-        // Re-generate embedding if content changed (non-blocking)
-        if (input.content || input.contentAr || input.title || input.titleAr || input.tags) {
-          const entry = await getKnowledgeBaseEntryById(entryId);
-          if (entry && entry.isPublished) {
-            const embText = prepareEmbeddingText({
-              title: entry.title,
-              titleAr: entry.titleAr,
-              content: entry.content,
-              contentAr: entry.contentAr,
-              category: entry.category,
-              tags: entry.tags,
-            });
-            generateEmbedding(embText)
-              .then(emb => updateKnowledgeBaseEmbedding(entryId, emb, "text-embedding-ada-002"))
-              .catch(err => console.error("Auto-embedding failed for updated entry:", err));
-          }
-        }
         return { success: true };
       }),
     delete: protectedProcedure
@@ -1798,192 +1612,9 @@ export const appRouter = router({
         await incrementKnowledgeBaseViewCount(input.entryId);
         return { success: true };
       }),
-    // Generate embeddings for a single entry
-    generateEmbedding: protectedProcedure
-      .input(z.object({ entryId: z.string() }))
-      .mutation(async ({ ctx, input }) => {
-        const who = getAuthUser(ctx);
-        const entry = await getKnowledgeBaseEntryById(input.entryId);
-        if (!entry) throw new Error("Entry not found");
-        
-        const text = prepareEmbeddingText({
-          title: entry.title,
-          titleAr: entry.titleAr,
-          content: entry.content,
-          contentAr: entry.contentAr,
-          category: entry.category,
-          tags: entry.tags,
-        });
-        
-        const embedding = await generateEmbedding(text);
-        await updateKnowledgeBaseEmbedding(input.entryId, embedding, "text-embedding-ada-002");
-        await logAudit(who.id, "knowledgeBase.embedding", `Generated embedding for: ${entry.titleAr}`, "system", who.name);
-        return { success: true, dimensions: embedding.length };
-      }),
-    // Generate embeddings for all entries that don't have them
-    generateAllEmbeddings: protectedProcedure
-      .mutation(async ({ ctx }) => {
-        const who = getAuthUser(ctx);
-        const entries = await getEntriesWithoutEmbeddings();
-        let generated = 0;
-        let failed = 0;
-        
-        for (const entry of entries) {
-          try {
-            const text = prepareEmbeddingText({
-              title: entry.title,
-              titleAr: entry.titleAr,
-              content: entry.content,
-              contentAr: entry.contentAr,
-              category: entry.category,
-              tags: entry.tags,
-            });
-            const embedding = await generateEmbedding(text);
-            await updateKnowledgeBaseEmbedding(entry.entryId, embedding, "text-embedding-ada-002");
-            generated++;
-            // Small delay to avoid rate limiting
-            await new Promise(r => setTimeout(r, 200));
-          } catch (error) {
-            console.error(`Failed to generate embedding for ${entry.entryId}:`, error);
-            failed++;
-          }
-        }
-        
-        clearEmbeddingCache();
-        await logAudit(who.id, "knowledgeBase.embeddings_batch", `Generated ${generated} embeddings (${failed} failed) out of ${entries.length} entries`, "system", who.name);
-        return { success: true, total: entries.length, generated, failed };
-      }),
-    // Get embedding stats
-    embeddingStats: protectedProcedure
-      .query(async () => {
-        const allEntries = await getKnowledgeBaseEntriesWithEmbeddings();
-        const withEmbeddings = allEntries.filter(e => e.embedding && e.embedding.length > 0);
-        const withoutEmbeddings = allEntries.filter(e => !e.embedding || e.embedding.length === 0);
-        const cacheStats = getEmbeddingCacheStats();
-        return {
-          total: allEntries.length,
-          withEmbeddings: withEmbeddings.length,
-          withoutEmbeddings: withoutEmbeddings.length,
-          coverage: allEntries.length > 0 ? Math.round((withEmbeddings.length / allEntries.length) * 100) : 0,
-          cacheSize: cacheStats.size,
-          model: "text-embedding-ada-002",
-          dimensions: 1536,
-        };
-      }),
-
-    // Search Analytics & Query Logs
-    searchAnalytics: protectedProcedure
-      .query(async () => {
-        return getSearchAnalytics();
-      }),
-
-    searchQueryLogs: protectedProcedure
-      .input(z.object({
-        limit: z.number().min(1).max(200).optional(),
-        offset: z.number().min(0).optional(),
-        source: z.string().optional(),
-      }).optional())
-      .query(async ({ input }) => {
-        return getSearchQueryLogs(input ?? {});
-      }),
-
-    popularQueries: protectedProcedure
-      .input(z.object({ limit: z.number().min(1).max(50).optional() }).optional())
-      .query(async ({ input }) => {
-        return getPopularQueries(input?.limit ?? 10);
-      }),
-
-    lowCoverageQueries: protectedProcedure
-      .input(z.object({ limit: z.number().min(1).max(50).optional() }).optional())
-      .query(async ({ input }) => {
-        return getLowCoverageQueries(input?.limit ?? 10);
-      }),
-
-    searchActivityTimeline: protectedProcedure
-      .input(z.object({ days: z.number().min(1).max(365).optional() }).optional())
-      .query(async ({ input }) => {
-        return getSearchActivityTimeline(input?.days ?? 30);
-      }),
-
-    testSemanticSearch: protectedProcedure
-      .input(z.object({
-        query: z.string().min(1),
-        topK: z.number().min(1).max(20).optional(),
-        rerank: z.boolean().optional(),
-      }))
-      .mutation(async ({ ctx, input }) => {
-        const who = getAuthUser(ctx);
-        const startTime = Date.now();
-
-        // Get all entries with embeddings
-        const entries = await getKnowledgeBaseEntriesWithEmbeddings();
-        const mapped = entries.map(e => ({
-          entryId: e.entryId,
-          category: e.category,
-          title: e.title,
-          titleAr: e.titleAr ?? "",
-          content: e.content,
-          contentAr: e.contentAr ?? "",
-          tags: e.tags as string[] | null,
-          embedding: e.embedding as number[] | null,
-          viewCount: e.viewCount,
-          helpfulCount: e.helpfulCount,
-        }));
-
-        let results = await semanticSearch(input.query, mapped, {
-          topK: input.topK ?? 5,
-        });
-
-        let reranked = false;
-        if (input.rerank && results.length > 1) {
-          results = await rerankWithLLM(input.query, results);
-          reranked = true;
-        }
-
-        const responseTimeMs = Date.now() - startTime;
-        const topScore = results.length > 0 ? results[0].similarity : 0;
-        const avgScore = results.length > 0
-          ? results.reduce((sum, r) => sum + r.similarity, 0) / results.length
-          : 0;
-
-        // Log the search query
-        await logSearchQuery({
-          query: input.query,
-          source: "knowledge_base_ui",
-          searchMethod: "semantic",
-          resultCount: results.length,
-          topScore,
-          avgScore,
-          reranked,
-          userId: who.id,
-          userName: who.name,
-          responseTimeMs,
-        });
-
-        return {
-          query: input.query,
-          results: results.map(r => ({
-            entryId: r.entry.entryId,
-            title: r.entry.title,
-            titleAr: r.entry.titleAr,
-            category: r.entry.category,
-            similarity: Number(r.similarity.toFixed(4)),
-            rank: r.rank,
-            rerankedScore: r.rerankedScore ? Number(r.rerankedScore.toFixed(4)) : undefined,
-            contentPreview: (r.entry.contentAr || r.entry.content).substring(0, 200),
-          })),
-          stats: {
-            totalResults: results.length,
-            topScore: Number(topScore.toFixed(4)),
-            avgScore: Number(avgScore.toFixed(4)),
-            responseTimeMs,
-            reranked,
-          },
-        };
-      }),
   }),
 
-  // ─── Live Scan (Real Scanning Engine) ─────────────────────
+  // ─── Live Scan (Real Scanning Engine) ───────────────────────
   liveScan: router({
     execute: protectedProcedure
       .input(z.object({

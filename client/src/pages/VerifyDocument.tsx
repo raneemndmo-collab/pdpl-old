@@ -40,7 +40,7 @@ import { useRoute } from "wouter";
 
 const severityLabel = (s: string) => {
   switch (s) {
-    case "critical": return "حرج";
+    case "critical": return "واسع النطاق";
     case "high": return "عالي";
     case "medium": return "متوسط";
     default: return "منخفض";
@@ -678,7 +678,7 @@ export default function VerifyDocument() {
                             className="flex items-center gap-3 flex-wrap"
                           >
                             <span className={`text-xs px-3 py-1.5 rounded-lg border ${severityColor(verifyResult.document.leakSeverity)}`}>
-                              الخطورة: {severityLabel(verifyResult.document.leakSeverity)}
+                              حجم التأثير: {severityLabel(verifyResult.document.leakSeverity)}
                             </span>
                             {verifyResult.document.leakSector && (
                               <span className="text-xs px-3 py-1.5 rounded-lg bg-slate-700/40 text-slate-300 border border-slate-600/40">

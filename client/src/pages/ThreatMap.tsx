@@ -45,7 +45,7 @@ const severityColors = {
   low: { bg: "bg-emerald-500", text: "text-emerald-400", ring: "ring-emerald-500/30", fill: "#10b981", glow: "rgba(16,185,129,0.4)" },
 };
 
-const sevLabels: Record<string, string> = { critical: "حرج", high: "عالي", medium: "متوسط", low: "منخفض" };
+const sevLabels: Record<string, string> = { critical: "واسع النطاق", high: "مرتفع", medium: "متوسط", low: "محدود" };
 
 export default function ThreatMap() {
   const { data, isLoading } = trpc.threatMap.data.useQuery();
@@ -92,7 +92,7 @@ export default function ThreatMap() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
           { key: "totalLeaks", label: "إجمالي التسريبات", value: totalLeaks, icon: Shield, color: "text-cyan-400", borderColor: "border-cyan-500/20", bgColor: "bg-cyan-500/5" },
-          { key: "critical", label: "تسريبات حرجة", value: criticalCount, icon: AlertTriangle, color: "text-red-400", borderColor: "border-red-500/20", bgColor: "bg-red-500/5" },
+          { key: "critical", label: "تسريبات واسعة النطاق", value: criticalCount, icon: AlertTriangle, color: "text-red-400", borderColor: "border-red-500/20", bgColor: "bg-red-500/5" },
           { key: "regions", label: "المناطق المتأثرة", value: regionsAffected, icon: MapPin, color: "text-amber-400", borderColor: "border-amber-500/20", bgColor: "bg-amber-500/5" },
           { key: "records", label: "السجلات المتأثرة", value: totalRecords.toLocaleString(), icon: Activity, color: "text-emerald-400", borderColor: "border-emerald-500/20", bgColor: "bg-emerald-500/5" },
         ].map((stat, i) => (
@@ -121,7 +121,7 @@ export default function ThreatMap() {
       {/* Severity Filter */}
       <div className="flex items-center gap-2 flex-wrap">
         <Filter className="w-4 h-4 text-muted-foreground" />
-        <span className="text-sm text-muted-foreground ml-1">تصفية حسب الخطورة:</span>
+        <span className="text-sm text-muted-foreground ml-1">تصفية حسب التأثير:</span>
         {["all", "critical", "high", "medium", "low"].map((sev) => (
           <Button
             key={sev}
@@ -233,7 +233,7 @@ export default function ThreatMap() {
                       />
                     </div>
                     <div className="flex gap-2 mt-1">
-                      {region.critical > 0 && <span className="text-[10px] text-red-400">{region.critical} حرج</span>}
+                      {region.critical > 0 && <span className="text-[10px] text-red-400">{region.critical} واسع النطاق</span>}
                       {region.high > 0 && <span className="text-[10px] text-amber-400">{region.high} عالي</span>}
                       {region.medium > 0 && <span className="text-[10px] text-cyan-400">{region.medium} متوسط</span>}
                     </div>
@@ -309,11 +309,11 @@ export default function ThreatMap() {
       </DetailModal>
 
       {/* Critical Leaks Modal */}
-      <DetailModal open={activeModal === "critical"} onClose={() => setActiveModal(null)} title="التسريبات الحرجة" icon={<AlertTriangle className="w-5 h-5 text-red-400" />}>
+      <DetailModal open={activeModal === "critical"} onClose={() => setActiveModal(null)} title="التسريبات الواسعة النطاق" icon={<AlertTriangle className="w-5 h-5 text-red-400" />}>
         <div className="space-y-3">
           <div className="bg-red-500/10 rounded-xl p-3 border border-red-500/20 text-center">
             <p className="text-2xl font-bold text-red-400">{criticalCount}</p>
-            <p className="text-xs text-muted-foreground">تسريب حرج</p>
+            <p className="text-xs text-muted-foreground">تسريب واسع النطاق</p>
           </div>
           {data?.leaks?.filter(l => l.severity === "critical").map(leak => (
             <div key={leak.leakId} className="p-3 rounded-lg bg-red-500/5 border border-red-500/20 cursor-pointer hover:bg-red-500/10 transition-colors" onClick={() => { setSelectedLeak(leak); setActiveModal("leakDetail"); }}>
@@ -338,7 +338,7 @@ export default function ThreatMap() {
                 <span className="text-sm font-bold text-foreground">{region.count}</span>
               </div>
               <div className="flex gap-2 mt-1">
-                {region.critical > 0 && <span className="text-[10px] text-red-400">{region.critical} حرج</span>}
+                {region.critical > 0 && <span className="text-[10px] text-red-400">{region.critical} واسع النطاق</span>}
                 {region.high > 0 && <span className="text-[10px] text-amber-400">{region.high} عالي</span>}
                 {region.medium > 0 && <span className="text-[10px] text-cyan-400">{region.medium} متوسط</span>}
               </div>
@@ -382,7 +382,7 @@ export default function ThreatMap() {
                 <p className="text-xl font-bold text-foreground mt-1">{selectedRegionDetail.count}</p>
               </div>
               <div className="bg-red-500/10 rounded-xl p-3 border border-red-500/20 text-center">
-                <p className="text-xs text-muted-foreground">حرج</p>
+                <p className="text-xs text-muted-foreground">واسع النطاق</p>
                 <p className="text-xl font-bold text-red-400 mt-1">{selectedRegionDetail.critical || 0}</p>
               </div>
               <div className="bg-amber-500/10 rounded-xl p-3 border border-amber-500/20 text-center">

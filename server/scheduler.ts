@@ -102,7 +102,7 @@ async function runMonitoringScan(platform: "telegram" | "darkweb" | "paste"): Pr
       title: `New Leak Detected: ${threat.title}`,
       titleAr: `تسريب جديد: ${threat.titleAr}`,
       message: `${threat.severity.toUpperCase()} severity leak detected on ${platform} with ${threat.records}+ records`,
-      messageAr: `تم اكتشاف تسريب بمستوى ${threat.severity === "critical" ? "حرج" : threat.severity === "high" ? "عالي" : threat.severity === "medium" ? "متوسط" : "منخفض"} على ${platform === "telegram" ? "تليجرام" : platform === "darkweb" ? "الدارك ويب" : "مواقع اللصق"}`,
+      messageAr: `تم رصد تسريب بتصنيف ${threat.severity === "critical" ? "واسع النطاق" : threat.severity === "high" ? "مرتفع" : threat.severity === "medium" ? "متوسط" : "محدود"} على ${platform === "telegram" ? "تليجرام" : platform === "darkweb" ? "الدارك ويب" : "مواقع اللصق"}`,
       severity: threat.severity,
       relatedId: leakId,
     });

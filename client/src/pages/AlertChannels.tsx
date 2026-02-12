@@ -209,7 +209,7 @@ export default function AlertChannels() {
                     <h3 className="text-foreground font-semibold text-lg">{rule.nameAr || rule.name}</h3>
                     <div className="flex items-center gap-3 mt-2">
                       <span className={`text-xs px-2 py-0.5 rounded-full border ${severityColors[rule.severityThreshold]}`}>
-                        {rule.severityThreshold === "critical" ? "حرج" : rule.severityThreshold === "high" ? "عالي" : rule.severityThreshold === "medium" ? "متوسط" : "منخفض"} وأعلى
+                        {rule.severityThreshold === "critical" ? "واسع النطاق" : rule.severityThreshold === "high" ? "مرتفع" : rule.severityThreshold === "medium" ? "متوسط" : "محدود"} وأعلى
                       </span>
                       <span className="text-xs px-2 py-0.5 rounded-full bg-border/50 text-foreground border border-border">
                         {rule.channel === "email" ? "بريد" : rule.channel === "sms" ? "رسالة" : "الكل"}
@@ -361,7 +361,7 @@ export default function AlertChannels() {
               </div>
               <div className="flex items-center gap-2 mt-1">
                 <span className={`text-[10px] px-2 py-0.5 rounded border ${severityColors[rule.severityThreshold]}`}>
-                  {rule.severityThreshold === "critical" ? "حرج" : rule.severityThreshold === "high" ? "عالي" : "متوسط"} وأعلى
+                  {rule.severityThreshold === "critical" ? "واسع النطاق" : rule.severityThreshold === "high" ? "مرتفع" : "متوسط"} وأعلى
                 </span>
                 <span className="text-[10px] text-muted-foreground">{((rule.recipients as number[]) || []).length} مستلم</span>
               </div>
@@ -449,9 +449,9 @@ export default function AlertChannels() {
           <div className="space-y-4">
             <div className="grid grid-cols-3 gap-3">
               <div className="bg-secondary/50 rounded-xl p-3 border border-border/50 text-center">
-                <p className="text-xs text-muted-foreground">الحد الأدنى للخطورة</p>
+                <p className="text-xs text-muted-foreground">الحد الأدنى للتأثير</p>
                 <span className={`text-sm font-bold mt-1 inline-block px-2 py-0.5 rounded border ${severityColors[selectedEntry.severityThreshold]}`}>
-                  {selectedEntry.severityThreshold === "critical" ? "حرج" : selectedEntry.severityThreshold === "high" ? "عالي" : "متوسط"}
+                  {selectedEntry.severityThreshold === "critical" ? "واسع النطاق" : selectedEntry.severityThreshold === "high" ? "مرتفع" : "متوسط"}
                 </span>
               </div>
               <div className="bg-secondary/50 rounded-xl p-3 border border-border/50 text-center">

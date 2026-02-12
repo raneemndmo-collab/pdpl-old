@@ -575,131 +575,101 @@
 ## Phase 37: Smart Rasid Training & Management Center
 
 ### A. Database Schema
-- [x] Add custom_actions table (trigger phrases, action types, targets)
-- [x] Add training_documents table (file upload, training status)
-- [x] ai_feedback uses existing ai_response_ratings table
-- [x] Push database migration
+- [ ] Add custom_actions table (trigger phrases, action types, targets)
+- [ ] Add training_documents table (file upload, training status)
+- [ ] Add ai_feedback table (conversation ratings, notes)
+- [ ] Push database migration
 
 ### B. Backend (tRPC Procedures)
-- [x] CRUD procedures for custom_actions (create, list, update, delete, toggle)
-- [x] CRUD procedures for training_documents (upload, list, delete, process)
-- [x] CRUD procedures for ai_feedback (list, stats via existing ai_response_ratings)
-- [x] Integrate knowledge_base existing procedures
-- [x] Integrate personality_scenarios existing procedures
+- [ ] CRUD procedures for custom_actions (create, list, update, delete, toggle)
+- [ ] CRUD procedures for training_documents (upload, list, delete, retrain)
+- [ ] CRUD procedures for ai_feedback (create, list, stats, export)
+- [ ] Integrate knowledge_base existing procedures
+- [ ] Integrate personality_scenarios existing procedures
 
 ### C. Training Center Admin Page
-- [x] Create TrainingCenter.tsx with 5 tabbed sections
-- [x] Tab 1: Q&A Knowledge Base management (existing knowledge_base table)
-- [x] Tab 2: Custom Actions management (trigger phrases → functions)
-- [x] Tab 3: Training Documents management (upload, status tracking)
-- [x] Tab 4: User Feedback & Ratings (view, stats, export)
-- [x] Tab 5: Personality Scenarios management (existing personality_scenarios)
-- [x] Add TrainingCenter to sidebar under إداري group
-- [x] Console-style design matching SmartRasid theme
+- [ ] Create TrainingCenter.tsx with 5 tabbed sections
+- [ ] Tab 1: Q&A Knowledge Base management (existing knowledge_base table)
+- [ ] Tab 2: Custom Actions management (trigger phrases → functions)
+- [ ] Tab 3: Training Documents management (upload, status tracking)
+- [ ] Tab 4: User Feedback & Ratings (view, stats, export)
+- [ ] Tab 5: Personality Scenarios management (existing personality_scenarios)
+- [ ] Add TrainingCenter to sidebar under إداري group
+- [ ] Console-style design matching SmartRasid theme
 
 ### D. Integration
-- [x] Connect custom actions to rasidAI tool execution (get_custom_actions, execute_custom_action)
-- [x] Connect training documents to rasidAI (search_training_documents)
-- [x] Connect feedback to conversation rating system (get_training_stats)
-- [x] 30 tools in rasidAI (4 new training center tools)
+- [ ] Connect custom actions to rasidAI tool execution
+- [ ] Connect training documents to knowledge base
+- [ ] Connect feedback to conversation rating system
+- [ ] Run tests and verify
+- [ ] Save checkpoint
+
+## Phase 48: Enrich Dashboard & Pages with Rich Personal Data KPI Cards
+- [ ] Enhance backend getDashboardStats with: top PII types with counts, top affected sectors with counts, monthly trend data, recent incidents list, source distribution details, status distribution
+- [ ] Redesign Dashboard with 8+ rich KPI cards focused on personal data: إجمالي الحوادث, السجلات المكشوفة, أنواع البيانات المسربة, القطاعات المتأثرة, مصادر الرصد, حوادث جديدة, حوادث موثقة, قنوات الرصد النشطة
+- [ ] Each KPI card clickable with full drill-down modal showing related incidents list
+- [ ] Add PII Types breakdown section (clickable cards per PII type showing all incidents containing that type)
+- [ ] Add Sector breakdown section (clickable cards per sector showing all incidents in that sector)
+- [ ] Add Source distribution section (telegram/darkweb/paste with clickable drill-down)
+- [ ] Add Recent Incidents ticker/list showing latest 10 incidents with click-to-detail
+- [ ] Add time period filter (today/week/month/year/all) affecting all KPI cards
+- [ ] All drill-down modals show: incident title, date, record count, PII types, sector, source, status
+- [ ] Ultra Premium design with motion effects, gradients, and professional animations
+
+## Phase 49: Replicate design.rasid.vip Design 1:1
+- [ ] Analyze design.rasid.vip homepage - capture all design elements, colors, fonts, effects
+- [ ] Analyze design.rasid.vip/dashboard - capture card styles, gradients, icons, hover effects, animations
+- [ ] Replicate exact card design (glass morphism, gradients, borders, shadows)
+- [ ] Replicate animated icons and motion effects on all elements
+- [ ] Replicate hover effects and interactive transitions
+- [ ] Replicate color scheme and gradient patterns
+- [ ] Replicate typography and font choices
+- [ ] Apply design to Dashboard KPI cards with personal data focus
+- [ ] Apply design to all drill-down modals
+- [ ] Ensure all cards are clickable with full detail modals
+- [ ] Fix remaining criticalAlerts references in backend
+- [ ] Test and verify design matches reference site
+
+## Phase 50: Documentation Letter System & Verification Enhancement
+- [x] Fix TypeScript errors in Dashboard.tsx (LeakDetailDrilldown props)
+- [ ] Create professional documentation letter component with official "سري جداً" design
+- [ ] Generate QR codes for each documentation letter
+- [ ] Add unique reference number and verification code to each letter
+- [ ] Add "إصدار خطاب التوثيق" button to all leak cards across all pages
+- [ ] Save documentation events to activity log
+- [ ] Save generated letters to Reports center
+- [ ] Build verification center page with external shareable verification link
+- [ ] Add verification link in dashboard settings for easy sharing
+- [ ] Ensure verification system works for external users without login
+
+## Phase 51: Ultra Premium Compliance Warning Dialog & Document Enhancement
+- [x] Redesign compliance warning dialog to Ultra Premium secret-level design with animations
+- [x] Add dramatic security animations (shield, lock, fingerprint effects)
+- [x] Add official "سري جداً" stamp and national security feel
+- [x] Add checkbox acknowledgment with professional styling
+- [x] Enhance pdfService.ts document with "سري جداً" watermark and official stamp
+- [ ] Ensure documentation buttons work across all leak cards in all pages
+- [ ] Add verification link sharing in dashboard verification center
+
+## Phase 52: Data Cleanup & Terminology Fix (PRIORITY - Before Visual Design)
+- [ ] Audit database for ALL fake/test/dummy data and DELETE it
+- [ ] Keep ONLY real researched leak incidents with proper details
+- [ ] Remove ALL remaining cyber terminology across ALL files (حرج/خطورة/شذوذ/إبلاغ/severity/critical/anomaly/threat)
+- [ ] Replace with personal data leak terms (تصنيف الحادثة/حجم التأثير/رصد/توثيق)
+- [ ] Ensure platform is 100% focused on personal data leak monitoring (not cybersecurity)
+- [ ] Then apply Ultra Premium visual design
+
+## Phase 53: SDAIA Ultra Premium Design System Application
+- [x] Replace all oklch color references with SDAIA official colors (#273470, #6459A7, #3DB1AC)
+- [x] Update CSS variables with SDAIA color system (light + dark themes)
+- [x] Add SDAIA glassmorphism effects (glass-card, glass-sidebar, glow utilities)
+- [x] Add SDAIA animation system (scan-line, data-flow, breathing-glow, aurora, shimmer, orbit)
+- [x] Update DashboardLayout sidebar with SDAIA teal/navy/purple colors
+- [x] Update Dashboard page with SDAIA colors (PremiumCard, RadarAnimation, KPI cards)
+- [x] Update Leaks page with SDAIA colors
+- [x] Update PlatformLogin page with SDAIA colors (particles, orbs, hex grid, logo glow)
+- [x] Update NotFound page with SDAIA design (glassmorphism card, aurora background, Arabic text)
+- [x] Replace frontend Arabic cyber terminology (حرج/خطورة/شذوذ/إبلاغ) with data protection terms
+- [x] Fix dashboard.stats test (criticalAlerts field removed)
 - [x] All 173 tests passing (8 test files)
-- [x] Save checkpoint
-
-## Phase 38: Default Training Content for Smart Rasid AI
-- [x] Research PDPL law articles and regulations (from SDAIA DGP portal)
-- [x] Research NDMO policies and guidelines (data governance, classification)
-- [x] Research data leak response procedures (incident response, severity classification)
-- [x] Research cybersecurity best practices (dark web monitoring, Google dorking)
-- [x] Create 26 comprehensive knowledge base entries:
-  - 12 PDPL articles (overview, definitions, scope, rights, consent, disclosure, privacy policy, sensitive data, protection measures, cross-border transfer, penalties, breach reporting)
-  - 3 NDMO policies (overview, governance standards, data classification)
-  - 5 cybersecurity procedures (incident response, severity classification, prevention best practices, dark web monitoring, Google dorking)
-  - 1 terminology glossary
-  - 4 FAQs (applicability, breach reporting, penalties, data subject rights)
-  - 1 Vision 2030 and data protection
-- [x] Create 4 training documents (PDPL full text, NDMO standards, incident response guide, implementing regulations)
-- [x] Create 4 custom actions (compliance check, breach reporting, domain scan, PDPL explanation)
-- [x] Seed all content into database (verified: 26 KB + 4 docs + 4 actions + 11 personality scenarios)
-- [x] All 173 tests passing (8 test files)
-- [x] Save checkpoint
-
-## Phase 39: Semantic Search for Knowledge Base
-- [x] Analyze current keyword-based search in rasidAI
-- [x] Create embedding generation service using OpenAI embeddings API
-- [x] Add embedding column to knowledge_base schema (kbEmbedding JSON, kbEmbeddingModel text)
-- [x] Push database migration
-- [x] Build semantic search engine with cosine similarity (server/semanticSearch.ts)
-- [x] Integrate semantic search with rasidAI search_knowledge_base tool (with keyword fallback)
-- [x] Generate embeddings for all 26 existing knowledge base entries (100% coverage, 1536 dimensions)
-- [x] Add auto-embedding on knowledge base create/update (non-blocking)
-- [x] Add tRPC endpoints: generateEmbedding, generateAllEmbeddings, embeddingStats
-- [x] Write tests for semantic search functionality (20 tests in semanticSearch.test.ts)
-- [x] All 193 tests passing (9 test files)
-- [x] Save checkpoint
-
-## Phase 40: Semantic Search Enhancements (Stats Dashboard, Re-ranking, Query Logs)
-- [x] Create search_query_log table in schema (query, source, resultCount, topScore, userId, timestamp)
-- [x] Push database migration for search_query_log
-- [x] Add database CRUD functions for search query logs
-- [x] Implement LLM re-ranking in semantic search engine (rerankWithLLM function)
-- [x] Integrate query logging into rasidAI search_knowledge_base tool
-- [x] Add tRPC endpoints: getSearchQueryLogs, getSearchAnalytics, getPopularQueries, testSemanticSearch
-- [x] Build semantic search stats dashboard UI (SemanticSearchDashboard.tsx)
-  - [x] Embedding coverage card (total entries, with/without embeddings, coverage %)
-  - [x] Search performance metrics (avg similarity score, avg result count)
-  - [x] Popular queries chart (top 10 most searched terms)
-  - [x] Search activity timeline (queries over time)
-  - [x] Low-coverage topics (queries with no/low results for content gap analysis)
-  - [x] Interactive semantic search test tool
-- [x] Write tests for new functionality (re-ranking tests added)
-- [x] All 196 tests passing (9 test files)
-- [x] Save checkpoint
-
-## Phase 41: SDAIA Ultra Premium Design Overhaul (Vuexy-Inspired)
-- [x] Analyze Vuexy template structure and extract design patterns
-- [x] Apply SDAIA color system (Primary #273470, Secondary #6459A7, Accent #3DB1AC)
-- [x] Switch font to Tajawal from Google Fonts (300, 400, 500, 700 weights)
-- [x] Implement glassmorphism effects on sidebar and top bar (SDAIA navy tones)
-- [x] Add deep shadows for cards, modals, and elevated elements (.deep-shadow utility)
-- [x] Add animated logo with Framer Motion boxShadow animation (SDAIA purple/teal glow)
-- [x] Add hover animations on all icons (sidebar group-hover:scale-110, .icon-hover-effect)
-- [x] Redesign sidebar with Vuexy-inspired categorized collapsible groups (already structured)
-- [x] Redesign dashboard with Ultra Premium cards and SDAIA chart colors
-- [x] Apply Ultra Premium styling to all key pages (CSS variables updated globally)
-- [x] Ensure RTL support and Arabic text rendering (Tajawal font)
-- [x] All 196 tests passing after design changes
-- [x] Save checkpoint
-
-## Phase 42: Smart Question Suggestions for راصد الذكي
-- [x] Analyze current Smart Rasid UI (SmartRasid.tsx) and chat backend
-- [x] Create tRPC endpoint smartRasid.smartSuggestions (popular queries, KB topics, contextual, trending)
-- [x] Add suggestion categories: popular (from search logs), knowledge (KB topics), contextual (keyword-based), trending (defaults)
-- [x] Build smart suggestions UI in welcome screen with SMART_SUGGESTIONS header
-  - [x] الأسئلة الرائجة (Trending) with orange-themed icons
-  - [x] من قاعدة المعرفة (Knowledge Base) with blue-themed category-specific icons
-- [x] Show contextual smart suggestions after each AI response (with Lightbulb header)
-- [x] Allow clicking suggestions to auto-fill and send query
-- [x] Add animated entrance effects (framer-motion: opacity, x-slide, scale on hover)
-- [x] Fallback to static quick commands when API fails
-- [x] Category-specific icons: FileText (article), Lightbulb (faq), BookOpen (glossary), Target (instruction), Shield (policy), ShieldCheck (regulation)
-- [x] Write tests for suggestion logic (smartSuggestions.test.ts - 13 tests)
-- [x] All 209 tests passing (10 test files)
-- [x] Save checkpoint
-
-## Phase 43: Local Authentication System (Replace OAuth)
-- [x] Add new columns to users table: userId (unique), passwordHash, mobile, displayName, displayNameAr
-- [x] Push database migration
-- [x] Install bcrypt for password hashing
-- [x] Create local auth module (JWT session via platform_session cookie)
-- [x] Create tRPC platformAuth.login mutation (username + password)
-- [x] Update auth.me query to work with platformUser local sessions
-- [x] Update auth.logout to clear platform_session cookie
-- [x] Remove OAuth redirect dependency from frontend (context.ts, index.ts, const.ts)
-- [x] Custom login page already exists (PlatformLogin.tsx with SDAIA Ultra Premium design)
-- [x] Update useAuth hook for local auth flow (redirect to /login)
-- [x] Update protected route redirects to /login instead of OAuth
-- [x] 4 admin accounts verified: MRUHAILY (root_admin), aalrebdi (director), msarhan (vice_president), malmoutaz (manager)
-- [x] All passwords verified (15001500)
-- [x] Update tests to use platformUser context instead of OAuth user
-- [x] All 209 tests passing (10 test files)
-- [x] Save checkpoint
+- [x] Checkpoint saved

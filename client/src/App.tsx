@@ -39,7 +39,6 @@ const PublicVerify = lazy(() => import("./pages/PublicVerify"));
 const KnowledgeBaseAdmin = lazy(() => import("./pages/KnowledgeBaseAdmin"));
 const PersonalityScenarios = lazy(() => import("./pages/PersonalityScenarios"));
 const TrainingCenter = lazy(() => import("./pages/TrainingCenter"));
-const SemanticSearchDashboard = lazy(() => import("./pages/SemanticSearchDashboard"));
 
 function LazyFallback() {
   return (
@@ -116,11 +115,6 @@ function Router() {
             <Route path="/training-center">
               <Suspense fallback={<LazyFallback />}>
                 <TrainingCenter />
-              </Suspense>
-            </Route>
-            <Route path="/semantic-search">
-              <Suspense fallback={<LazyFallback />}>
-                <SemanticSearchDashboard />
               </Suspense>
             </Route>
             <Route path="/personality-scenarios">
