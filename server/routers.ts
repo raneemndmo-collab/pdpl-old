@@ -1298,6 +1298,7 @@ export const appRouter = router({
           verificationCode: result.verificationCode,
           contentHash: result.contentHash,
           htmlContent: result.htmlContent,
+          pdfBase64: result.pdfBuffer ? result.pdfBuffer.toString("base64") : null,
           generatedAt: result.generatedAt,
         };
       }),

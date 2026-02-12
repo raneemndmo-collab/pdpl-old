@@ -2,9 +2,16 @@
  * PDF Generation Service for Incident Documentation
  * Ultra Premium official document design with "سري جداً" classification
  * Generates professional HTML reports with QR codes and verification codes
+ * Uses Puppeteer for server-side PDF rendering with perfect Arabic support
  */
 import QRCode from "qrcode";
 import crypto from "crypto";
+import { generatePdfFromHtml } from "./pdfGenerator";
+import { RASID_LOGO_DARK_BASE64, RASID_LOGO_LIGHT_BASE64 } from "./logoBase64";
+
+// ─── Logo URLs (CDN for web, Base64 for PDF) ───────────────────────────────────
+const RASID_LOGO_DARK_BG = RASID_LOGO_DARK_BASE64;
+const RASID_LOGO_LIGHT_BG = RASID_LOGO_LIGHT_BASE64;
 
 // Generate a unique verification code
 export function generateVerificationCode(): string {
@@ -37,7 +44,7 @@ export async function generateQRCode(data: string): Promise<string> {
   });
 }
 
-// Impact classification labels (replacing severity)
+// Impact classification labels
 const impactLabels: Record<string, { ar: string; en: string; color: string; bg: string }> = {
   critical: { ar: "واسع النطاق", en: "Widespread", color: "#dc2626", bg: "#dc26261a" },
   high: { ar: "مرتفع التأثير", en: "High Impact", color: "#ea580c", bg: "#ea580c1a" },
@@ -99,6 +106,7 @@ export interface DocumentationResult {
   verificationCode: string;
   contentHash: string;
   htmlContent: string;
+  pdfBuffer: Buffer | null;
   leakId: string;
   title: string;
   titleAr: string;
@@ -148,47 +156,59 @@ export async function generateIncidentDocumentation(
   const impact = impactLabels[leak.severity] || impactLabels.medium;
 
   // Build sample data rows
-  const sampleDataRows = (leak.sampleData || [])
-    .slice(0, 10)
-    .map((row, idx) => {
-      const cells = Object.entries(row)
-        .map(([key, val]) => `<td style="padding:8px 12px;border:1px solid rgba(10,37,64,0.1);font-size:11px;text-align:right;color:#334155;">${val}</td>`)
-        .join("");
-      const headers = Object.keys(row)
-        .map((key) => `<th style="padding:8px 12px;border:1px solid rgba(10,37,64,0.1);font-size:10px;text-align:right;background:#0a25400d;color:#0a2540;font-weight:600;">${key}</th>`)
-        .join("");
-      return { headers, cells, idx };
-    });
+  const sampleDataRows = (leak.sampleData || []).slice(0, 10).map((row, idx) => {
+    const cells = Object.entries(row)
+      .map(
+        ([, val]) =>
+          `<td style="padding:8px 12px;border:1px solid rgba(10,37,64,0.08);font-size:11px;text-align:right;color:#334155;">${val}</td>`
+      )
+      .join("");
+    const headers = Object.keys(row)
+      .map(
+        (key) =>
+          `<th style="padding:8px 12px;border:1px solid rgba(10,37,64,0.08);font-size:10px;text-align:right;background:#f1f5f9;color:#0a2540;font-weight:700;">${key}</th>`
+      )
+      .join("");
+    return { headers, cells, idx };
+  });
 
   const sampleHeaders = sampleDataRows.length > 0 ? `<tr>${sampleDataRows[0].headers}</tr>` : "";
-  const sampleRows = sampleDataRows.map((r) => `<tr style="background:${r.idx % 2 === 0 ? '#fff' : '#f8fafc'}">${r.cells}</tr>`).join("");
+  const sampleRows = sampleDataRows
+    .map((r) => `<tr style="background:${r.idx % 2 === 0 ? "#fff" : "#f8fafc"}">${r.cells}</tr>`)
+    .join("");
 
   // Build PII types list
   const piiList = (leak.piiTypes || [])
-    .map((t) => `<span style="display:inline-block;background:#0a25400d;color:#0a2540;border:1px solid #0a254020;border-radius:6px;padding:4px 12px;margin:3px;font-size:11px;font-weight:500;">${t}</span>`)
+    .map(
+      (t) =>
+        `<span style="display:inline-block;background:#f1f5f9;color:#0a2540;border:1px solid #e2e8f0;border-radius:6px;padding:4px 12px;margin:3px;font-size:11px;font-weight:600;">${t}</span>`
+    )
     .join("");
 
   // Evidence screenshots
   const screenshotSection = (leak.screenshotUrls || [])
     .slice(0, 4)
-    .map((url) => `<img src="${url}" style="width:47%;border-radius:8px;border:2px solid #0a254015;margin:4px;box-shadow:0 2px 8px rgba(0,0,0,0.08);" />`)
+    .map(
+      (url) =>
+        `<img src="${url}" style="width:47%;border-radius:8px;border:2px solid #e2e8f0;margin:4px;box-shadow:0 2px 8px rgba(0,0,0,0.06);" />`
+    )
     .join("");
 
   // AI Analysis section
   const aiSection = leak.aiSummaryAr
     ? `
-    <div style="background:linear-gradient(135deg,#0a25400a,#0d94880a);border:1px solid #0a254020;border-radius:12px;padding:20px;margin-top:20px;">
+    <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:20px;margin-top:24px;page-break-inside:avoid;">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
-        <div style="width:28px;height:28px;background:#0d94881a;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:14px;">🤖</div>
-        <h3 style="color:#0a2540;font-size:14px;margin:0;font-weight:700;">تحليل الذكاء الاصطناعي ${leak.aiConfidence ? `<span style="font-size:11px;color:#0d9488;font-weight:500;">(نسبة الثقة: ${leak.aiConfidence}%)</span>` : ""}</h3>
+        <div style="width:4px;height:24px;background:linear-gradient(180deg,#0d9488,#06b6d4);border-radius:2px;"></div>
+        <h3 style="color:#0a2540;font-size:15px;margin:0;font-weight:800;">تحليل الذكاء الاصطناعي ${leak.aiConfidence ? `<span style="font-size:11px;color:#0d9488;font-weight:500;margin-right:8px;">(نسبة الثقة: ${leak.aiConfidence}%)</span>` : ""}</h3>
       </div>
-      <p style="font-size:12px;color:#334155;line-height:2;text-align:right;margin:0;">${leak.aiSummaryAr}</p>
+      <p style="font-size:12px;color:#334155;line-height:2.2;text-align:right;margin:0;">${leak.aiSummaryAr}</p>
       ${
         leak.aiRecommendationsAr && leak.aiRecommendationsAr.length > 0
-          ? `<div style="margin-top:12px;padding-top:12px;border-top:1px solid #0a254015;">
-             <h4 style="color:#0a2540;font-size:12px;margin:0 0 8px 0;text-align:right;font-weight:600;">التوصيات:</h4>
-             <ul style="margin:0;padding:0 20px 0 0;list-style:none;">
-               ${leak.aiRecommendationsAr.map((r) => `<li style="font-size:11px;color:#334155;margin:6px 0;text-align:right;padding-right:12px;border-right:2px solid #0d9488;">• ${r}</li>`).join("")}
+          ? `<div style="margin-top:14px;padding-top:14px;border-top:1px solid #e2e8f0;">
+             <h4 style="color:#0a2540;font-size:12px;margin:0 0 10px 0;text-align:right;font-weight:700;">التوصيات:</h4>
+             <ul style="margin:0;padding:0;list-style:none;">
+               ${leak.aiRecommendationsAr.map((r) => `<li style="font-size:11px;color:#334155;margin:8px 0;text-align:right;padding-right:14px;border-right:3px solid #0d9488;line-height:1.8;">${r}</li>`).join("")}
              </ul>
            </div>`
           : ""
@@ -200,26 +220,26 @@ export async function generateIncidentDocumentation(
   const evidenceChainSection =
     leak.evidence && leak.evidence.length > 0
       ? `
-    <div style="margin-top:20px;">
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
-        <div style="width:28px;height:28px;background:#6366f11a;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:14px;">🔗</div>
-        <h3 style="color:#0a2540;font-size:14px;margin:0;font-weight:700;">سلسلة الأدلة الرقمية</h3>
+    <div style="margin-top:24px;page-break-inside:avoid;">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;">
+        <div style="width:4px;height:24px;background:linear-gradient(180deg,#6366f1,#8b5cf6);border-radius:2px;"></div>
+        <h3 style="color:#0a2540;font-size:15px;margin:0;font-weight:800;">سلسلة الأدلة الرقمية</h3>
       </div>
-      <table style="width:100%;border-collapse:collapse;direction:rtl;">
+      <table style="width:100%;border-collapse:collapse;direction:rtl;border-radius:8px;overflow:hidden;border:1px solid #e2e8f0;">
         <tr>
-          <th style="padding:8px 12px;border:1px solid rgba(10,37,64,0.1);font-size:10px;text-align:right;background:#0a25400d;color:#0a2540;font-weight:600;">#</th>
-          <th style="padding:8px 12px;border:1px solid rgba(10,37,64,0.1);font-size:10px;text-align:right;background:#0a25400d;color:#0a2540;font-weight:600;">النوع</th>
-          <th style="padding:8px 12px;border:1px solid rgba(10,37,64,0.1);font-size:10px;text-align:right;background:#0a25400d;color:#0a2540;font-weight:600;">بصمة المحتوى</th>
-          <th style="padding:8px 12px;border:1px solid rgba(10,37,64,0.1);font-size:10px;text-align:right;background:#0a25400d;color:#0a2540;font-weight:600;">التاريخ</th>
+          <th style="padding:10px 14px;border:1px solid #e2e8f0;font-size:10px;text-align:right;background:#f1f5f9;color:#0a2540;font-weight:700;">#</th>
+          <th style="padding:10px 14px;border:1px solid #e2e8f0;font-size:10px;text-align:right;background:#f1f5f9;color:#0a2540;font-weight:700;">النوع</th>
+          <th style="padding:10px 14px;border:1px solid #e2e8f0;font-size:10px;text-align:right;background:#f1f5f9;color:#0a2540;font-weight:700;">بصمة المحتوى</th>
+          <th style="padding:10px 14px;border:1px solid #e2e8f0;font-size:10px;text-align:right;background:#f1f5f9;color:#0a2540;font-weight:700;">التاريخ</th>
         </tr>
         ${leak.evidence
           .map(
             (e, i) => `
-          <tr style="background:${i % 2 === 0 ? '#fff' : '#f8fafc'}">
-            <td style="padding:8px 12px;border:1px solid rgba(10,37,64,0.1);font-size:11px;text-align:right;font-weight:600;">${e.blockIndex}</td>
-            <td style="padding:8px 12px;border:1px solid rgba(10,37,64,0.1);font-size:11px;text-align:right;">${e.evidenceType}</td>
-            <td style="padding:8px 12px;border:1px solid rgba(10,37,64,0.1);font-size:10px;text-align:right;font-family:monospace;color:#6366f1;">${e.contentHash.substring(0, 20)}...</td>
-            <td style="padding:8px 12px;border:1px solid rgba(10,37,64,0.1);font-size:11px;text-align:right;">${new Date(e.createdAt).toLocaleDateString("ar-SA")}</td>
+          <tr style="background:${i % 2 === 0 ? "#fff" : "#f8fafc"}">
+            <td style="padding:8px 14px;border:1px solid #e2e8f0;font-size:11px;text-align:right;font-weight:700;">${e.blockIndex}</td>
+            <td style="padding:8px 14px;border:1px solid #e2e8f0;font-size:11px;text-align:right;">${e.evidenceType}</td>
+            <td style="padding:8px 14px;border:1px solid #e2e8f0;font-size:10px;text-align:right;font-family:'Courier New',monospace;color:#6366f1;">${e.contentHash.substring(0, 24)}...</td>
+            <td style="padding:8px 14px;border:1px solid #e2e8f0;font-size:11px;text-align:right;">${new Date(e.createdAt).toLocaleDateString("ar-SA")}</td>
           </tr>`
           )
           .join("")}
@@ -227,18 +247,78 @@ export async function generateIncidentDocumentation(
     </div>`
       : "";
 
+  // ─── Build the full HTML document ───────────────────────────
   const htmlContent = `<!DOCTYPE html>
 <html dir="rtl" lang="ar">
 <head>
   <meta charset="UTF-8">
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800;900&display=swap');
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: 'Tajawal', sans-serif; background: #fff; color: #1e293b; direction: rtl; }
-    .page { max-width: 820px; margin: 0 auto; padding: 0; position: relative; }
+    body {
+      font-family: 'Noto Kufi Arabic', 'Noto Sans Arabic', 'Noto Naskh Arabic', 'Amiri', sans-serif;
+      background: #fff;
+      color: #1e293b;
+      direction: rtl;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    .page {
+      max-width: 820px;
+      margin: 0 auto;
+      padding: 0;
+      position: relative;
+    }
+    @page {
+      size: A4;
+      margin: 0;
+    }
     @media print {
       .page { padding: 0; }
       .no-print { display: none !important; }
+    }
+    .section-title {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+    .section-bar {
+      width: 4px;
+      height: 26px;
+      border-radius: 2px;
+    }
+    .info-table {
+      width: 100%;
+      border-collapse: collapse;
+      direction: rtl;
+      border-radius: 10px;
+      overflow: hidden;
+      border: 1px solid #e2e8f0;
+    }
+    .info-table td {
+      padding: 11px 18px;
+      border-bottom: 1px solid #f1f5f9;
+      font-size: 12px;
+      text-align: right;
+      vertical-align: middle;
+    }
+    .info-table .label-cell {
+      background: #f8fafc;
+      color: #64748b;
+      width: 32%;
+      font-weight: 600;
+      font-size: 12px;
+    }
+    .info-table .value-cell {
+      font-weight: 600;
+      color: #0f172a;
+    }
+    .badge {
+      display: inline-block;
+      border-radius: 6px;
+      padding: 4px 14px;
+      font-size: 11px;
+      font-weight: 700;
     }
   </style>
 </head>
@@ -246,11 +326,11 @@ export async function generateIncidentDocumentation(
   <div class="page">
 
     <!-- ═══════════════════════════════════════════════════════════ -->
-    <!-- WATERMARK: سري جداً diagonal repeating across entire page -->
+    <!-- WATERMARK -->
     <!-- ═══════════════════════════════════════════════════════════ -->
     <div style="position:fixed;top:0;left:0;right:0;bottom:0;pointer-events:none;z-index:0;overflow:hidden;">
       <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) rotate(-35deg);white-space:nowrap;">
-        <div style="font-size:80px;font-weight:900;color:rgba(220,38,38,0.04);letter-spacing:20px;line-height:180px;">
+        <div style="font-size:72px;font-weight:900;color:rgba(220,38,38,0.035);letter-spacing:20px;line-height:200px;">
           سري جداً &nbsp; TOP SECRET &nbsp; سري جداً<br/>
           TOP SECRET &nbsp; سري جداً &nbsp; TOP SECRET<br/>
           سري جداً &nbsp; TOP SECRET &nbsp; سري جداً<br/>
@@ -262,126 +342,124 @@ export async function generateIncidentDocumentation(
     </div>
 
     <!-- ═══════════════════════════════════════════════════════════ -->
-    <!-- TOP CLASSIFICATION BANNER                                  -->
+    <!-- TOP CLASSIFICATION BANNER -->
     <!-- ═══════════════════════════════════════════════════════════ -->
-    <div style="background:linear-gradient(135deg,#7f1d1d,#991b1b,#b91c1c);padding:8px 24px;text-align:center;position:relative;z-index:1;">
-      <p style="color:#fecaca;font-size:11px;font-weight:700;letter-spacing:3px;margin:0;">
-        ⛔ سري جداً — TOP SECRET — تصنيف: مقيّد ⛔
+    <div style="background:linear-gradient(135deg,#7f1d1d,#991b1b,#b91c1c);padding:10px 24px;text-align:center;position:relative;z-index:1;">
+      <p style="color:#fecaca;font-size:12px;font-weight:800;letter-spacing:4px;margin:0;">
+        سري جداً — TOP SECRET — تصنيف: مقيّد
       </p>
     </div>
 
     <!-- ═══════════════════════════════════════════════════════════ -->
-    <!-- DOCUMENT HEADER                                            -->
+    <!-- DOCUMENT HEADER WITH LOGO -->
     <!-- ═══════════════════════════════════════════════════════════ -->
-    <div style="background:linear-gradient(180deg,#0a2540 0%,#0c3054 100%);padding:28px 32px;position:relative;z-index:1;">
-      <!-- Subtle pattern overlay -->
-      <div style="position:absolute;inset:0;opacity:0.03;background-image:repeating-linear-gradient(45deg,transparent,transparent 30px,rgba(255,255,255,1) 30px,rgba(255,255,255,1) 31px);pointer-events:none;"></div>
+    <div style="background:linear-gradient(180deg,#0a2540 0%,#0c3054 100%);padding:28px 36px;position:relative;z-index:1;">
+      <div style="position:absolute;inset:0;opacity:0.04;background-image:repeating-linear-gradient(45deg,transparent,transparent 30px,rgba(255,255,255,1) 30px,rgba(255,255,255,1) 31px);pointer-events:none;"></div>
 
       <div style="display:flex;align-items:center;justify-content:space-between;position:relative;z-index:1;">
-        <div style="text-align:right;">
-          <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px;">
-            <div style="width:48px;height:48px;background:rgba(255,255,255,0.1);border-radius:12px;border:1px solid rgba(255,255,255,0.15);display:flex;align-items:center;justify-content:center;">
-              <span style="color:white;font-size:16px;font-weight:900;">راصد</span>
-            </div>
+        <div style="text-align:right;flex:1;">
+          <div style="display:flex;align-items:center;gap:16px;margin-bottom:8px;">
+            <img src="${RASID_LOGO_DARK_BG}" alt="منصة راصد" style="height:56px;object-fit:contain;" />
+            <div style="width:1px;height:40px;background:rgba(255,255,255,0.15);"></div>
             <div>
-              <h1 style="font-size:22px;font-weight:900;color:white;margin:0;letter-spacing:0.5px;">منصة راصد الوطنية</h1>
-              <p style="font-size:10px;color:rgba(255,255,255,0.5);margin-top:2px;">National Data Management Office — Rasid Platform</p>
+              <p style="font-size:14px;color:white;font-weight:800;margin:0;">منصة راصد الوطنية</p>
+              <p style="font-size:10px;color:rgba(255,255,255,0.5);margin:3px 0 0 0;">National Data Management Office — Rasid Platform</p>
             </div>
           </div>
-          <p style="font-size:11px;color:rgba(255,255,255,0.4);margin-top:4px;">رصد وتوثيق تسريبات البيانات الشخصية</p>
+          <p style="font-size:11px;color:rgba(255,255,255,0.4);margin-top:4px;padding-right:2px;">رصد وتوثيق تسريبات البيانات الشخصية</p>
         </div>
         <div style="text-align:left;">
-          <div style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:12px;padding:12px 16px;">
+          <div style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:12px;padding:14px 18px;">
             <p style="font-size:9px;color:rgba(255,255,255,0.4);margin:0;">رقم الوثيقة</p>
-            <p style="font-size:12px;color:white;font-family:monospace;font-weight:700;margin:4px 0 0 0;">${documentId}</p>
+            <p style="font-size:13px;color:white;font-family:'Courier New',monospace;font-weight:800;margin:4px 0 0 0;letter-spacing:0.5px;">${documentId}</p>
           </div>
         </div>
       </div>
 
       <!-- Document meta bar -->
-      <div style="display:flex;gap:16px;margin-top:16px;padding-top:16px;border-top:1px solid rgba(255,255,255,0.1);flex-wrap:wrap;position:relative;z-index:1;">
-        <div style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:8px 14px;flex:1;min-width:120px;">
+      <div style="display:flex;gap:12px;margin-top:18px;padding-top:18px;border-top:1px solid rgba(255,255,255,0.1);flex-wrap:wrap;position:relative;z-index:1;">
+        <div style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:10px 14px;flex:1;min-width:130px;">
           <p style="font-size:9px;color:rgba(255,255,255,0.4);margin:0;">تاريخ الإصدار (ميلادي)</p>
-          <p style="font-size:11px;color:white;font-weight:600;margin:2px 0 0 0;">${generatedAtFormatted}</p>
+          <p style="font-size:11px;color:white;font-weight:700;margin:3px 0 0 0;">${generatedAtFormatted}</p>
         </div>
-        <div style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:8px 14px;flex:1;min-width:120px;">
+        <div style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:10px 14px;flex:1;min-width:130px;">
           <p style="font-size:9px;color:rgba(255,255,255,0.4);margin:0;">تاريخ الإصدار (هجري)</p>
-          <p style="font-size:11px;color:white;font-weight:600;margin:2px 0 0 0;">${hijriDate}</p>
+          <p style="font-size:11px;color:white;font-weight:700;margin:3px 0 0 0;">${hijriDate}</p>
         </div>
-        <div style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:8px 14px;flex:1;min-width:120px;">
+        <div style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:10px 14px;flex:1;min-width:130px;">
           <p style="font-size:9px;color:rgba(255,255,255,0.4);margin:0;">صادر بواسطة</p>
-          <p style="font-size:11px;color:white;font-weight:600;margin:2px 0 0 0;">${generatedByName}</p>
+          <p style="font-size:11px;color:white;font-weight:700;margin:3px 0 0 0;">${generatedByName}</p>
         </div>
-        <div style="background:rgba(220,38,38,0.15);border:1px solid rgba(220,38,38,0.3);border-radius:8px;padding:8px 14px;">
+        <div style="background:rgba(220,38,38,0.15);border:1px solid rgba(220,38,38,0.3);border-radius:8px;padding:10px 14px;">
           <p style="font-size:9px;color:#fca5a5;margin:0;">التصنيف</p>
-          <p style="font-size:11px;color:#fecaca;font-weight:800;margin:2px 0 0 0;">⛔ سري جداً</p>
+          <p style="font-size:12px;color:#fecaca;font-weight:900;margin:3px 0 0 0;">سري جداً</p>
         </div>
       </div>
     </div>
 
     <!-- ═══════════════════════════════════════════════════════════ -->
-    <!-- DOCUMENT TITLE                                             -->
+    <!-- DOCUMENT TITLE -->
     <!-- ═══════════════════════════════════════════════════════════ -->
-    <div style="padding:24px 32px;background:linear-gradient(135deg,#f0fdf4,#ecfdf5,#f0f9ff);border-bottom:2px solid #0a254015;position:relative;z-index:1;">
+    <div style="padding:26px 36px;background:linear-gradient(135deg,#f0fdf4,#ecfdf5,#f0f9ff);border-bottom:2px solid #e2e8f0;position:relative;z-index:1;">
       <div style="text-align:center;">
-        <h2 style="font-size:20px;font-weight:900;color:#0a2540;margin:0;">توثيق حادثة تسريب بيانات شخصية</h2>
-        <p style="font-size:11px;color:#64748b;margin-top:4px;">Personal Data Leak Incident Documentation Report</p>
-        <div style="width:60px;height:3px;background:linear-gradient(90deg,#0d9488,#06b6d4);margin:12px auto 0;border-radius:2px;"></div>
+        <h2 style="font-size:21px;font-weight:900;color:#0a2540;margin:0;">توثيق حادثة تسريب بيانات شخصية</h2>
+        <p style="font-size:11px;color:#64748b;margin-top:5px;font-weight:500;">Personal Data Leak Incident Documentation Report</p>
+        <div style="width:60px;height:3px;background:linear-gradient(90deg,#0d9488,#06b6d4);margin:14px auto 0;border-radius:2px;"></div>
       </div>
     </div>
 
     <!-- ═══════════════════════════════════════════════════════════ -->
-    <!-- CONTENT BODY                                               -->
+    <!-- CONTENT BODY -->
     <!-- ═══════════════════════════════════════════════════════════ -->
-    <div style="padding:24px 32px;position:relative;z-index:1;">
+    <div style="padding:28px 36px;position:relative;z-index:1;">
 
       <!-- Incident Overview Table -->
       <div style="margin-bottom:28px;">
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;">
-          <div style="width:4px;height:24px;background:linear-gradient(180deg,#0a2540,#0d9488);border-radius:2px;"></div>
-          <h3 style="color:#0a2540;font-size:16px;margin:0;font-weight:800;">معلومات الحادثة</h3>
+        <div class="section-title">
+          <div class="section-bar" style="background:linear-gradient(180deg,#0a2540,#0d9488);"></div>
+          <h3 style="color:#0a2540;font-size:16px;margin:0;font-weight:900;">معلومات الحادثة</h3>
         </div>
-        <table style="width:100%;border-collapse:collapse;direction:rtl;border-radius:12px;overflow:hidden;border:1px solid #0a254015;">
+        <table class="info-table">
           <tr>
-            <td style="padding:10px 16px;border-bottom:1px solid #0a254010;font-size:12px;background:#0a25400a;color:#64748b;width:30%;text-align:right;font-weight:500;">رقم التسريب</td>
-            <td style="padding:10px 16px;border-bottom:1px solid #0a254010;font-size:12px;font-weight:700;text-align:right;font-family:monospace;color:#6366f1;">${leak.leakId}</td>
+            <td class="label-cell">رقم التسريب</td>
+            <td class="value-cell" style="font-family:'Courier New',monospace;color:#6366f1;font-weight:800;">${leak.leakId}</td>
           </tr>
           <tr>
-            <td style="padding:10px 16px;border-bottom:1px solid #0a254010;font-size:12px;background:#0a25400a;color:#64748b;text-align:right;font-weight:500;">عنوان الحادثة</td>
-            <td style="padding:10px 16px;border-bottom:1px solid #0a254010;font-size:13px;font-weight:700;text-align:right;color:#0a2540;">${leak.titleAr}</td>
+            <td class="label-cell">عنوان الحادثة</td>
+            <td class="value-cell" style="font-size:13px;font-weight:800;color:#0a2540;">${leak.titleAr}</td>
           </tr>
           <tr>
-            <td style="padding:10px 16px;border-bottom:1px solid #0a254010;font-size:12px;background:#0a25400a;color:#64748b;text-align:right;font-weight:500;">تصنيف الحادثة</td>
-            <td style="padding:10px 16px;border-bottom:1px solid #0a254010;font-size:12px;text-align:right;">
-              <span style="display:inline-block;background:${impact.bg};color:${impact.color};border:1px solid ${impact.color}33;border-radius:6px;padding:3px 12px;font-size:11px;font-weight:700;">${impact.ar}</span>
+            <td class="label-cell">تصنيف الحادثة</td>
+            <td class="value-cell">
+              <span class="badge" style="background:${impact.bg};color:${impact.color};border:1px solid ${impact.color}33;">${impact.ar}</span>
             </td>
           </tr>
           <tr>
-            <td style="padding:10px 16px;border-bottom:1px solid #0a254010;font-size:12px;background:#0a25400a;color:#64748b;text-align:right;font-weight:500;">المصدر</td>
-            <td style="padding:10px 16px;border-bottom:1px solid #0a254010;font-size:12px;text-align:right;">${sourceLabels[leak.source] || leak.source}${leak.sourcePlatform ? ` — ${leak.sourcePlatform}` : ""}</td>
+            <td class="label-cell">المصدر</td>
+            <td class="value-cell">${sourceLabels[leak.source] || leak.source}${leak.sourcePlatform ? ` — ${leak.sourcePlatform}` : ""}</td>
           </tr>
           <tr>
-            <td style="padding:10px 16px;border-bottom:1px solid #0a254010;font-size:12px;background:#0a25400a;color:#64748b;text-align:right;font-weight:500;">القطاع</td>
-            <td style="padding:10px 16px;border-bottom:1px solid #0a254010;font-size:12px;text-align:right;font-weight:600;">${leak.sectorAr}</td>
+            <td class="label-cell">القطاع</td>
+            <td class="value-cell" style="font-weight:700;">${leak.sectorAr}</td>
           </tr>
           <tr>
-            <td style="padding:10px 16px;border-bottom:1px solid #0a254010;font-size:12px;background:#0a25400a;color:#64748b;text-align:right;font-weight:500;">عدد السجلات المكشوفة</td>
-            <td style="padding:10px 16px;border-bottom:1px solid #0a254010;font-size:14px;font-weight:900;color:#dc2626;text-align:right;">${leak.recordCount.toLocaleString()} سجل</td>
+            <td class="label-cell">عدد السجلات المكشوفة</td>
+            <td class="value-cell" style="font-size:15px;font-weight:900;color:#dc2626;">${leak.recordCount.toLocaleString()} سجل</td>
           </tr>
           <tr>
-            <td style="padding:10px 16px;border-bottom:1px solid #0a254010;font-size:12px;background:#0a25400a;color:#64748b;text-align:right;font-weight:500;">حالة التوثيق</td>
-            <td style="padding:10px 16px;border-bottom:1px solid #0a254010;font-size:12px;text-align:right;">
-              <span style="display:inline-block;background:#0d94881a;color:#0d9488;border:1px solid #0d948833;border-radius:6px;padding:3px 12px;font-size:11px;font-weight:600;">${statusLabels[leak.status] || leak.status}</span>
+            <td class="label-cell">حالة التوثيق</td>
+            <td class="value-cell">
+              <span class="badge" style="background:#0d94881a;color:#0d9488;border:1px solid #0d948833;">${statusLabels[leak.status] || leak.status}</span>
             </td>
           </tr>
-          ${leak.threatActor ? `<tr><td style="padding:10px 16px;border-bottom:1px solid #0a254010;font-size:12px;background:#0a25400a;color:#64748b;text-align:right;font-weight:500;">الجهة الفاعلة / البائع</td><td style="padding:10px 16px;border-bottom:1px solid #0a254010;font-size:12px;text-align:right;color:#dc2626;font-weight:700;">${leak.threatActor}</td></tr>` : ""}
-          ${leak.price ? `<tr><td style="padding:10px 16px;border-bottom:1px solid #0a254010;font-size:12px;background:#0a25400a;color:#64748b;text-align:right;font-weight:500;">السعر المعروض</td><td style="padding:10px 16px;border-bottom:1px solid #0a254010;font-size:12px;text-align:right;font-weight:600;">${leak.price}</td></tr>` : ""}
-          ${leak.breachMethodAr ? `<tr><td style="padding:10px 16px;border-bottom:1px solid #0a254010;font-size:12px;background:#0a25400a;color:#64748b;text-align:right;font-weight:500;">طريقة التسريب</td><td style="padding:10px 16px;border-bottom:1px solid #0a254010;font-size:12px;text-align:right;">${leak.breachMethodAr}</td></tr>` : ""}
-          ${leak.regionAr ? `<tr><td style="padding:10px 16px;border-bottom:1px solid #0a254010;font-size:12px;background:#0a25400a;color:#64748b;text-align:right;font-weight:500;">المنطقة / المدينة</td><td style="padding:10px 16px;border-bottom:1px solid #0a254010;font-size:12px;text-align:right;">${leak.regionAr}${leak.cityAr ? ` — ${leak.cityAr}` : ""}</td></tr>` : ""}
-          ${leak.sourceUrl ? `<tr><td style="padding:10px 16px;border-bottom:1px solid #0a254010;font-size:12px;background:#0a25400a;color:#64748b;text-align:right;font-weight:500;">رابط المصدر</td><td style="padding:10px 16px;border-bottom:1px solid #0a254010;font-size:11px;text-align:right;word-break:break-all;font-family:monospace;color:#6366f1;">${leak.sourceUrl}</td></tr>` : ""}
+          ${leak.threatActor ? `<tr><td class="label-cell">الجهة الفاعلة / البائع</td><td class="value-cell" style="color:#dc2626;font-weight:800;">${leak.threatActor}</td></tr>` : ""}
+          ${leak.price ? `<tr><td class="label-cell">السعر المعروض</td><td class="value-cell" style="font-weight:700;">${leak.price}</td></tr>` : ""}
+          ${leak.breachMethodAr ? `<tr><td class="label-cell">طريقة التسريب</td><td class="value-cell">${leak.breachMethodAr}</td></tr>` : ""}
+          ${leak.regionAr ? `<tr><td class="label-cell">المنطقة / المدينة</td><td class="value-cell">${leak.regionAr}${leak.cityAr ? ` — ${leak.cityAr}` : ""}</td></tr>` : ""}
+          ${leak.sourceUrl ? `<tr><td class="label-cell">رابط المصدر</td><td class="value-cell" style="font-size:10px;word-break:break-all;font-family:'Courier New',monospace;color:#6366f1;">${leak.sourceUrl}</td></tr>` : ""}
           <tr>
-            <td style="padding:10px 16px;font-size:12px;background:#0a25400a;color:#64748b;text-align:right;font-weight:500;">تاريخ الرصد</td>
-            <td style="padding:10px 16px;font-size:12px;text-align:right;">${leak.detectedAt ? new Date(leak.detectedAt).toLocaleString("ar-SA", { timeZone: "Asia/Riyadh" }) : "—"}</td>
+            <td class="label-cell">تاريخ الرصد</td>
+            <td class="value-cell">${leak.detectedAt ? new Date(leak.detectedAt).toLocaleString("ar-SA", { timeZone: "Asia/Riyadh" }) : "—"}</td>
           </tr>
         </table>
       </div>
@@ -389,21 +467,21 @@ export async function generateIncidentDocumentation(
       <!-- Description -->
       ${
         leak.descriptionAr
-          ? `<div style="margin-bottom:28px;">
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;">
-          <div style="width:4px;height:24px;background:linear-gradient(180deg,#0a2540,#0d9488);border-radius:2px;"></div>
-          <h3 style="color:#0a2540;font-size:16px;margin:0;font-weight:800;">وصف الحادثة</h3>
+          ? `<div style="margin-bottom:28px;page-break-inside:avoid;">
+        <div class="section-title">
+          <div class="section-bar" style="background:linear-gradient(180deg,#0a2540,#0d9488);"></div>
+          <h3 style="color:#0a2540;font-size:16px;margin:0;font-weight:900;">وصف الحادثة</h3>
         </div>
-        <p style="font-size:12px;color:#334155;line-height:2;text-align:right;background:#f8fafc;padding:20px;border-radius:12px;border:1px solid #0a254010;">${leak.descriptionAr}</p>
+        <p style="font-size:12px;color:#334155;line-height:2.2;text-align:right;background:#f8fafc;padding:20px;border-radius:10px;border:1px solid #e2e8f0;">${leak.descriptionAr}</p>
       </div>`
           : ""
       }
 
       <!-- PII Types -->
-      <div style="margin-bottom:28px;">
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;">
-          <div style="width:4px;height:24px;background:linear-gradient(180deg,#dc2626,#ea580c);border-radius:2px;"></div>
-          <h3 style="color:#0a2540;font-size:16px;margin:0;font-weight:800;">أنواع البيانات الشخصية المكشوفة</h3>
+      <div style="margin-bottom:28px;page-break-inside:avoid;">
+        <div class="section-title">
+          <div class="section-bar" style="background:linear-gradient(180deg,#dc2626,#ea580c);"></div>
+          <h3 style="color:#0a2540;font-size:16px;margin:0;font-weight:900;">أنواع البيانات الشخصية المكشوفة</h3>
         </div>
         <div style="display:flex;flex-wrap:wrap;gap:6px;">${piiList}</div>
       </div>
@@ -411,16 +489,16 @@ export async function generateIncidentDocumentation(
       <!-- Sample Data -->
       ${
         sampleDataRows.length > 0
-          ? `<div style="margin-bottom:28px;">
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;">
-          <div style="width:4px;height:24px;background:linear-gradient(180deg,#dc2626,#991b1b);border-radius:2px;"></div>
-          <h3 style="color:#0a2540;font-size:16px;margin:0;font-weight:800;">عينات من البيانات المسربة</h3>
+          ? `<div style="margin-bottom:28px;page-break-inside:avoid;">
+        <div class="section-title">
+          <div class="section-bar" style="background:linear-gradient(180deg,#dc2626,#991b1b);"></div>
+          <h3 style="color:#0a2540;font-size:16px;margin:0;font-weight:900;">عينات من البيانات المسربة</h3>
         </div>
-        <div style="background:#fef2f2;border:1px solid #dc262620;border-radius:8px;padding:10px 14px;margin-bottom:12px;">
-          <p style="font-size:10px;color:#dc2626;margin:0;font-weight:600;">⚠️ تنبيه: البيانات أدناه عينات توضيحية من التسريب لأغراض التوثيق الرسمي فقط — يُمنع نسخها أو مشاركتها</p>
+        <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:10px 14px;margin-bottom:14px;">
+          <p style="font-size:10px;color:#dc2626;margin:0;font-weight:700;">تنبيه: البيانات أدناه عينات توضيحية من التسريب لأغراض التوثيق الرسمي فقط — يُمنع نسخها أو مشاركتها</p>
         </div>
         <div style="overflow-x:auto;">
-          <table style="width:100%;border-collapse:collapse;direction:rtl;font-size:11px;border:1px solid #0a254015;border-radius:12px;overflow:hidden;">
+          <table style="width:100%;border-collapse:collapse;direction:rtl;font-size:11px;border:1px solid #e2e8f0;border-radius:8px;overflow:hidden;">
             ${sampleHeaders}
             ${sampleRows}
           </table>
@@ -432,10 +510,10 @@ export async function generateIncidentDocumentation(
       <!-- Evidence Screenshots -->
       ${
         screenshotSection
-          ? `<div style="margin-bottom:28px;">
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;">
-          <div style="width:4px;height:24px;background:linear-gradient(180deg,#6366f1,#8b5cf6);border-radius:2px;"></div>
-          <h3 style="color:#0a2540;font-size:16px;margin:0;font-weight:800;">لقطات الأدلة</h3>
+          ? `<div style="margin-bottom:28px;page-break-inside:avoid;">
+        <div class="section-title">
+          <div class="section-bar" style="background:linear-gradient(180deg,#6366f1,#8b5cf6);"></div>
+          <h3 style="color:#0a2540;font-size:16px;margin:0;font-weight:900;">لقطات الأدلة</h3>
         </div>
         <div style="display:flex;flex-wrap:wrap;gap:8px;">${screenshotSection}</div>
       </div>`
@@ -451,54 +529,55 @@ export async function generateIncidentDocumentation(
     </div>
 
     <!-- ═══════════════════════════════════════════════════════════ -->
-    <!-- VERIFICATION & QR CODE SECTION                             -->
+    <!-- VERIFICATION & QR CODE SECTION -->
     <!-- ═══════════════════════════════════════════════════════════ -->
-    <div style="margin:0 32px;padding:24px;background:linear-gradient(135deg,#0a2540,#0c3054);border-radius:16px;position:relative;z-index:1;overflow:hidden;">
-      <!-- Pattern overlay -->
+    <div style="margin:0 36px;padding:26px;background:linear-gradient(135deg,#0a2540,#0c3054);border-radius:14px;position:relative;z-index:1;overflow:hidden;page-break-inside:avoid;">
       <div style="position:absolute;inset:0;opacity:0.03;background-image:repeating-linear-gradient(-45deg,transparent,transparent 20px,rgba(255,255,255,1) 20px,rgba(255,255,255,1) 21px);pointer-events:none;"></div>
 
       <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:20px;position:relative;z-index:1;">
         <div style="text-align:right;flex:1;min-width:250px;">
-          <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
-            <div style="width:32px;height:32px;background:rgba(13,148,136,0.2);border-radius:8px;display:flex;align-items:center;justify-content:center;">
-              <span style="font-size:16px;">✅</span>
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
+            <div style="width:34px;height:34px;background:rgba(13,148,136,0.2);border-radius:8px;display:flex;align-items:center;justify-content:center;">
+              <span style="font-size:18px;color:#5eead4;">✓</span>
             </div>
-            <h3 style="color:white;font-size:15px;margin:0;font-weight:800;">التحقق من صحة الوثيقة</h3>
+            <h3 style="color:white;font-size:16px;margin:0;font-weight:900;">التحقق من صحة الوثيقة</h3>
           </div>
 
-          <div style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:12px 16px;margin-bottom:10px;">
-            <p style="font-size:10px;color:rgba(255,255,255,0.4);margin:0;">كود التحقق</p>
-            <p style="font-size:16px;color:#5eead4;font-family:monospace;font-weight:800;margin:4px 0 0 0;letter-spacing:1px;">${verificationCode}</p>
+          <div style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:10px;padding:14px 18px;margin-bottom:12px;">
+            <p style="font-size:9px;color:rgba(255,255,255,0.4);margin:0;">كود التحقق</p>
+            <p style="font-size:17px;color:#5eead4;font-family:'Courier New',monospace;font-weight:900;margin:5px 0 0 0;letter-spacing:1.5px;">${verificationCode}</p>
           </div>
 
-          <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:10px;padding:10px 16px;margin-bottom:10px;">
-            <p style="font-size:10px;color:rgba(255,255,255,0.4);margin:0;">بصمة المحتوى (SHA-256)</p>
-            <p style="font-size:10px;color:rgba(255,255,255,0.6);font-family:monospace;margin:4px 0 0 0;word-break:break-all;">${contentHash}</p>
+          <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:12px 18px;margin-bottom:12px;">
+            <p style="font-size:9px;color:rgba(255,255,255,0.4);margin:0;">بصمة المحتوى (SHA-256)</p>
+            <p style="font-size:9px;color:rgba(255,255,255,0.55);font-family:'Courier New',monospace;margin:5px 0 0 0;word-break:break-all;line-height:1.6;">${contentHash}</p>
           </div>
 
-          <p style="font-size:10px;color:rgba(255,255,255,0.3);margin:0;">
+          <p style="font-size:10px;color:rgba(255,255,255,0.35);margin:0;line-height:1.8;">
             امسح رمز QR أو أدخل كود التحقق في منصة راصد للتحقق من صحة ومصداقية هذه الوثيقة
           </p>
         </div>
 
         <div style="text-align:center;">
-          <div style="background:white;border-radius:12px;padding:8px;display:inline-block;box-shadow:0 4px 20px rgba(0,0,0,0.3);">
-            <img src="${qrDataUrl}" style="width:140px;height:140px;border-radius:8px;" />
+          <div style="background:white;border-radius:12px;padding:10px;display:inline-block;box-shadow:0 4px 24px rgba(0,0,0,0.3);">
+            <img src="${qrDataUrl}" style="width:150px;height:150px;border-radius:6px;" />
           </div>
-          <p style="font-size:9px;color:rgba(255,255,255,0.3);margin-top:8px;">امسح للتحقق من صحة الوثيقة</p>
+          <p style="font-size:9px;color:rgba(255,255,255,0.3);margin-top:10px;">امسح للتحقق من صحة الوثيقة</p>
         </div>
       </div>
     </div>
 
     <!-- ═══════════════════════════════════════════════════════════ -->
-    <!-- LEGAL DISCLAIMER                                           -->
+    <!-- LEGAL DISCLAIMER -->
     <!-- ═══════════════════════════════════════════════════════════ -->
-    <div style="margin:20px 32px;padding:16px;background:#fef2f2;border:1px solid #dc262615;border-radius:12px;position:relative;z-index:1;">
-      <div style="display:flex;align-items:start;gap:10px;">
-        <span style="font-size:16px;margin-top:2px;">⚠️</span>
+    <div style="margin:24px 36px;padding:18px;background:#fef2f2;border:1px solid #fecaca;border-radius:10px;position:relative;z-index:1;page-break-inside:avoid;">
+      <div style="display:flex;align-items:start;gap:12px;">
+        <div style="width:28px;height:28px;background:#dc26261a;border-radius:6px;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px;">
+          <span style="font-size:14px;color:#dc2626;">!</span>
+        </div>
         <div>
-          <p style="font-size:11px;color:#991b1b;font-weight:700;margin:0;">إخلاء مسؤولية وتحذير قانوني</p>
-          <p style="font-size:10px;color:#7f1d1d;line-height:1.8;margin:6px 0 0 0;">
+          <p style="font-size:12px;color:#991b1b;font-weight:800;margin:0;">إخلاء مسؤولية وتحذير قانوني</p>
+          <p style="font-size:10px;color:#7f1d1d;line-height:2;margin:8px 0 0 0;">
             هذه الوثيقة صادرة من منصة راصد التابعة لمكتب إدارة البيانات الوطنية وتحتوي على بيانات مصنفة. أي استخدام أو نسخ أو توزيع لهذه الوثيقة خارج نطاق المهام الرسمية المعتمدة يُعد مخالفة صريحة للأنظمة واللوائح المعمول بها ويستوجب المساءلة النظامية.
           </p>
         </div>
@@ -506,20 +585,19 @@ export async function generateIncidentDocumentation(
     </div>
 
     <!-- ═══════════════════════════════════════════════════════════ -->
-    <!-- FOOTER                                                     -->
+    <!-- FOOTER -->
     <!-- ═══════════════════════════════════════════════════════════ -->
-    <div style="padding:20px 32px;text-align:center;position:relative;z-index:1;">
-      <div style="width:100%;height:1px;background:linear-gradient(90deg,transparent,#0a254030,transparent);margin-bottom:16px;"></div>
-      <p style="font-size:11px;color:#0a2540;font-weight:700;margin:0;">منصة راصد — مكتب إدارة البيانات الوطنية (NDMO)</p>
-      <p style="font-size:10px;color:#64748b;margin-top:4px;">Rasid Platform — National Data Management Office</p>
-      <p style="font-size:11px;color:#0d9488;font-weight:600;margin-top:8px;">❝ حماية البيانات الشخصية متطلب وطني ❞</p>
+    <div style="padding:22px 36px;text-align:center;position:relative;z-index:1;">
+      <div style="width:100%;height:1px;background:linear-gradient(90deg,transparent,#cbd5e1,transparent);margin-bottom:18px;"></div>
+      <img src="${RASID_LOGO_LIGHT_BG}" alt="منصة راصد" style="height:36px;object-fit:contain;margin-bottom:10px;" />
+      <p style="font-size:11px;color:#0d9488;font-weight:700;margin-top:10px;">❝ حماية البيانات الشخصية متطلب وطني ❞</p>
       <p style="font-size:9px;color:#94a3b8;margin-top:8px;">© ${new Date().getFullYear()} NDMO — جميع الحقوق محفوظة | هذه الوثيقة محمية بموجب نظام حماية البيانات الشخصية</p>
     </div>
 
     <!-- BOTTOM CLASSIFICATION BANNER -->
-    <div style="background:linear-gradient(135deg,#7f1d1d,#991b1b,#b91c1c);padding:8px 24px;text-align:center;position:relative;z-index:1;">
-      <p style="color:#fecaca;font-size:11px;font-weight:700;letter-spacing:3px;margin:0;">
-        ⛔ سري جداً — TOP SECRET — تصنيف: مقيّد ⛔
+    <div style="background:linear-gradient(135deg,#7f1d1d,#991b1b,#b91c1c);padding:10px 24px;text-align:center;position:relative;z-index:1;">
+      <p style="color:#fecaca;font-size:12px;font-weight:800;letter-spacing:4px;margin:0;">
+        سري جداً — TOP SECRET — تصنيف: مقيّد
       </p>
     </div>
 
@@ -527,11 +605,21 @@ export async function generateIncidentDocumentation(
 </body>
 </html>`;
 
+  // Generate PDF using Puppeteer
+  let pdfBuffer: Buffer | null = null;
+  try {
+    pdfBuffer = await generatePdfFromHtml(htmlContent);
+  } catch (err) {
+    console.error("[PDF] Puppeteer PDF generation failed:", err);
+    // pdfBuffer stays null, client can fallback to HTML
+  }
+
   return {
     documentId,
     verificationCode,
     contentHash,
     htmlContent,
+    pdfBuffer,
     leakId: leak.leakId,
     title: leak.title,
     titleAr: leak.titleAr,

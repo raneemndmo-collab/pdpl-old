@@ -747,3 +747,15 @@
 - [x] Integrate into PublicVerify and VerifyDocument pages
 - [x] Replace manual code input with smart QR scan
 - [x] Test PDF generation and QR scanning
+
+## Phase 60: Professional PDF Report Redesign + Fix Verification Upload
+- [x] Fix Arabic text rendering in PDF (broken/reversed characters) — switched to Puppeteer + local Noto Kufi Arabic
+- [x] Add Rasid logo and NDMO branding to PDF header — embedded as base64
+- [x] Redesign PDF layout with professional government document style — NDMO name + Rasid logo
+- [x] Include all incident details in PDF (evidence, PII types, sample data, screenshots)
+- [x] Add QR code and verification code prominently in PDF
+- [x] Add proper Arabic font — using system Noto Kufi Arabic / Noto Sans Arabic
+- [x] Fix file upload verification not responding in VerifyDocument page — removed undefined setQueryCode
+- [x] Fix file upload verification not responding in PublicVerify page — already working with direct fetch
+- [x] Test PDF generation with proper Arabic rendering
+- [x] Test file upload verification flow end-to-end

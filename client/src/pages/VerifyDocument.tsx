@@ -197,7 +197,7 @@ export default function VerifyDocument() {
     { text: string; color: string; prefix: string; key: string }[]
   >([]);
   const [showResult, setShowResult] = useState(false);
-  const [queryCode, setQueryCode] = useState<string | null>(params?.code || null);
+  const [verifyResult, setVerifyResult] = useState<any>(null);
 
   // Camera state
   const [showCamera, setShowCamera] = useState(false);
@@ -208,10 +208,7 @@ export default function VerifyDocument() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const consoleEndRef = useRef<HTMLDivElement>(null);
 
-  const { data: verifyResult } = trpc.documentation.verify.useQuery(
-    { code: queryCode! },
-    { enabled: !!queryCode && stage === "verifying" }
-  );
+  const trpcUtils = trpc.useUtils();
 
   // Auto-verify if code comes from URL
   useEffect(() => {
@@ -419,7 +416,6 @@ export default function VerifyDocument() {
       setCurrentStep(-1);
       setStepStatuses(VERIFY_STEPS.map(() => "pending"));
       setConsoleLines([]);
-      setQueryCode(codeToVerify);
 
       // ── Step 0: Initialize ──
       await sleep(300);
@@ -472,6 +468,14 @@ export default function VerifyDocument() {
         await sleep(300);
       }
 
+      // ── Fetch actual result from API ──
+      let apiResult: any = null;
+      try {
+        apiResult = await trpcUtils.documentation.verify.fetch({ code: codeToVerify });
+      } catch (err: any) {
+        console.error("Verify API error:", err);
+      }
+
       // ── Final ──
       await sleep(500);
       addConsoleLine("", "text-slate-700", "");
@@ -479,6 +483,18 @@ export default function VerifyDocument() {
       addConsoleLine("جاري إصدار النتيجة النهائية...", "text-white", ">>>");
       await sleep(800);
 
+      if (apiResult) {
+        if (apiResult.valid) {
+          addConsoleLine("✓ الوثيقة صحيحة ومتحقق منها", "text-emerald-400", "[✓]");
+        } else {
+          addConsoleLine("✗ الوثيقة غير صالحة أو غير موجودة", "text-red-400", "[✗]");
+        }
+      } else {
+        addConsoleLine("✗ فشل الاتصال بخادم التحقق", "text-red-400", "[✗]");
+        apiResult = { valid: false, message: "فشل الاتصال بخادم التحقق" };
+      }
+
+      setVerifyResult(apiResult);
       setStage("result");
       setTimeout(() => setShowResult(true), 400);
     },
@@ -493,7 +509,7 @@ export default function VerifyDocument() {
   const resetAll = () => {
     setStage("idle");
     setShowResult(false);
-    setQueryCode(null);
+    setVerifyResult(null);
     setCode("");
     setConsoleLines([]);
     setCurrentStep(-1);
