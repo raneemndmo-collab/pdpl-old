@@ -14,10 +14,12 @@ import {
   GraduationCap, Heart, Plane, ShoppingCart, Landmark, Factory, CircleDot,
   Sparkles, FileCheck, ArrowUpRight, Clock, AlertTriangle, Cpu,
   Maximize2, Minimize2, Play, Pause, SkipForward, Monitor, Presentation,
+  Download, FileDown, ArrowDown, ArrowUp, Equal,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { trpc } from "@/lib/trpc";
 import LeakDetailDrilldown from "@/components/LeakDetailDrilldown";
+import MonthlyComparison from "@/components/MonthlyComparison";
 import { DetailModal } from "@/components/DetailModal";
 import { useTheme } from "@/contexts/ThemeContext";
 
@@ -269,6 +271,7 @@ const RASID_CHARACTER_PRES = "https://files.manuscdn.com/user_upload_by_module/s
 function PresentationOverlay({
   slides, currentSlide, autoRotate, onExit, onNext, onPrev, onToggleAutoRotate, onGoToSlide,
   isDark, kpiCards, statusCards, sourceCards, systemStats, sectorDistribution, piiDistribution, monthlyTrend, recentLeaks, stats,
+  onExportPdf, isExporting,
 }: {
   slides: { id: string; title: string; titleEn: string; icon: React.ElementType }[];
   currentSlide: number; autoRotate: boolean;
@@ -277,6 +280,7 @@ function PresentationOverlay({
   isDark: boolean;
   kpiCards: any[]; statusCards: any[]; sourceCards: any[]; systemStats: any[];
   sectorDistribution: any[]; piiDistribution: any[]; monthlyTrend: any[]; recentLeaks: any[]; stats: any;
+  onExportPdf: () => void; isExporting: boolean;
 }) {
   const slide = slides[currentSlide];
   const SlideIcon = slide.icon;
@@ -570,6 +574,14 @@ function PresentationOverlay({
             {autoRotate ? <Play className="w-3.5 h-3.5" /> : <Pause className="w-3.5 h-3.5" />}
             {autoRotate ? "\u062a\u062f\u0648\u064a\u0631 \u062a\u0644\u0642\u0627\u0626\u064a" : "\u0645\u062a\u0648\u0642\u0641"}
           </button>
+          {/* PDF Export button */}
+          <button onClick={onExportPdf} disabled={isExporting}
+            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+              isExporting ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 animate-pulse" : "bg-white/5 text-slate-300 border border-white/10 hover:bg-white/10 hover:text-white"
+            }`}>
+            {isExporting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
+            {isExporting ? "\u062c\u0627\u0631\u064a \u0627\u0644\u062a\u0635\u062f\u064a\u0631..." : "\u062a\u0635\u062f\u064a\u0631 PDF"}
+          </button>
           {/* Slide counter */}
           <span className="text-xs text-slate-500 font-mono">{currentSlide + 1} / {slides.length}</span>
           {/* Exit button */}
@@ -597,7 +609,7 @@ function PresentationOverlay({
       </div>
 
       {/* Slide Content */}
-      <div className="flex-1 flex items-center justify-center px-8 pb-4 relative z-10 overflow-auto">
+      <div className="presentation-slide-content flex-1 flex items-center justify-center px-8 pb-4 relative z-10 overflow-auto">
         <AnimatePresence mode="wait">
           <motion.div key={currentSlide} initial={{ opacity: 0, x: 50 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -50 }}
             transition={{ duration: 0.4 }} className="w-full flex justify-center">
@@ -747,6 +759,107 @@ export default function Dashboard() {
   const prevSlide = useCallback(() => {
     setCurrentSlide(prev => (prev - 1 + presentationSlides.length) % presentationSlides.length);
   }, [presentationSlides.length]);
+
+  // ═══ PDF EXPORT STATE ═══
+  const [isExporting, setIsExporting] = useState(false);
+
+  const exportPresentationPdf = useCallback(async () => {
+    if (isExporting) return;
+    setIsExporting(true);
+    // Pause auto-rotate during export
+    const wasAutoRotating = autoRotate;
+    setAutoRotate(false);
+    const savedSlide = currentSlide;
+
+    try {
+      const html2canvas = (await import("html2canvas")).default;
+      const { jsPDF } = await import("jspdf");
+
+      // Create PDF in landscape A4
+      const pdf = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+
+      // Add cover page
+      pdf.setFillColor(13, 21, 41); // #0D1529
+      pdf.rect(0, 0, pageWidth, pageHeight, "F");
+      pdf.setTextColor(255, 255, 255);
+      pdf.setFontSize(28);
+      pdf.text("\u062a\u0642\u0631\u064a\u0631 \u0644\u0648\u062d\u0629 \u0627\u0644\u0645\u0624\u0634\u0631\u0627\u062a", pageWidth / 2, pageHeight / 2 - 15, { align: "center" });
+      pdf.setFontSize(14);
+      pdf.setTextColor(148, 163, 184);
+      pdf.text("Dashboard Presentation Report", pageWidth / 2, pageHeight / 2 + 5, { align: "center" });
+      pdf.setFontSize(10);
+      pdf.text(new Date().toLocaleDateString("ar-SA", { year: "numeric", month: "long", day: "numeric" }), pageWidth / 2, pageHeight / 2 + 18, { align: "center" });
+      pdf.setTextColor(61, 177, 172);
+      pdf.text("\u0631\u0627\u0635\u062f - NDMO Leak Monitor", pageWidth / 2, pageHeight - 15, { align: "center" });
+
+      // Capture each slide
+      const slideContentEl = document.querySelector(".presentation-slide-content") as HTMLElement;
+      if (!slideContentEl) {
+        throw new Error("Slide content element not found");
+      }
+
+      for (let i = 0; i < presentationSlides.length; i++) {
+        setCurrentSlide(i);
+        // Wait for animations to complete
+        await new Promise(resolve => setTimeout(resolve, 1200));
+
+        const canvas = await html2canvas(slideContentEl, {
+          backgroundColor: "#0D1529",
+          scale: 2,
+          useCORS: true,
+          logging: false,
+          allowTaint: true,
+        });
+
+        pdf.addPage();
+
+        // Add dark background
+        pdf.setFillColor(13, 21, 41);
+        pdf.rect(0, 0, pageWidth, pageHeight, "F");
+
+        // Add slide title header
+        pdf.setFillColor(18, 28, 55);
+        pdf.rect(0, 0, pageWidth, 18, "F");
+        pdf.setTextColor(61, 177, 172);
+        pdf.setFontSize(12);
+        pdf.text(`${i + 1} / ${presentationSlides.length}`, 10, 11);
+        pdf.setTextColor(255, 255, 255);
+        pdf.setFontSize(14);
+        pdf.text(presentationSlides[i].titleEn, pageWidth / 2, 11, { align: "center" });
+
+        // Add slide screenshot
+        const imgData = canvas.toDataURL("image/png");
+        const imgRatio = canvas.width / canvas.height;
+        const contentHeight = pageHeight - 28;
+        const contentWidth = Math.min(pageWidth - 20, contentHeight * imgRatio);
+        const imgWidth = Math.min(contentWidth, pageWidth - 20);
+        const imgHeight = imgWidth / imgRatio;
+        const xOffset = (pageWidth - imgWidth) / 2;
+        const yOffset = 20 + (contentHeight - imgHeight) / 2;
+        pdf.addImage(imgData, "PNG", xOffset, yOffset, imgWidth, imgHeight);
+
+        // Footer
+        pdf.setDrawColor(61, 177, 172);
+        pdf.setLineWidth(0.3);
+        pdf.line(10, pageHeight - 8, pageWidth - 10, pageHeight - 8);
+        pdf.setTextColor(100, 116, 139);
+        pdf.setFontSize(8);
+        pdf.text("NDMO Leak Monitor - Confidential", pageWidth / 2, pageHeight - 4, { align: "center" });
+      }
+
+      // Save PDF
+      const timestamp = new Date().toISOString().slice(0, 10);
+      pdf.save(`rasid-dashboard-report-${timestamp}.pdf`);
+    } catch (err) {
+      console.error("PDF export failed:", err);
+    } finally {
+      setCurrentSlide(savedSlide);
+      if (wasAutoRotating) setAutoRotate(true);
+      setIsExporting(false);
+    }
+  }, [isExporting, autoRotate, currentSlide, presentationSlides]);
 
   // Auto-rotate slides
   useEffect(() => {
@@ -906,6 +1019,8 @@ export default function Dashboard() {
             monthlyTrend={monthlyTrend}
             recentLeaks={recentLeaks}
             stats={stats}
+            onExportPdf={exportPresentationPdf}
+            isExporting={isExporting}
           />
         )}
       </AnimatePresence>
@@ -1329,7 +1444,10 @@ export default function Dashboard() {
         </PremiumCard>
       </div>
 
-      {/* ═══════════════════════════════════════════════════════════════
+        {/* ═══ SIXTH ROW: Monthly Comparison (MoM) ═══ */}
+      <MonthlyComparison />
+
+      {/* ═════════════════════════════════════════════════════════════
          DETAIL MODALS — ALL PRESERVED
          ═══════════════════════════════════════════════════════════════ */}
 

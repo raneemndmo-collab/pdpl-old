@@ -42,6 +42,7 @@ import {
   getAlertHistory,
   getRetentionPolicies,
   updateRetentionPolicy,
+  getMonthlyComparison,
 } from "./db";
 import { triggerJob, toggleJobStatus } from "./scheduler";
 import { broadcastNotification } from "./websocket";
@@ -420,6 +421,21 @@ export const appRouter = router({
         };
       }
       return stats;
+    }),
+    monthlyComparison: publicProcedure.query(async () => {
+      const data = await getMonthlyComparison();
+      if (!data) {
+        const emptyMonth = {
+          name: "", nameEn: "", year: 0,
+          totalLeaks: 0, totalRecords: 0, criticalCount: 0,
+          newCount: 0, resolvedCount: 0,
+          telegramCount: 0, darkwebCount: 0, pasteCount: 0,
+          sectors: [] as { sector: string | null; count: number }[],
+          daily: [] as { day: string; count: number }[],
+        };
+        return { currentMonth: emptyMonth, previousMonth: emptyMonth };
+      }
+      return data;
     }),
   }),
 

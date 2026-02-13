@@ -334,6 +334,109 @@ export async function getDashboardStats() {
   };
 }
 
+// ─── Monthly Comparison (MoM) ──────────────────────────────────
+
+export async function getMonthlyComparison() {
+  const db = await getDb();
+  if (!db) return null;
+
+  const now = new Date();
+  const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const prevMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const currentMonthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+  const prevMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59);
+
+  // Current month stats
+  const [currentStats] = await db.select({
+    totalLeaks: sql<number>`COUNT(*)`,
+    totalRecords: sql<number>`COALESCE(SUM(recordCount), 0)`,
+    criticalCount: sql<number>`SUM(CASE WHEN recordCount >= 10000 THEN 1 ELSE 0 END)`,
+    newCount: sql<number>`SUM(CASE WHEN status = 'new' THEN 1 ELSE 0 END)`,
+    resolvedCount: sql<number>`SUM(CASE WHEN status = 'reported' THEN 1 ELSE 0 END)`,
+    telegramCount: sql<number>`SUM(CASE WHEN source = 'telegram' THEN 1 ELSE 0 END)`,
+    darkwebCount: sql<number>`SUM(CASE WHEN source = 'darkweb' THEN 1 ELSE 0 END)`,
+    pasteCount: sql<number>`SUM(CASE WHEN source = 'paste' THEN 1 ELSE 0 END)`,
+  }).from(leaks).where(sql`detectedAt >= ${currentMonthStart.toISOString()} AND detectedAt <= ${currentMonthEnd.toISOString()}`);
+
+  // Previous month stats
+  const [prevStats] = await db.select({
+    totalLeaks: sql<number>`COUNT(*)`,
+    totalRecords: sql<number>`COALESCE(SUM(recordCount), 0)`,
+    criticalCount: sql<number>`SUM(CASE WHEN recordCount >= 10000 THEN 1 ELSE 0 END)`,
+    newCount: sql<number>`SUM(CASE WHEN status = 'new' THEN 1 ELSE 0 END)`,
+    resolvedCount: sql<number>`SUM(CASE WHEN status = 'reported' THEN 1 ELSE 0 END)`,
+    telegramCount: sql<number>`SUM(CASE WHEN source = 'telegram' THEN 1 ELSE 0 END)`,
+    darkwebCount: sql<number>`SUM(CASE WHEN source = 'darkweb' THEN 1 ELSE 0 END)`,
+    pasteCount: sql<number>`SUM(CASE WHEN source = 'paste' THEN 1 ELSE 0 END)`,
+  }).from(leaks).where(sql`detectedAt >= ${prevMonthStart.toISOString()} AND detectedAt <= ${prevMonthEnd.toISOString()}`);
+
+  // Current month sector distribution
+  const currentSectors = await db.select({
+    sector: leaks.sectorAr,
+    count: sql<number>`COUNT(*)`,
+  }).from(leaks)
+    .where(sql`detectedAt >= ${currentMonthStart.toISOString()} AND detectedAt <= ${currentMonthEnd.toISOString()}`)
+    .groupBy(leaks.sectorAr).orderBy(sql`COUNT(*) DESC`).limit(8);
+
+  // Previous month sector distribution
+  const prevSectors = await db.select({
+    sector: leaks.sectorAr,
+    count: sql<number>`COUNT(*)`,
+  }).from(leaks)
+    .where(sql`detectedAt >= ${prevMonthStart.toISOString()} AND detectedAt <= ${prevMonthEnd.toISOString()}`)
+    .groupBy(leaks.sectorAr).orderBy(sql`COUNT(*) DESC`).limit(8);
+
+  // Daily trend for current and previous month
+  const currentDaily = await db.select({
+    day: sql<string>`DATE_FORMAT(detectedAt, '%Y-%m-%d')`,
+    count: sql<number>`COUNT(*)`,
+  }).from(leaks)
+    .where(sql`detectedAt >= ${currentMonthStart.toISOString()} AND detectedAt <= ${currentMonthEnd.toISOString()}`)
+    .groupBy(sql`DATE_FORMAT(detectedAt, '%Y-%m-%d')`).orderBy(sql`DATE_FORMAT(detectedAt, '%Y-%m-%d')`);
+
+  const prevDaily = await db.select({
+    day: sql<string>`DATE_FORMAT(detectedAt, '%Y-%m-%d')`,
+    count: sql<number>`COUNT(*)`,
+  }).from(leaks)
+    .where(sql`detectedAt >= ${prevMonthStart.toISOString()} AND detectedAt <= ${prevMonthEnd.toISOString()}`)
+    .groupBy(sql`DATE_FORMAT(detectedAt, '%Y-%m-%d')`).orderBy(sql`DATE_FORMAT(detectedAt, '%Y-%m-%d')`);
+
+  const monthNames = ["يناير", "فبراير", "مارس", "أبريل", "مايو", "يونيو", "يوليو", "أغسطس", "سبتمبر", "أكتوبر", "نوفمبر", "ديسمبر"];
+
+  return {
+    currentMonth: {
+      name: monthNames[now.getMonth()],
+      nameEn: now.toLocaleString("en", { month: "long" }),
+      year: now.getFullYear(),
+      totalLeaks: Number(currentStats?.totalLeaks ?? 0),
+      totalRecords: Number(currentStats?.totalRecords ?? 0),
+      criticalCount: Number(currentStats?.criticalCount ?? 0),
+      newCount: Number(currentStats?.newCount ?? 0),
+      resolvedCount: Number(currentStats?.resolvedCount ?? 0),
+      telegramCount: Number(currentStats?.telegramCount ?? 0),
+      darkwebCount: Number(currentStats?.darkwebCount ?? 0),
+      pasteCount: Number(currentStats?.pasteCount ?? 0),
+      sectors: currentSectors.map(r => ({ sector: r.sector, count: Number(r.count) })),
+      daily: currentDaily.map(r => ({ day: r.day, count: Number(r.count) })),
+    },
+    previousMonth: {
+      name: monthNames[now.getMonth() === 0 ? 11 : now.getMonth() - 1],
+      nameEn: new Date(now.getFullYear(), now.getMonth() - 1, 1).toLocaleString("en", { month: "long" }),
+      year: now.getMonth() === 0 ? now.getFullYear() - 1 : now.getFullYear(),
+      totalLeaks: Number(prevStats?.totalLeaks ?? 0),
+      totalRecords: Number(prevStats?.totalRecords ?? 0),
+      criticalCount: Number(prevStats?.criticalCount ?? 0),
+      newCount: Number(prevStats?.newCount ?? 0),
+      resolvedCount: Number(prevStats?.resolvedCount ?? 0),
+      telegramCount: Number(prevStats?.telegramCount ?? 0),
+      darkwebCount: Number(prevStats?.darkwebCount ?? 0),
+      pasteCount: Number(prevStats?.pasteCount ?? 0),
+      sectors: prevSectors.map(r => ({ sector: r.sector, count: Number(r.count) })),
+      daily: prevDaily.map(r => ({ day: r.day, count: Number(r.count) })),
+    },
+  };
+}
+
 // ─── Audit Log ──────────────────────────────────────────────────
 
 export async function logAudit(

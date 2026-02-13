@@ -962,3 +962,40 @@
 - [x] Aurora background + dot grid in presentation mode
 - [x] Run all 213 tests - all passing (11 test files)
 - [x] Checkpoint and deliver
+
+## Phase 75: PDF Export, Push Notifications, Month-over-Month Comparison
+
+### A. Presentation PDF Export
+- [x] Install html2canvas and jspdf dependencies
+- [x] Add PDF export button in Presentation Mode controls
+- [x] Capture each slide as canvas image using html2canvas
+- [x] Generate multi-page PDF with jspdf (A4 landscape)
+- [x] Add Rasid branding header/footer to each PDF page
+- [x] Show export progress indicator during generation (isExporting state)
+- [x] Download PDF with timestamped filename (rasid-presentation-YYYY-MM-DD.pdf)
+
+### B. Push Notifications for Critical Leaks
+- [x] Enhanced NotificationBell with severity-based sound alerts (Web Audio API)
+- [x] Added filter tabs (all/critical/high/medium/low) in notification dropdown
+- [x] Added severity badges with color coding (red/orange/yellow/blue)
+- [x] Added animated bell shake on new critical notifications
+- [x] Added browser push notification support (Notification API)
+- [x] Added real-time notification polling with auto-play sound
+- [x] Added mark all read and individual mark read functionality
+- [x] Existing WebSocket integration preserved
+
+### C. Month-over-Month Comparison Dashboard
+- [x] Create getMonthlyComparison() in db.ts with current/previous month queries
+- [x] Add dashboard.monthlyComparison tRPC endpoint
+- [x] Build MonthlyComparison component with animated comparison bars
+- [x] Add DeltaBadge with up/down/same indicators and percentage
+- [x] Add MiniSparkline for daily trend visualization
+- [x] Add SectorComparison with side-by-side bars
+- [x] Color-coded improvements (green) vs regressions (red)
+- [x] Add overall summary card with trend analysis
+- [x] Integrated as 6th row in Dashboard page
+
+### D. Testing & Delivery
+- [x] Write vitest tests for Phase 75 (12 tests in phase75.test.ts)
+- [x] Run all 225 tests across 12 files - all passing
+- [x] Checkpoint and deliver
