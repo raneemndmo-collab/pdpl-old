@@ -1,15 +1,15 @@
-# ─── Build Stage ───────────────────────────────────────
-FROM node:22-alpine AS builder
+# ─── Single Stage Build for Railway ───────────────────
+FROM node:22-alpine
 
 WORKDIR /app
 
-# Install pnpm
-RUN corepack enable && corepack prepare pnpm@latest --activate
+# Install pnpm via npm (avoids corepack issues)
+RUN npm install -g pnpm@9
 
 # Copy package files
 COPY package.json pnpm-lock.yaml ./
 
-# Install dependencies
+# Install all dependencies
 RUN pnpm install --frozen-lockfile
 
 # Copy source code
@@ -18,22 +18,8 @@ COPY . .
 # Build frontend + backend
 RUN pnpm build
 
-# ─── Production Stage ─────────────────────────────────
-FROM node:22-alpine AS runner
-
-WORKDIR /app
-
-# Install pnpm
-RUN corepack enable && corepack prepare pnpm@latest --activate
-
-# Copy package files and install production deps only
-COPY package.json pnpm-lock.yaml ./
-RUN pnpm install --frozen-lockfile --prod
-
-# Copy built assets from builder (dist contains both server + client/public)
-COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/drizzle ./drizzle
-COPY --from=builder /app/seed-users.mjs ./seed-users.mjs
+# Prune dev dependencies after build
+RUN pnpm prune --prod
 
 # Expose port (Railway sets PORT env var)
 EXPOSE ${PORT:-3000}
