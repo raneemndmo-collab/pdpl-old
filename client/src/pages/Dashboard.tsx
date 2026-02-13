@@ -688,11 +688,13 @@ function PremiumCard({ children, className = "", onClick, delay = 0, glow }: { c
       whileHover={onClick ? { y: -4, scale: 1.02, transition: { duration: 0.3, ease: "easeOut" } } : undefined}
       onClick={onClick}
       className={`
-        relative rounded-2xl border border-border/50 overflow-hidden
-        bg-card/80 dark:bg-[rgba(26,37,80,0.7)]
-        backdrop-blur-xl dark:border-[rgba(61,177,172,0.1)]
+        relative rounded-2xl border overflow-hidden
+        bg-white dark:bg-[rgba(26,37,80,0.7)]
+        border-[#e2e5ef] dark:border-[rgba(61,177,172,0.1)]
+        shadow-[0_1px_3px_rgba(39,52,112,0.04),0_4px_16px_rgba(39,52,112,0.04)] dark:shadow-none
+        dark:backdrop-blur-xl
         transition-all duration-400 hover-shine card-3d-lift
-        ${onClick ? "cursor-pointer hover:shadow-[0_16px_48px_rgba(22,42,84,0.12),0_0_0_1px_rgba(61,177,172,0.08)] dark:hover:shadow-[0_16px_48px_rgba(0,0,0,0.4),0_0_20px_rgba(61,177,172,0.1)] hover:border-[rgba(61,177,172,0.2)] dark:hover:border-[rgba(61,177,172,0.3)]" : ""}
+        ${onClick ? "cursor-pointer hover:shadow-[0_4px_20px_rgba(39,52,112,0.08)] dark:hover:shadow-[0_16px_48px_rgba(0,0,0,0.4),0_0_20px_rgba(61,177,172,0.1)] hover:border-[rgba(30,58,138,0.15)] dark:hover:border-[rgba(61,177,172,0.3)]" : ""}
         ${className}
       `}
       style={glow ? { boxShadow: `0 0 0 1px ${glow}` } : undefined}
@@ -974,7 +976,7 @@ export default function Dashboard() {
       <div className="space-y-6 p-1">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="bg-card/80 dark:bg-[rgba(26,37,80,0.7)] rounded-2xl border border-border/50 dark:border-[rgba(61,177,172,0.1)] p-6 animate-pulse">
+            <div key={i} className="bg-white dark:bg-[rgba(26,37,80,0.7)] rounded-2xl border border-[#e2e5ef] dark:border-[rgba(61,177,172,0.1)] p-6 animate-pulse">
               <div className="flex items-center justify-between mb-4">
                 <div className="w-20 h-4 bg-muted/50 rounded-lg" />
                 <div className="w-11 h-11 bg-muted/30 rounded-xl" />
@@ -1033,7 +1035,7 @@ export default function Dashboard() {
       >
         <div className="flex items-center gap-4">
           <motion.div
-            className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[rgba(61,177,172,0.15)] to-[rgba(39,52,112,0.1)] flex items-center justify-center border border-[rgba(61,177,172,0.15)]"
+            className={`w-12 h-12 rounded-2xl flex items-center justify-center border ${isDark ? 'bg-gradient-to-br from-[rgba(61,177,172,0.15)] to-[rgba(39,52,112,0.1)] border-[rgba(61,177,172,0.15)]' : 'bg-[#f0f3f8] border-[#e2e5ef]'}`}
             whileHover={{ rotate: -5, scale: 1.08 }}
             transition={{ type: "spring", stiffness: 300 }}
             style={{ boxShadow: isDark ? "0 0 20px rgba(61, 177, 172, 0.15)" : "0 4px 16px rgba(22, 42, 84, 0.08)" }}
@@ -1049,7 +1051,7 @@ export default function Dashboard() {
           {/* Presentation Mode Button */}
           <motion.button
             onClick={enterPresentationMode}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-[rgba(100,89,167,0.15)] to-[rgba(61,177,172,0.1)] text-primary text-xs font-semibold border border-[rgba(100,89,167,0.2)] hover:from-[rgba(100,89,167,0.25)] hover:to-[rgba(61,177,172,0.15)] transition-all"
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-primary text-xs font-semibold border transition-all ${isDark ? 'bg-gradient-to-r from-[rgba(100,89,167,0.15)] to-[rgba(61,177,172,0.1)] border-[rgba(100,89,167,0.2)] hover:from-[rgba(100,89,167,0.25)] hover:to-[rgba(61,177,172,0.15)]' : 'bg-[#f0f3f8] border-[#d8dce8] hover:bg-[#e2e5ef]'}`}
             whileHover={{ scale: 1.03 }}
             whileTap={{ scale: 0.97 }}
             title="وضع العرض التقديمي - مثالي للشاشات الكبيرة والاجتماعات"
@@ -1057,14 +1059,14 @@ export default function Dashboard() {
             <Monitor className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">عرض تقديمي</span>
           </motion.button>
-          <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-[rgba(61,177,172,0.08)] border border-[rgba(61,177,172,0.15)]">
+          <div className={`flex items-center gap-2 px-3 py-2 rounded-xl border ${isDark ? 'bg-[rgba(61,177,172,0.08)] border-[rgba(61,177,172,0.15)]' : 'bg-[rgba(16,185,129,0.06)] border-[rgba(16,185,129,0.15)]'}`}>
             <motion.div
-              className="w-2 h-2 rounded-full bg-[#3DB1AC]"
+              className={`w-2 h-2 rounded-full ${isDark ? 'bg-[#3DB1AC]' : 'bg-[#10b981]'}`}
               animate={{ scale: [1, 1.3, 1], opacity: [0.7, 1, 0.7] }}
               transition={{ duration: 2, repeat: Infinity }}
-              style={{ boxShadow: "0 0 8px rgba(61, 177, 172, 0.5)" }}
+              style={{ boxShadow: isDark ? "0 0 8px rgba(61, 177, 172, 0.5)" : "0 0 6px rgba(16, 185, 129, 0.4)" }}
             />
-            <span className="text-xs text-[#3DB1AC] font-semibold">مباشر</span>
+            <span className={`text-xs font-semibold ${isDark ? 'text-[#3DB1AC]' : 'text-[#10b981]'}`}>مباشر</span>
           </div>
           <span className="text-[10px] text-muted-foreground hidden sm:block">
             <Clock className="w-3 h-3 inline ml-1" />
@@ -1072,7 +1074,7 @@ export default function Dashboard() {
           </span>
           <motion.button
             onClick={handleRefresh}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[rgba(61,177,172,0.1)] text-[#3DB1AC] text-xs font-semibold border border-[rgba(61,177,172,0.15)] hover:bg-[rgba(61,177,172,0.15)] transition-all"
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold border transition-all ${isDark ? 'bg-[rgba(61,177,172,0.1)] text-[#3DB1AC] border-[rgba(61,177,172,0.15)] hover:bg-[rgba(61,177,172,0.15)]' : 'bg-[#f0f3f8] text-[#1e3a8a] border-[#d8dce8] hover:bg-[#e2e5ef]'}`}
             whileHover={{ scale: 1.03 }}
             whileTap={{ scale: 0.97 }}
           >
@@ -1225,11 +1227,11 @@ export default function Dashboard() {
                   <motion.div
                     key={sec.sector}
                     onClick={() => setActiveModal("sectors")}
-                    className="flex items-center gap-3 p-3.5 rounded-xl bg-secondary/20 dark:bg-[rgba(26,37,80,0.5)] border border-border/30 dark:border-[rgba(61,177,172,0.08)] cursor-pointer hover:border-primary/20 dark:hover:border-[rgba(61,177,172,0.25)] transition-all"
+                    className="flex items-center gap-3 p-3.5 rounded-xl bg-[#f5f7fb] dark:bg-[rgba(26,37,80,0.5)] border border-[#e2e5ef] dark:border-[rgba(61,177,172,0.08)] cursor-pointer hover:border-[rgba(30,58,138,0.15)] dark:hover:border-[rgba(61,177,172,0.25)] transition-all"
                     whileHover={{ x: -3, scale: 1.01 }}
                   >
                     <motion.div
-                      className="w-10 h-10 rounded-xl bg-primary/10 dark:bg-[rgba(61,177,172,0.1)] flex items-center justify-center shrink-0"
+                      className="w-10 h-10 rounded-xl bg-[rgba(30,58,138,0.06)] dark:bg-[rgba(61,177,172,0.1)] flex items-center justify-center shrink-0"
                       whileHover={{ rotate: -8 }}
                     >
                       <SIcon className="w-5 h-5 text-primary" />

@@ -285,7 +285,7 @@ export default function ScheduledReports() {
               >
                 <div className="space-y-4 text-sm rtl">
                   <p className="text-muted-foreground text-center -mt-2 mb-4">{report.name}</p>
-                  <div className="grid grid-cols-2 gap-x-4 gap-y-3 bg-black/10 dark:bg-white/5 p-4 rounded-lg">
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-3 bg-[#f5f7fb] dark:bg-white/5 p-4 rounded-lg">
                     <div className="font-semibold text-muted-foreground">الحالة</div>
                     <div className={`font-bold ${report.isEnabled ? "text-emerald-400" : "text-zinc-400"}`}>
                       {report.isEnabled ? "نشط" : "متوقف"}

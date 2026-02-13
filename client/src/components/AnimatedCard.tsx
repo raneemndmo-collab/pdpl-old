@@ -76,8 +76,9 @@ export function AnimatedCard({
       }
       className={`
         relative rounded-2xl border overflow-hidden
-        bg-card/80 dark:bg-[rgba(26,37,80,0.7)]
-        border-border/50 dark:border-[rgba(61,177,172,0.1)]
+        bg-white dark:bg-[rgba(26,37,80,0.7)]
+        border-[#e2e5ef] dark:border-[rgba(61,177,172,0.1)]
+        shadow-[0_1px_3px_rgba(39,52,112,0.04)] dark:shadow-none
         backdrop-blur-xl
         transition-[border-color,box-shadow] duration-400
         ${onClick ? "cursor-pointer" : ""}

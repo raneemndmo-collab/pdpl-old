@@ -999,3 +999,18 @@
 - [x] Write vitest tests for Phase 75 (12 tests in phase75.test.ts)
 - [x] Run all 225 tests across 12 files - all passing
 - [x] Checkpoint and deliver
+
+## Phase 76: 1:1 Light Theme Replication from design.rasid.vip
+
+- [x] Analyze design.rasid.vip - extract exact colors via console CSS extraction
+- [x] Extract exact sidebar colors (#FFFFFF bg, #e2e5ef border, nav items #5a6478)
+- [x] Extract exact header bar style (bg-white/90, border-b #e2e5ef)
+- [x] Extract exact card styles (white bg, shadow-[0_1px_3px_rgba(39,52,112,0.04)], rounded-2xl)
+- [x] Extract exact typography (Inter/Noto Sans Arabic, #1c2833 text)
+- [x] Rewrite light theme CSS variables to match exactly (background #F0F3F8)
+- [x] Update DashboardLayout sidebar to white in light mode (matching design.rasid.vip)
+- [x] Update DashboardLayout header to white/clean in light mode
+- [x] Update Dashboard cards and stats to match exactly (PremiumCard, loading skeleton)
+- [x] Update all other pages for consistency (Leaks, ScheduledReports, AnimatedCard)
+- [x] Verify visual match with screenshots - confirmed matching
+- [x] Run all 225 tests - all passing (12 test files)

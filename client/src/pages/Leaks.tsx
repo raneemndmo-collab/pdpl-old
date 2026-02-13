@@ -337,7 +337,7 @@ export default function Leaks() {
           return (
             <motion.div key={stat.label} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
               <Card
-                className={`border ${stat.borderColor} ${stat.bgColor} cursor-pointer hover:scale-[1.03] transition-all duration-300 dark:bg-[rgba(26,37,80,0.6)] dark:backdrop-blur-xl dark:border-[rgba(61,177,172,0.12)] hover:shadow-lg hover:shadow-primary/5 group relative overflow-hidden`}
+                className={`border ${stat.borderColor} ${stat.bgColor} cursor-pointer hover:scale-[1.03] transition-all duration-300 bg-white dark:bg-[rgba(26,37,80,0.6)] dark:backdrop-blur-xl border-[#e2e5ef] dark:border-[rgba(61,177,172,0.12)] hover:shadow-lg hover:shadow-primary/5 shadow-[0_1px_3px_rgba(39,52,112,0.04)] dark:shadow-none group relative overflow-hidden`}
                 onClick={() => setStatsModal({ title: stat.label, leaks: stat.filter() })}
               >
                 {/* Shimmer effect */}
@@ -361,7 +361,7 @@ export default function Leaks() {
       </div>
 
       {/* Filters */}
-      <Card className="border-border dark:bg-[rgba(22,33,70,0.6)] dark:backdrop-blur-xl dark:border-[rgba(61,177,172,0.1)]">
+      <Card className="bg-white dark:bg-[rgba(22,33,70,0.6)] dark:backdrop-blur-xl border-[#e2e5ef] dark:border-[rgba(61,177,172,0.1)] shadow-[0_1px_3px_rgba(39,52,112,0.04)] dark:shadow-none">
         <CardContent className="p-4">
           <div className="flex flex-wrap gap-3">
             <div className="flex-1 min-w-[200px]">
@@ -430,7 +430,7 @@ export default function Leaks() {
               transition={{ delay: idx * 0.02 }}
             >
               <Card
-                className="border-border hover:border-primary/30 cursor-pointer transition-all duration-300 hover:shadow-lg hover:shadow-primary/5 dark:bg-[rgba(22,33,70,0.5)] dark:backdrop-blur-xl dark:border-[rgba(61,177,172,0.12)] dark:hover:border-[rgba(61,177,172,0.3)] dark:hover:bg-[rgba(26,37,80,0.6)] group relative overflow-hidden"
+                className="bg-white dark:bg-[rgba(22,33,70,0.5)] dark:backdrop-blur-xl border-[#e2e5ef] dark:border-[rgba(61,177,172,0.12)] hover:border-[rgba(30,58,138,0.15)] dark:hover:border-[rgba(61,177,172,0.3)] dark:hover:bg-[rgba(26,37,80,0.6)] cursor-pointer transition-all duration-300 hover:shadow-lg hover:shadow-primary/5 shadow-[0_1px_3px_rgba(39,52,112,0.04)] dark:shadow-none group relative overflow-hidden"
                 onClick={() => { setSelectedLeak(leak.leakId); setActiveTab("overview"); }}
               >
                 <CardContent className="p-4">
