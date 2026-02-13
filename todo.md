@@ -1107,3 +1107,11 @@
 - [x] Fix phase75 test failures (DB-dependent tests)
 - [x] All 270 tests passing across 14 files
 - [x] Update todo.md and checkpoint
+
+## Phase 79: Feed Platform with All New Research Incidents
+- [x] Review database schema for leaks table columns
+- [x] Create insertion script for 46 new incidents with ALL fields
+- [x] Insert all 46 new incidents into the database (512 total)
+- [x] Enrich new incidents with evidence chain records (138 new, 967 total)
+- [x] Verify all new incidents appear correctly in the platform UI
+- [x] Run tests (270/270 passed) and save checkpoint
