@@ -30,10 +30,10 @@ RUN corepack enable && corepack prepare pnpm@latest --activate
 COPY package.json pnpm-lock.yaml ./
 RUN pnpm install --frozen-lockfile --prod
 
-# Copy built assets from builder
+# Copy built assets from builder (dist contains both server + client/public)
 COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/client/dist ./client/dist
 COPY --from=builder /app/drizzle ./drizzle
+COPY --from=builder /app/seed-users.mjs ./seed-users.mjs
 
 # Expose port (Railway sets PORT env var)
 EXPOSE ${PORT:-3000}
