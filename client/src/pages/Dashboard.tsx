@@ -22,6 +22,11 @@ import LeakDetailDrilldown from "@/components/LeakDetailDrilldown";
 import MonthlyComparison from "@/components/MonthlyComparison";
 import { DetailModal } from "@/components/DetailModal";
 import { useTheme } from "@/contexts/ThemeContext";
+import TrendPredictions from "@/components/TrendPredictions";
+import ExecutiveSummary from "@/components/ExecutiveSummary";
+import ActivityFeed from "@/components/ActivityFeed";
+import WorldHeatmap from "@/components/WorldHeatmap";
+import ExportCenter from "@/components/ExportCenter";
 
 /* ═══ PII Type Arabic Labels ═══ */
 const piiTypeLabels: Record<string, string> = {
@@ -715,6 +720,7 @@ export default function Dashboard() {
   const [activeModal, setActiveModal] = useState<string | null>(null);
   const [selectedLeak, setSelectedLeak] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [showExportCenter, setShowExportCenter] = useState(false);
   const { theme } = useTheme();
   const isDark = theme === "dark";
 
@@ -1048,6 +1054,17 @@ export default function Dashboard() {
           </div>
         </div>
         <div className="flex items-center gap-3">
+          {/* Export Center Button */}
+          <motion.button
+            onClick={() => setShowExportCenter(true)}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold border transition-all ${isDark ? 'bg-gradient-to-r from-[rgba(61,177,172,0.1)] to-[rgba(100,89,167,0.08)] border-[rgba(61,177,172,0.15)] hover:from-[rgba(61,177,172,0.2)] hover:to-[rgba(100,89,167,0.12)]' : 'bg-[#f0f3f8] border-[#d8dce8] hover:bg-[#e2e5ef] text-[#1e3a8a]'}`}
+            whileHover={{ scale: 1.03 }}
+            whileTap={{ scale: 0.97 }}
+            title="مركز التصدير - تصدير التقارير بصيغ متعددة"
+          >
+            <Download className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">تصدير</span>
+          </motion.button>
           {/* Presentation Mode Button */}
           <motion.button
             onClick={enterPresentationMode}
@@ -1448,6 +1465,37 @@ export default function Dashboard() {
 
         {/* ═══ SIXTH ROW: Monthly Comparison (MoM) ═══ */}
       <MonthlyComparison />
+
+      {/* ═══ SEVENTH ROW: Executive Summary ═══ */}
+      <ExecutiveSummary
+        totalLeaks={stats?.totalLeaks ?? 0}
+        newLeaks={stats?.newLeaks ?? 0}
+        totalRecords={stats?.totalRecords ?? 0}
+        sectorDistribution={sectorDistribution.map((s: any) => ({ sector: s.sector || '', count: s.count || 0, records: s.records || 0 }))}
+        monthlyTrend={monthlyTrend.map((m: any) => ({ yearMonth: m.yearMonth || '', count: m.count || 0 }))}
+      />
+
+      {/* ═══ EIGHTH ROW: AI Trend Predictions + Activity Feed ═══ */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <TrendPredictions
+          monthlyTrend={monthlyTrend.map((m: any) => ({ yearMonth: m.yearMonth || '', count: m.count || 0, records: m.records || 0 }))}
+          totalLeaks={stats?.totalLeaks ?? 0}
+          totalRecords={stats?.totalRecords ?? 0}
+          newLeaks={stats?.newLeaks ?? 0}
+        />
+        <ActivityFeed leaks={leaks} maxItems={15} />
+      </div>
+
+      {/* ═══ NINTH ROW: World Heatmap ═══ */}
+      <WorldHeatmap leaks={leaks} />
+
+      {/* ═══ Export Center Drawer ═══ */}
+      <ExportCenter
+        isOpen={showExportCenter}
+        onClose={() => setShowExportCenter(false)}
+        stats={stats}
+        leaks={leaks}
+      />
 
       {/* ═════════════════════════════════════════════════════════════
          DETAIL MODALS — ALL PRESERVED

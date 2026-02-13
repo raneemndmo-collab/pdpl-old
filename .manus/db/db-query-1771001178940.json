@@ -1,0 +1,24 @@
+{
+  "query": "SELECT \n  COUNT(*) as total,\n  SUM(screenshotUrls IS NOT NULL AND screenshotUrls != '[]' AND screenshotUrls != 'null') as has_screenshots,\n  SUM(description IS NOT NULL AND description != '') as has_description,\n  SUM(descriptionAr IS NOT NULL AND descriptionAr != '') as has_descriptionAr,\n  SUM(aiSummary IS NOT NULL AND aiSummary != '') as has_aiSummary,\n  SUM(aiSummaryAr IS NOT NULL AND aiSummaryAr != '') as has_aiSummaryAr,\n  SUM(sampleData IS NOT NULL AND sampleData != '[]') as has_sampleData,\n  SUM(sourceUrl IS NOT NULL AND sourceUrl != '') as has_sourceUrl,\n  SUM(threatActor IS NOT NULL) as has_threatActor,\n  SUM(breachMethod IS NOT NULL) as has_breachMethod,\n  SUM(region IS NOT NULL) as has_region,\n  SUM(latitude IS NOT NULL) as has_coords\nFROM leaks;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3yaEUUPpH7u5Dce.6de1e535cf2b --database huuT6g8hnnLTgdYvaqdH49 --execute SELECT \n  COUNT(*) as total,\n  SUM(screenshotUrls IS NOT NULL AND screenshotUrls != '[]' AND screenshotUrls != 'null') as has_screenshots,\n  SUM(description IS NOT NULL AND description != '') as has_description,\n  SUM(descriptionAr IS NOT NULL AND descriptionAr != '') as has_descriptionAr,\n  SUM(aiSummary IS NOT NULL AND aiSummary != '') as has_aiSummary,\n  SUM(aiSummaryAr IS NOT NULL AND aiSummaryAr != '') as has_aiSummaryAr,\n  SUM(sampleData IS NOT NULL AND sampleData != '[]') as has_sampleData,\n  SUM(sourceUrl IS NOT NULL AND sourceUrl != '') as has_sourceUrl,\n  SUM(threatActor IS NOT NULL) as has_threatActor,\n  SUM(breachMethod IS NOT NULL) as has_breachMethod,\n  SUM(region IS NOT NULL) as has_region,\n  SUM(latitude IS NOT NULL) as has_coords\nFROM leaks;",
+  "rows": [
+    {
+      "total": "449",
+      "has_screenshots": "265",
+      "has_description": "449",
+      "has_descriptionAr": "449",
+      "has_aiSummary": "233",
+      "has_aiSummaryAr": "233",
+      "has_sampleData": "265",
+      "has_sourceUrl": "265",
+      "has_threatActor": "265",
+      "has_breachMethod": "265",
+      "has_region": "248",
+      "has_coords": "233"
+    }
+  ],
+  "messages": [],
+  "stdout": "total\thas_screenshots\thas_description\thas_descriptionAr\thas_aiSummary\thas_aiSummaryAr\thas_sampleData\thas_sourceUrl\thas_threatActor\thas_breachMethod\thas_region\thas_coords\n449\t265\t449\t449\t233\t233\t265\t265\t265\t265\t248\t233\n",
+  "stderr": "",
+  "execution_time_ms": 1541
+}

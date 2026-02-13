@@ -1,0 +1,15 @@
+{
+  "query": "SELECT \n  COUNT(*) as total_leaks,\n  SUM(CASE WHEN screenshotUrls IS NOT NULL AND screenshotUrls != '[]' AND screenshotUrls != 'null' THEN 1 ELSE 0 END) as with_screenshots,\n  SUM(CASE WHEN screenshotUrls IS NULL OR screenshotUrls = '[]' OR screenshotUrls = 'null' THEN 1 ELSE 0 END) as without_screenshots\nFROM leaks;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3yaEUUPpH7u5Dce.6de1e535cf2b --database huuT6g8hnnLTgdYvaqdH49 --execute SELECT \n  COUNT(*) as total_leaks,\n  SUM(CASE WHEN screenshotUrls IS NOT NULL AND screenshotUrls != '[]' AND screenshotUrls != 'null' THEN 1 ELSE 0 END) as with_screenshots,\n  SUM(CASE WHEN screenshotUrls IS NULL OR screenshotUrls = '[]' OR screenshotUrls = 'null' THEN 1 ELSE 0 END) as without_screenshots\nFROM leaks;",
+  "rows": [
+    {
+      "total_leaks": "449",
+      "with_screenshots": "265",
+      "without_screenshots": "184"
+    }
+  ],
+  "messages": [],
+  "stdout": "total_leaks\twith_screenshots\twithout_screenshots\n449\t265\t184\n",
+  "stderr": "",
+  "execution_time_ms": 1617
+}

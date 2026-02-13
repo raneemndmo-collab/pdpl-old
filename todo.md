@@ -1044,3 +1044,66 @@
 - [x] Write vitest tests for Phase 77 (23 tests in phase77.test.ts)
 - [x] Run all 248 tests across 13 files - all passing
 - [x] Checkpoint and deliver
+
+## URGENT: Missing Leak Images Restoration
+- [x] Investigate where leak incident images are stored (DB, S3, seed data)
+- [x] Identify all missing images from leak incidents
+- [x] Restore all missing images to their original state (حرفياً)
+- [x] Verify all leak detail pages show images correctly
+- [x] Audit ALL leak fields: screenshots, descriptions, AI summaries, sample data, source URLs, threat actors, breach methods, geo data
+- [x] Restore ALL missing data in every leak incident حرفياً
+- [x] Verify all leak detail pages show complete data
+
+## Phase 78: Mega Creative Upgrade
+
+### A. AI Trend Predictions
+- [x] Create TrendPredictions component with forecasting charts
+- [x] Add linear regression prediction with confidence intervals
+- [x] Show risk level indicator (rising/stable/declining)
+- [x] Add AI-generated narrative summary of trends
+- [x] Integrate into Dashboard
+
+### B. Interactive World Heatmap
+- [x] Create WorldHeatmap component using SVG world map
+- [x] Add country-level data aggregation for leak sources
+- [x] Implement color gradient based on leak density
+- [x] Add hover tooltips showing country name, leak count, top categories
+- [x] Add region filtering (Middle East, Europe, Asia, etc.)
+- [x] Integrate into Dashboard
+
+### C. Advanced Export Center
+- [x] Create ExportCenter component as a modal/drawer
+- [x] Support PDF, Excel, CSV export formats
+- [x] Add export templates (executive, detailed, compliance)
+- [x] Add Rasid branding to exports
+- [x] Integrate export button in Dashboard header
+
+### D. Real-time Activity Feed
+- [x] Create ActivityFeed component with live event stream
+- [x] Show recent actions: leaks detected, scans completed, alerts triggered
+- [x] Add severity-based color coding and icons
+- [x] Add time-relative stamps (Arabic)
+- [x] Add filtering by event type
+- [x] Integrate into Dashboard
+
+### E. Executive Summary Widgets
+- [x] Create RiskScoreGauge — animated circular gauge (0-100)
+- [x] Create ComplianceMeter — PDPL compliance percentage
+- [x] Create TopThreatsCard — top 5 active threats
+- [x] Create ResponseTimeCard — average incident response time
+- [x] Create SectorBreakdownDonut — interactive donut chart
+- [x] Integrate all widgets into Dashboard
+
+### F. Data Restoration (URGENT)
+- [x] Restored screenshots/images for all 449 leaks (184 were missing)
+- [x] Restored sample data for all 449 leaks
+- [x] Restored source URLs, threat actors, breach methods, prices
+- [x] Restored AI summaries and recommendations (216 were missing)
+- [x] Restored geographic regions and coordinates (201/216 were missing)
+- [x] Verified all data displays correctly in UI (Evidence, Samples, AI tabs)
+
+### G. Testing
+- [x] Write comprehensive vitest tests for Phase 78 (32 new tests)
+- [x] Fix phase75 test failures (DB-dependent tests)
+- [x] All 270 tests passing across 14 files
+- [x] Update todo.md and checkpoint

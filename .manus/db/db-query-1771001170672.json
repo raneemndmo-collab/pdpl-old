@@ -1,0 +1,30 @@
+{
+  "query": "SELECT \n  COUNT(*) as total,\n  SUM(CASE WHEN screenshotUrls IS NOT NULL AND screenshotUrls != '[]' AND screenshotUrls != 'null' THEN 1 ELSE 0 END) as has_screenshots,\n  SUM(CASE WHEN description IS NOT NULL AND description != '' THEN 1 ELSE 0 END) as has_description,\n  SUM(CASE WHEN descriptionAr IS NOT NULL AND descriptionAr != '' THEN 1 ELSE 0 END) as has_descriptionAr,\n  SUM(CASE WHEN aiSummary IS NOT NULL AND aiSummary != '' THEN 1 ELSE 0 END) as has_aiSummary,\n  SUM(CASE WHEN aiSummaryAr IS NOT NULL AND aiSummaryAr != '' THEN 1 ELSE 0 END) as has_aiSummaryAr,\n  SUM(CASE WHEN aiRecommendations IS NOT NULL AND aiRecommendations != '[]' THEN 1 ELSE 0 END) as has_aiRecs,\n  SUM(CASE WHEN aiRecommendationsAr IS NOT NULL AND aiRecommendationsAr != '[]' THEN 1 ELSE 0 END) as has_aiRecsAr,\n  SUM(CASE WHEN sampleData IS NOT NULL AND sampleData != '[]' THEN 1 ELSE 0 END) as has_sampleData,\n  SUM(CASE WHEN sourceUrl IS NOT NULL AND sourceUrl != '' THEN 1 ELSE 0 END) as has_sourceUrl,\n  SUM(CASE WHEN sourcePlatform IS NOT NULL THEN 1 ELSE 0 END) as has_sourcePlatform,\n  SUM(CASE WHEN threatActor IS NOT NULL THEN 1 ELSE 0 END) as has_threatActor,\n  SUM(CASE WHEN leakPrice IS NOT NULL THEN 1 ELSE 0 END) as has_price,\n  SUM(CASE WHEN breachMethod IS NOT NULL THEN 1 ELSE 0 END) as has_breachMethod,\n  SUM(CASE WHEN region IS NOT NULL THEN 1 ELSE 0 END) as has_region,\n  SUM(CASE WHEN latitude IS NOT NULL THEN 1 ELSE 0 END) as has_coordinates,\n  SUM(CASE WHEN aiConfidence IS NOT NULL THEN 1 ELSE 0 END) as has_aiConfidence,\n  SUM(CASE WHEN enrichedAt IS NOT NULL THEN 1 ELSE 0 END) as has_enrichedAt\nFROM leaks;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3yaEUUPpH7u5Dce.6de1e535cf2b --database huuT6g8hnnLTgdYvaqdH49 --execute SELECT \n  COUNT(*) as total,\n  SUM(CASE WHEN screenshotUrls IS NOT NULL AND screenshotUrls != '[]' AND screenshotUrls != 'null' THEN 1 ELSE 0 END) as has_screenshots,\n  SUM(CASE WHEN description IS NOT NULL AND description != '' THEN 1 ELSE 0 END) as has_description,\n  SUM(CASE WHEN descriptionAr IS NOT NULL AND descriptionAr != '' THEN 1 ELSE 0 END) as has_descriptionAr,\n  SUM(CASE WHEN aiSummary IS NOT NULL AND aiSummary != '' THEN 1 ELSE 0 END) as has_aiSummary,\n  SUM(CASE WHEN aiSummaryAr IS NOT NULL AND aiSummaryAr != '' THEN 1 ELSE 0 END) as has_aiSummaryAr,\n  SUM(CASE WHEN aiRecommendations IS NOT NULL AND aiRecommendations != '[]' THEN 1 ELSE 0 END) as has_aiRecs,\n  SUM(CASE WHEN aiRecommendationsAr IS NOT NULL AND aiRecommendationsAr != '[]' THEN 1 ELSE 0 END) as has_aiRecsAr,\n  SUM(CASE WHEN sampleData IS NOT NULL AND sampleData != '[]' THEN 1 ELSE 0 END) as has_sampleData,\n  SUM(CASE WHEN sourceUrl IS NOT NULL AND sourceUrl != '' THEN 1 ELSE 0 END) as has_sourceUrl,\n  SUM(CASE WHEN sourcePlatform IS NOT NULL THEN 1 ELSE 0 END) as has_sourcePlatform,\n  SUM(CASE WHEN threatActor IS NOT NULL THEN 1 ELSE 0 END) as has_threatActor,\n  SUM(CASE WHEN leakPrice IS NOT NULL THEN 1 ELSE 0 END) as has_price,\n  SUM(CASE WHEN breachMethod IS NOT NULL THEN 1 ELSE 0 END) as has_breachMethod,\n  SUM(CASE WHEN region IS NOT NULL THEN 1 ELSE 0 END) as has_region,\n  SUM(CASE WHEN latitude IS NOT NULL THEN 1 ELSE 0 END) as has_coordinates,\n  SUM(CASE WHEN aiConfidence IS NOT NULL THEN 1 ELSE 0 END) as has_aiConfidence,\n  SUM(CASE WHEN enrichedAt IS NOT NULL THEN 1 ELSE 0 END) as has_enrichedAt\nFROM leaks;",
+  "rows": [
+    {
+      "total": "449",
+      "has_screenshots": "265",
+      "has_description": "449",
+      "has_descriptionAr": "449",
+      "has_aiSummary": "233",
+      "has_aiSummaryAr": "233",
+      "has_aiRecs": "233",
+      "has_aiRecsAr": "233",
+      "has_sampleData": "265",
+      "has_sourceUrl": "265",
+      "has_sourcePlatform": "265",
+      "has_threatActor": "265",
+      "has_price": "265",
+      "has_breachMethod": "265",
+      "has_region": "248",
+      "has_coordinates": "233",
+      "has_aiConfidence": "233",
+      "has_enrichedAt": "233"
+    }
+  ],
+  "messages": [],
+  "stdout": "total\thas_screenshots\thas_description\thas_descriptionAr\thas_aiSummary\thas_aiSummaryAr\thas_aiRecs\thas_aiRecsAr\thas_sampleData\thas_sourceUrl\thas_sourcePlatform\thas_threatActor\thas_price\thas_breachMethod\thas_region\thas_coordinates\thas_aiConfidence\thas_enrichedAt\n449\t265\t449\t449\t233\t233\t233\t233\t265\t265\t265\t265\t265\t265\t248\t233\t233\t233\n",
+  "stderr": "",
+  "execution_time_ms": 1509
+}
