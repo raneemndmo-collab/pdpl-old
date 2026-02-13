@@ -44,6 +44,7 @@ import {
   Network,
   Sun,
   Moon,
+  Monitor,
   Bot,
   CheckCircle2,
   Scan,
@@ -186,7 +187,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const { user, isAuthenticated, loading, logout, isAdmin, ndmoRole } = useNdmoAuth();
-  const { theme, toggleTheme, switchable } = useTheme();
+  const { theme, themeMode, toggleTheme, switchable } = useTheme();
 
   // Get the platform userId for root admin check
   const platformUserId = (user as any)?.userId ?? "";
@@ -372,12 +373,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   <button
                     onClick={() => toggleGroup(group.id)}
                     className={`
-                      w-full flex items-center justify-between px-3 py-2 rounded-lg
+                      sidebar-group-header w-full flex items-center justify-between px-3 py-2 rounded-lg
                       text-xs font-semibold uppercase tracking-wider
-                      transition-all duration-200
                       ${isActive
                         ? isDark ? "text-[#3DB1AC] bg-[rgba(61,177,172,0.08)]" : "text-[#1e3a8a] bg-[rgba(30,58,138,0.06)]"
-                        : isDark ? "text-[#D4DDEF]/60 hover:text-[#D4DDEF] hover:bg-[rgba(61,177,172,0.06)]" : "text-[#5a6478] hover:text-[#1c2833] hover:bg-[rgba(30,58,138,0.04)]"
+                        : isDark ? "text-[#D4DDEF]/60" : "text-[#5a6478]"
                       }
                     `}
                   >
@@ -414,11 +414,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                                 whileHover={{ x: -2 }}
                                 whileTap={{ scale: 0.98 }}
                                 className={`
-                                  flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer
-                                  transition-all duration-200 group relative
+                                  sidebar-nav-item flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer
+                                  group relative
                                   ${isItemActive
-                                    ? isDark ? "bg-[rgba(61,177,172,0.12)] border border-[rgba(61,177,172,0.25)] text-[#3DB1AC]" : "bg-[rgba(30,58,138,0.06)] border border-[rgba(30,58,138,0.12)] text-[#1e3a8a]"
-                                    : isDark ? "text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-[rgba(61,177,172,0.06)]" : "text-[#5a6478] hover:text-[#1c2833] hover:bg-[rgba(30,58,138,0.04)]"
+                                    ? `sidebar-nav-item-active ${isDark ? 'border border-[rgba(61,177,172,0.25)]' : 'border border-[rgba(30,58,138,0.12)]'}`
+                                    : isDark ? 'text-sidebar-foreground/60' : 'text-[#5a6478]'
                                   }
                                 `}
                               >
@@ -430,9 +430,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                                     style={{ boxShadow: isDark ? '0 0 8px rgba(61, 177, 172, 0.4)' : '0 0 6px rgba(30, 58, 138, 0.2)' }}
                                   />
                                 )}
-                                <motion.div whileHover={{ rotate: -8 }} transition={{ type: "spring", stiffness: 300 }}>
+                                <div className="sidebar-nav-icon">
                                   <Icon className={`w-4.5 h-4.5 flex-shrink-0 ${isItemActive ? (isDark ? "text-[#3DB1AC]" : "text-[#1e3a8a]") : ""}`} />
-                                </motion.div>
+                                </div>
                                 {!collapsed && (
                                   <span className="text-[13px] font-medium whitespace-nowrap">{item.label}</span>
                                 )}
@@ -552,16 +552,25 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </div>
 
           <div className="flex items-center gap-2">
-            {/* Theme Toggle */}
+            {/* Theme Toggle — cycles: light → dark → auto → light */}
             {switchable && toggleTheme && (
               <Button
                 variant="ghost"
                 size="icon"
-                className="text-muted-foreground hover:text-foreground dark:hover:bg-[rgba(61,177,172,0.08)]"
+                className="text-muted-foreground hover:text-foreground dark:hover:bg-[rgba(61,177,172,0.08)] relative"
                 onClick={() => { toggleTheme(); playClick(); }}
-                title={theme === "dark" ? "الوضع الفاتح" : "الوضع الداكن"}
+                title={
+                  themeMode === "light" ? "الوضع الفاتح — انقر للتبديل إلى الداكن"
+                    : themeMode === "dark" ? "الوضع الداكن — انقر للتبديل إلى التلقائي"
+                    : "تلقائي (حسب النظام) — انقر للتبديل إلى الفاتح"
+                }
               >
-                {theme === "dark" ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+                {themeMode === "light" && <Sun className="w-4 h-4" />}
+                {themeMode === "dark" && <Moon className="w-4 h-4" />}
+                {themeMode === "auto" && <Monitor className="w-4 h-4" />}
+                {themeMode === "auto" && (
+                  <span className="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full bg-green-500 border border-background" />
+                )}
               </Button>
             )}
 

@@ -1,14 +1,13 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef } from "react";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Eye, EyeOff, Loader2, AlertCircle, Sun, Moon, Shield, Lock } from "lucide-react";
+import { Eye, EyeOff, Loader2, AlertCircle, Sun, Moon, Monitor, Shield, Lock, ArrowRight } from "lucide-react";
 import { useTheme } from "@/contexts/ThemeContext";
 
-// Full brand logos (with "منصة راصد" + "مكتب إدارة البيانات الوطنية")
-const RASID_LOGO_LIGHT = "https://files.manuscdn.com/user_upload_by_module/session_file/310519663296955420/tSiomIdoNdNFAtOB.png"; // Cream+Gold for dark bg
-const RASID_LOGO_DARK = "https://files.manuscdn.com/user_upload_by_module/session_file/310519663296955420/vyIfeykxwXasuonx.png"; // Navy+Gold for light bg
-// New transparent character images (7 variants)
+// Full brand logos
+const RASID_LOGO_LIGHT = "https://files.manuscdn.com/user_upload_by_module/session_file/310519663296955420/tSiomIdoNdNFAtOB.png";
+const RASID_LOGO_DARK = "https://files.manuscdn.com/user_upload_by_module/session_file/310519663296955420/vyIfeykxwXasuonx.png";
 const RASID_CHARACTERS = {
   armsCrossedShmagh: "https://files.manuscdn.com/user_upload_by_module/session_file/310519663296955420/qoUheMlVnqPiZdQe.png",
   waving: "https://files.manuscdn.com/user_upload_by_module/session_file/310519663296955420/trhmUCDmIUgvRfyf.png",
@@ -50,7 +49,6 @@ function ParticleBackground({ isDark }: { isDark: boolean }) {
     };
     window.addEventListener("resize", handleResize);
 
-    // Particles with SDAIA teal/purple hues
     const particles: Array<{
       x: number; y: number; z: number;
       vx: number; vy: number; vz: number;
@@ -69,12 +67,10 @@ function ParticleBackground({ isDark }: { isDark: boolean }) {
         vz: (Math.random() - 0.5) * 0.3,
         size: Math.random() * 3 + 1,
         opacity: Math.random() * 0.5 + 0.2,
-        // SDAIA teal-purple range: hue 170-270
         hue: 170 + Math.random() * 100,
       });
     }
 
-    // Floating orbs (large glowing spheres)
     const orbs: Array<{
       x: number; y: number; radius: number;
       vx: number; vy: number;
@@ -87,7 +83,6 @@ function ParticleBackground({ isDark }: { isDark: boolean }) {
         radius: Math.random() * 120 + 60,
         vx: (Math.random() - 0.5) * 0.3,
         vy: (Math.random() - 0.5) * 0.3,
-        // Alternate between teal (175) and purple (260)
         hue: i % 2 === 0 ? 175 + Math.random() * 15 : 255 + Math.random() * 15,
         opacity: isDark ? 0.06 + Math.random() * 0.04 : 0.03 + Math.random() * 0.03,
       });
@@ -99,7 +94,6 @@ function ParticleBackground({ isDark }: { isDark: boolean }) {
       time += 0.005;
       ctx.clearRect(0, 0, w, h);
 
-      // Draw orbs
       for (const orb of orbs) {
         orb.x += orb.vx + Math.sin(time * 2) * 0.2;
         orb.y += orb.vy + Math.cos(time * 1.5) * 0.2;
@@ -124,12 +118,10 @@ function ParticleBackground({ isDark }: { isDark: boolean }) {
         ctx.fill();
       }
 
-      // Draw particles with 3D perspective
       for (const p of particles) {
         p.x += p.vx;
         p.y += p.vy;
         p.z += p.vz;
-
         if (p.x < 0) p.x = w;
         if (p.x > w) p.x = 0;
         if (p.y < 0) p.y = h;
@@ -143,17 +135,14 @@ function ParticleBackground({ isDark }: { isDark: boolean }) {
         const screenSize = p.size * perspective;
         const alpha = p.opacity * (1 - p.z / 800);
 
-        if (isDark) {
-          ctx.fillStyle = `hsla(${p.hue}, 70%, 65%, ${alpha})`;
-        } else {
-          ctx.fillStyle = `hsla(${p.hue}, 50%, 50%, ${alpha * 0.6})`;
-        }
+        ctx.fillStyle = isDark
+          ? `hsla(${p.hue}, 70%, 65%, ${alpha})`
+          : `hsla(${p.hue}, 50%, 50%, ${alpha * 0.6})`;
         ctx.beginPath();
         ctx.arc(screenX, screenY, Math.max(screenSize, 0.5), 0, Math.PI * 2);
         ctx.fill();
       }
 
-      // Draw connections between nearby particles
       for (let i = 0; i < particles.length; i++) {
         for (let j = i + 1; j < particles.length; j++) {
           const dx = particles[i].x - particles[j].x;
@@ -161,11 +150,9 @@ function ParticleBackground({ isDark }: { isDark: boolean }) {
           const dist = Math.sqrt(dx * dx + dy * dy);
           if (dist < 150) {
             const alpha = (1 - dist / 150) * 0.15;
-            if (isDark) {
-              ctx.strokeStyle = `rgba(61, 177, 172, ${alpha})`;
-            } else {
-              ctx.strokeStyle = `rgba(39, 52, 112, ${alpha * 0.5})`;
-            }
+            ctx.strokeStyle = isDark
+              ? `rgba(61, 177, 172, ${alpha})`
+              : `rgba(39, 52, 112, ${alpha * 0.5})`;
             ctx.lineWidth = 0.5;
             ctx.beginPath();
             ctx.moveTo(particles[i].x, particles[i].y);
@@ -175,7 +162,6 @@ function ParticleBackground({ isDark }: { isDark: boolean }) {
         }
       }
 
-      // Hexagonal grid overlay (subtle)
       ctx.save();
       ctx.globalAlpha = isDark ? 0.03 : 0.015;
       const hexSize = 40;
@@ -220,117 +206,6 @@ function ParticleBackground({ isDark }: { isDark: boolean }) {
   );
 }
 
-// ─── Animated Logo Component ───────────────────────────
-function AnimatedLogo({ src, isDark }: { src: string; isDark: boolean }) {
-  return (
-    <div className="relative inline-block">
-      {/* Pulsing glow ring */}
-      <div
-        className="absolute inset-0 rounded-full"
-        style={{
-          background: isDark
-            ? `radial-gradient(circle, rgba(61,177,172,0.2) 0%, transparent 70%)`
-            : `radial-gradient(circle, rgba(39,52,112,0.1) 0%, transparent 70%)`,
-          animation: "logo-pulse 3s ease-in-out infinite",
-          transform: "scale(1.8)",
-        }}
-      />
-      {/* Rotating ring */}
-      <div
-        className="absolute inset-0"
-        style={{
-          border: isDark ? "2px solid rgba(61,177,172,0.15)" : "2px solid rgba(39,52,112,0.08)",
-          borderTopColor: isDark ? "rgba(61,177,172,0.5)" : "rgba(39,52,112,0.3)",
-          borderRadius: "50%",
-          animation: "spin-slow 8s linear infinite",
-          transform: "scale(1.4)",
-        }}
-      />
-      {/* Shield icon overlay */}
-      <div
-        className="absolute -top-1 -right-1 z-10"
-        style={{
-          animation: "shield-bounce 2s ease-in-out infinite",
-        }}
-      >
-        <div
-          className="w-6 h-6 rounded-full flex items-center justify-center"
-          style={{
-            background: isDark
-              ? `linear-gradient(135deg, ${SDAIA.teal}, ${SDAIA.purple})`
-              : `linear-gradient(135deg, ${SDAIA.navy}, ${SDAIA.purple})`,
-            boxShadow: isDark
-              ? `0 0 12px rgba(61,177,172,0.4)`
-              : `0 0 8px rgba(39,52,112,0.2)`,
-          }}
-        >
-          <Shield className="w-3.5 h-3.5 text-white" />
-        </div>
-      </div>
-      {/* Logo image */}
-      <img
-        src={src}
-        alt="منصة راصد"
-        className="h-24 object-contain relative z-[1]"
-        style={{
-          filter: isDark
-            ? "drop-shadow(0 0 20px rgba(61,177,172,0.2))"
-            : "drop-shadow(0 0 15px rgba(39,52,112,0.1))",
-          animation: "logo-float 4s ease-in-out infinite",
-        }}
-      />
-    </div>
-  );
-}
-
-// ─── Animated Character ───────────────────────────
-function AnimatedCharacter({ isDark }: { isDark: boolean }) {
-  return (
-    <div className="relative">
-      {/* Glow behind character */}
-      <div
-        className="absolute inset-0 rounded-full"
-        style={{
-          background: isDark
-            ? "radial-gradient(circle, rgba(61,177,172,0.12) 0%, transparent 60%)"
-            : "radial-gradient(circle, rgba(39,52,112,0.06) 0%, transparent 60%)",
-          transform: "scale(1.3)",
-          animation: "logo-pulse 4s ease-in-out infinite",
-        }}
-      />
-      {/* Orbiting particles around character */}
-      {[0, 1, 2].map((i) => {
-        const colors = [SDAIA.teal, SDAIA.purple, SDAIA.navy];
-        return (
-          <div
-            key={i}
-            className="absolute w-2 h-2 rounded-full"
-            style={{
-              background: colors[i],
-              boxShadow: `0 0 8px ${colors[i]}80`,
-              animation: `orbit-particle ${6 + i * 2}s linear infinite`,
-              animationDelay: `${i * -2}s`,
-              top: "50%",
-              left: "50%",
-            }}
-          />
-        );
-      })}
-      <img
-        src={RASID_CHARACTER}
-        alt="راصد"
-        className="w-80 h-80 object-contain relative z-[1]"
-        style={{
-          filter: isDark
-            ? "brightness(0.95) drop-shadow(0 0 40px rgba(61, 177, 172, 0.15))"
-            : "drop-shadow(0 10px 40px rgba(0, 0, 0, 0.1))",
-          animation: "character-float 6s ease-in-out infinite",
-        }}
-      />
-    </div>
-  );
-}
-
 // ─── CSS Animations ───────────────────────────
 const animationStyles = `
   @keyframes logo-pulse {
@@ -351,8 +226,8 @@ const animationStyles = `
   }
   @keyframes character-float {
     0%, 100% { transform: translateY(0) rotate(0deg); }
-    25% { transform: translateY(-8px) rotate(0.5deg); }
-    75% { transform: translateY(4px) rotate(-0.5deg); }
+    25% { transform: translateY(-12px) rotate(0.5deg); }
+    75% { transform: translateY(6px) rotate(-0.5deg); }
   }
   @keyframes orbit-particle {
     0% { transform: translate(-50%, -50%) rotate(0deg) translateX(140px) rotate(0deg); }
@@ -364,10 +239,9 @@ const animationStyles = `
     90% { opacity: 1; }
     100% { transform: translateY(400%); opacity: 0; }
   }
-  @keyframes typing-dots {
-    0%, 20% { opacity: 0.3; }
-    50% { opacity: 1; }
-    80%, 100% { opacity: 0.3; }
+  @keyframes shimmer-slide {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
   }
 `;
 
@@ -378,7 +252,7 @@ export default function PlatformLogin() {
   const [rememberMe, setRememberMe] = useState(false);
   const [error, setError] = useState("");
   const [mounted, setMounted] = useState(false);
-  const { theme, toggleTheme, switchable } = useTheme();
+  const { theme, themeMode, toggleTheme, switchable } = useTheme();
 
   useEffect(() => {
     setMounted(true);
@@ -417,141 +291,134 @@ export default function PlatformLogin() {
         style={{
           background: isDark
             ? `linear-gradient(135deg, ${SDAIA.bgDark} 0%, #0a1230 20%, #101e45 50%, ${SDAIA.cardDark} 80%, #132040 100%)`
-            : "linear-gradient(135deg, #E8EDF5 0%, #DDE5F0 30%, #E2E9F3 60%, #D8E1EE 100%)",
+            : "#F0F3F8",
         }}
       >
         {/* 3D Particle Canvas */}
         <ParticleBackground isDark={isDark} />
 
         {/* Scan line effect */}
-        <div
-          className="absolute inset-0 pointer-events-none z-[1]"
-          style={{ overflow: "hidden" }}
-        >
+        <div className="absolute inset-0 pointer-events-none z-[1]" style={{ overflow: "hidden" }}>
           <div
             className="absolute w-full h-px"
             style={{
               background: isDark
                 ? `linear-gradient(90deg, transparent, rgba(61,177,172,0.3), transparent)`
-                : `linear-gradient(90deg, transparent, rgba(39,52,112,0.1), transparent)`,
+                : `linear-gradient(90deg, transparent, rgba(39,52,112,0.08), transparent)`,
               animation: "scan-line 8s linear infinite",
             }}
           />
         </div>
 
-        {/* Theme toggle */}
+        {/* Theme toggle — cycles: light → dark → auto → light */}
         {switchable && toggleTheme && (
           <button
             onClick={toggleTheme}
-            className="absolute top-5 left-5 z-20 p-2.5 rounded-xl transition-all duration-300 hover:scale-110"
+            className="absolute top-5 left-5 z-20 p-2.5 rounded-xl transition-all duration-300 hover:scale-110 relative"
             style={{
-              background: isDark ? "rgba(61,177,172,0.08)" : "rgba(22,42,84,0.08)",
-              border: isDark ? "1px solid rgba(61,177,172,0.15)" : "1px solid rgba(22,42,84,0.12)",
+              background: isDark ? "rgba(61,177,172,0.08)" : "rgba(255,255,255,0.8)",
+              border: isDark ? "1px solid rgba(61,177,172,0.15)" : "1px solid rgba(226,229,239,0.8)",
               backdropFilter: "blur(10px)",
+              boxShadow: isDark ? "none" : "0 2px 8px rgba(39,52,112,0.06)",
             }}
-            title={isDark ? "الوضع الفاتح" : "الوضع الداكن"}
+            title={
+              themeMode === "light" ? "الوضع الفاتح — انقر للتبديل إلى الداكن"
+                : themeMode === "dark" ? "الوضع الداكن — انقر للتبديل إلى التلقائي"
+                : "تلقائي (حسب النظام) — انقر للتبديل إلى الفاتح"
+            }
           >
-            {isDark ? (
-              <Sun className="w-5 h-5 text-amber-300" />
-            ) : (
-              <Moon className="w-5 h-5 text-slate-600" />
+            {themeMode === "light" && <Sun className="w-5 h-5 text-amber-400" />}
+            {themeMode === "dark" && <Moon className="w-5 h-5 text-amber-300" />}
+            {themeMode === "auto" && (
+              <>
+                <Monitor className="w-5 h-5 text-[#5a6478]" />
+                <span className="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full bg-green-500 border border-background" />
+              </>
             )}
           </button>
         )}
 
-        {/* Main content */}
+        {/* ═══ MAIN CARD — Two-column design matching design.rasid.vip ═══ */}
         <div
-          className="relative z-10 flex items-center gap-16 max-w-5xl w-full"
+          className="relative z-10 w-full max-w-5xl"
           style={{
             opacity: mounted ? 1 : 0,
             transform: mounted ? "translateY(0)" : "translateY(20px)",
             transition: "all 0.8s cubic-bezier(0.16, 1, 0.3, 1)",
           }}
         >
-          {/* Login form — right side (RTL) */}
-          <div className="flex-1 max-w-md mx-auto lg:mx-0">
-            {/* Full Brand Logo — enlarged with creative effects */}
-            <div className="text-center mb-8">
-              <div className="flex justify-center mb-3">
-                <div className="relative">
-                  {/* Glow ring behind logo */}
-                  <div
-                    className="absolute inset-0 rounded-2xl"
-                    style={{
-                      background: isDark
-                        ? 'radial-gradient(ellipse at center, rgba(61, 177, 172, 0.08), transparent 70%)'
-                        : 'radial-gradient(ellipse at center, rgba(39, 52, 112, 0.05), transparent 70%)',
-                      filter: 'blur(20px)',
-                      transform: 'scale(1.5)',
-                    }}
-                  />
-                  <img
-                    src={isDark ? RASID_LOGO_LIGHT : RASID_LOGO_DARK}
-                    alt="منصة راصد - مكتب إدارة البيانات الوطنية"
-                    className="relative z-10"
-                    style={{
-                      width: '320px',
-                      height: 'auto',
-                      filter: isDark
-                        ? 'drop-shadow(0 0 15px rgba(61, 177, 172, 0.15)) drop-shadow(0 0 40px rgba(100, 89, 167, 0.08))'
-                        : 'drop-shadow(0 4px 12px rgba(39, 52, 112, 0.12))',
-                      animation: 'logo-float 5s ease-in-out infinite',
-                    }}
-                  />
-                </div>
-              </div>
-              <p
-                className="text-sm mt-2"
-                style={{ color: isDark ? "rgba(225,222,245,0.5)" : "rgba(28,40,51,0.5)" }}
-              >
-                منصة رصد تسريبات البيانات الشخصية
-              </p>
-            </div>
-
-            {/* Login card with glass morphism */}
+          <div
+            className="grid grid-cols-1 lg:grid-cols-2 rounded-3xl overflow-hidden"
+            style={{
+              boxShadow: isDark
+                ? "0 25px 80px rgba(0,0,0,0.5), 0 0 120px rgba(61,177,172,0.05)"
+                : "0 25px 80px rgba(39,52,112,0.12), 0 8px 32px rgba(39,52,112,0.06)",
+            }}
+          >
+            {/* ─── RIGHT PANEL: Login Form (RTL = appears on right) ─── */}
             <div
-              className="rounded-2xl p-8 relative overflow-hidden"
+              className="p-10 lg:p-12 flex flex-col justify-center relative"
               style={{
-                background: isDark
-                  ? "rgba(26, 37, 80, 0.7)"
-                  : "rgba(255, 255, 255, 0.85)",
-                backdropFilter: "blur(24px)",
-                border: isDark
-                  ? "1px solid rgba(61, 177, 172, 0.15)"
-                  : "1px solid rgba(22, 42, 84, 0.12)",
-                boxShadow: isDark
-                  ? "0 8px 40px rgba(0, 0, 0, 0.4), 0 0 80px rgba(61, 177, 172, 0.06), inset 0 1px 0 rgba(255,255,255,0.03)"
-                  : "0 8px 40px rgba(22, 42, 84, 0.1), inset 0 1px 0 rgba(255,255,255,0.6)",
+                background: isDark ? "rgba(26, 37, 80, 0.85)" : "#FFFFFF",
+                backdropFilter: isDark ? "blur(24px)" : "none",
               }}
             >
-              {/* Subtle gradient border glow */}
-              <div
-                className="absolute inset-0 rounded-2xl pointer-events-none"
-                style={{
-                  background: isDark
-                    ? "linear-gradient(135deg, rgba(61,177,172,0.08) 0%, transparent 50%, rgba(100,89,167,0.05) 100%)"
-                    : "none",
-                }}
-              />
+              {/* Subtle shimmer overlay for light mode */}
+              {!isDark && (
+                <div className="absolute inset-0 overflow-hidden pointer-events-none">
+                  <div
+                    className="absolute inset-0 opacity-[0.03]"
+                    style={{
+                      background: "linear-gradient(90deg, transparent 40%, rgba(30,58,138,0.3) 50%, transparent 60%)",
+                      animation: "shimmer-slide 8s ease-in-out infinite",
+                    }}
+                  />
+                </div>
+              )}
 
               <div className="relative z-[1]">
-                <div className="flex items-center justify-center gap-2 mb-6">
-                  <Lock className="w-4 h-4" style={{ color: isDark ? SDAIA.teal : SDAIA.navy }} />
-                  <h2
-                    className="text-lg font-semibold"
-                    style={{ color: isDark ? SDAIA.textDark : "#1C2833" }}
-                  >
-                    تسجيل الدخول
-                  </h2>
+                {/* Logo */}
+                <div className="mb-8">
+                  <div className="relative inline-block">
+                    <img
+                      src={isDark ? RASID_LOGO_LIGHT : RASID_LOGO_DARK}
+                      alt="منصة راصد - مكتب إدارة البيانات الوطنية"
+                      style={{
+                        width: '240px',
+                        height: 'auto',
+                        filter: isDark
+                          ? 'drop-shadow(0 0 15px rgba(61,177,172,0.15))'
+                          : 'drop-shadow(0 2px 8px rgba(39,52,112,0.08))',
+                        animation: 'logo-float 5s ease-in-out infinite',
+                      }}
+                    />
+                  </div>
                 </div>
 
+                {/* Heading */}
+                <div className="mb-8">
+                  <h1
+                    className="text-2xl lg:text-3xl font-bold mb-2"
+                    style={{ color: isDark ? SDAIA.textDark : "#1c2833" }}
+                  >
+                    تسجيل الدخول
+                  </h1>
+                  <p
+                    className="text-sm"
+                    style={{ color: isDark ? "rgba(225,222,245,0.5)" : "#7a8599" }}
+                  >
+                    أدخل بيانات حسابك للوصول إلى لوحة التحكم
+                  </p>
+                </div>
+
+                {/* Login Form */}
                 <form onSubmit={handleSubmit} className="space-y-5">
                   {error && (
                     <div
-                      className="flex items-center gap-2 p-3 rounded-lg text-sm"
+                      className="flex items-center gap-2 p-3 rounded-xl text-sm"
                       style={{
-                        background: isDark ? "rgba(235,61,99,0.1)" : "rgba(235,61,99,0.05)",
-                        border: `1px solid rgba(235,61,99,0.2)`,
+                        background: isDark ? "rgba(235,61,99,0.1)" : "rgba(235,61,99,0.04)",
+                        border: `1px solid rgba(235,61,99,0.15)`,
                         color: isDark ? "#fca5a5" : SDAIA.danger,
                       }}
                     >
@@ -560,6 +427,7 @@ export default function PlatformLogin() {
                     </div>
                   )}
 
+                  {/* Username */}
                   <div className="space-y-2">
                     <label
                       className="text-sm font-medium"
@@ -572,11 +440,12 @@ export default function PlatformLogin() {
                       value={userId}
                       onChange={(e) => setUserId(e.target.value)}
                       placeholder="أدخل اسم المستخدم"
-                      className="h-11 transition-all duration-300 focus:ring-2"
+                      className="h-12 rounded-xl transition-all duration-300 focus:ring-2"
                       style={{
-                        background: isDark ? "rgba(13, 21, 41, 0.5)" : "rgba(241, 245, 249, 0.8)",
-                        borderColor: isDark ? "rgba(61, 177, 172, 0.2)" : "rgba(39, 52, 112, 0.1)",
-                        color: isDark ? SDAIA.textDark : "#1C2833",
+                        background: isDark ? "rgba(13, 21, 41, 0.5)" : "#f8f9fc",
+                        borderColor: isDark ? "rgba(61, 177, 172, 0.2)" : "#e2e5ef",
+                        color: isDark ? SDAIA.textDark : "#1c2833",
+                        fontSize: "14px",
                       }}
                       dir="ltr"
                       autoComplete="username"
@@ -584,6 +453,7 @@ export default function PlatformLogin() {
                     />
                   </div>
 
+                  {/* Password */}
                   <div className="space-y-2">
                     <label
                       className="text-sm font-medium"
@@ -597,11 +467,12 @@ export default function PlatformLogin() {
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         placeholder="أدخل كلمة المرور"
-                        className="h-11 pl-10 transition-all duration-300 focus:ring-2"
+                        className="h-12 pl-10 rounded-xl transition-all duration-300 focus:ring-2"
                         style={{
-                          background: isDark ? "rgba(13, 21, 41, 0.5)" : "rgba(241, 245, 249, 0.8)",
-                          borderColor: isDark ? "rgba(61, 177, 172, 0.2)" : "rgba(39, 52, 112, 0.1)",
-                          color: isDark ? SDAIA.textDark : "#1C2833",
+                          background: isDark ? "rgba(13, 21, 41, 0.5)" : "#f8f9fc",
+                          borderColor: isDark ? "rgba(61, 177, 172, 0.2)" : "#e2e5ef",
+                          color: isDark ? SDAIA.textDark : "#1c2833",
+                          fontSize: "14px",
                         }}
                         dir="ltr"
                         autoComplete="current-password"
@@ -610,7 +481,7 @@ export default function PlatformLogin() {
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
                         className="absolute left-3 top-1/2 -translate-y-1/2 transition-colors hover:opacity-80"
-                        style={{ color: isDark ? "rgba(225,222,245,0.5)" : "#64748b" }}
+                        style={{ color: isDark ? "rgba(225,222,245,0.5)" : "#94a3b8" }}
                       >
                         {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                       </button>
@@ -628,7 +499,7 @@ export default function PlatformLogin() {
                       />
                       <span
                         className="text-sm"
-                        style={{ color: isDark ? "rgba(225,222,245,0.5)" : "#64748b" }}
+                        style={{ color: isDark ? "rgba(225,222,245,0.5)" : "#7a8599" }}
                       >
                         تذكرني
                       </span>
@@ -636,25 +507,26 @@ export default function PlatformLogin() {
                     <button
                       type="button"
                       className="text-sm hover:underline transition-colors"
-                      style={{ color: isDark ? SDAIA.teal : SDAIA.navy }}
+                      style={{ color: isDark ? SDAIA.teal : "#1e3a8a" }}
                       onClick={() => {}}
                     >
                       نسيت كلمة المرور؟
                     </button>
                   </div>
 
+                  {/* Login Button */}
                   <Button
                     type="submit"
                     disabled={loginMutation.isPending}
-                    className="w-full h-12 text-base font-semibold text-white shadow-lg transition-all duration-300 hover:shadow-xl hover:scale-[1.02] active:scale-[0.98]"
+                    className="w-full h-12 text-base font-semibold text-white rounded-xl shadow-lg transition-all duration-300 hover:shadow-xl hover:scale-[1.02] active:scale-[0.98]"
                     style={{
                       background: isDark
                         ? `linear-gradient(135deg, ${SDAIA.navy} 0%, ${SDAIA.purple} 50%, ${SDAIA.teal} 100%)`
-                        : `linear-gradient(135deg, ${SDAIA.navy} 0%, ${SDAIA.purple} 100%)`,
+                        : `linear-gradient(135deg, #1e3a8a 0%, #1e3a5f 100%)`,
                       border: "none",
                       boxShadow: isDark
                         ? "0 4px 20px rgba(61, 177, 172, 0.3), 0 0 40px rgba(100, 89, 167, 0.1)"
-                        : "0 4px 20px rgba(39, 52, 112, 0.2)",
+                        : "0 4px 20px rgba(30, 58, 138, 0.25)",
                     }}
                   >
                     {loginMutation.isPending ? (
@@ -671,26 +543,130 @@ export default function PlatformLogin() {
                   </Button>
                 </form>
 
-                <div
-                  className="mt-6 pt-4 border-t"
-                  style={{ borderColor: isDark ? "rgba(61, 177, 172, 0.1)" : "rgba(39, 52, 112, 0.06)" }}
-                >
-                  <p className="text-xs text-center" style={{ color: isDark ? "rgba(225,222,245,0.35)" : "#94a3b8" }}>
-                    هذا النظام مخصص للمستخدمين المصرح لهم فقط. أي محاولة وصول غير مصرح بها ستتم مراقبتها وتسجيلها.
+                {/* Security notice */}
+                <div className="mt-8 flex items-center justify-center gap-2">
+                  <Shield className="w-3.5 h-3.5" style={{ color: isDark ? "rgba(225,222,245,0.3)" : "#94a3b8" }} />
+                  <p className="text-xs" style={{ color: isDark ? "rgba(225,222,245,0.3)" : "#94a3b8" }}>
+                    محمي بتشفير SSL-256 bit
                   </p>
                 </div>
               </div>
             </div>
 
-            <p className="text-center text-xs mt-6" style={{ color: isDark ? "rgba(225,222,245,0.25)" : "#94a3b8" }}>
-              مكتب إدارة البيانات الوطنية — منصة راصد
-            </p>
+            {/* ─── LEFT PANEL: Character + Branding (RTL = appears on left) ─── */}
+            <div
+              className="hidden lg:flex flex-col items-center justify-center p-12 relative overflow-hidden"
+              style={{
+                background: isDark
+                  ? `linear-gradient(135deg, #0a1230 0%, ${SDAIA.bgDark} 50%, #101e45 100%)`
+                  : "linear-gradient(135deg, #1e3a8a 0%, #1a2555 50%, #162050 100%)",
+              }}
+            >
+              {/* Decorative circles */}
+              <div
+                className="absolute top-0 right-0 w-64 h-64 rounded-full"
+                style={{
+                  background: isDark
+                    ? "radial-gradient(circle, rgba(61,177,172,0.08) 0%, transparent 70%)"
+                    : "radial-gradient(circle, rgba(255,255,255,0.06) 0%, transparent 70%)",
+                  transform: "translate(30%, -30%)",
+                }}
+              />
+              <div
+                className="absolute bottom-0 left-0 w-48 h-48 rounded-full"
+                style={{
+                  background: isDark
+                    ? "radial-gradient(circle, rgba(100,89,167,0.1) 0%, transparent 70%)"
+                    : "radial-gradient(circle, rgba(255,255,255,0.04) 0%, transparent 70%)",
+                  transform: "translate(-30%, 30%)",
+                }}
+              />
+
+              {/* Dot grid pattern */}
+              <div
+                className="absolute inset-0 opacity-[0.04]"
+                style={{
+                  backgroundImage: "radial-gradient(circle, rgba(255,255,255,0.8) 1px, transparent 1px)",
+                  backgroundSize: "24px 24px",
+                }}
+              />
+
+              {/* Logo at top */}
+              <div className="relative z-10 mb-6">
+                <img
+                  src={RASID_LOGO_LIGHT}
+                  alt="راصد"
+                  style={{
+                    width: '180px',
+                    height: 'auto',
+                    filter: 'drop-shadow(0 0 20px rgba(61,177,172,0.15))',
+                    animation: 'logo-float 5s ease-in-out infinite',
+                  }}
+                />
+              </div>
+
+              {/* Character */}
+              <div className="relative z-10 mb-8">
+                {/* Glow behind character */}
+                <div
+                  className="absolute inset-0 rounded-full"
+                  style={{
+                    background: "radial-gradient(circle, rgba(61,177,172,0.1) 0%, transparent 60%)",
+                    transform: "scale(1.3)",
+                    animation: "logo-pulse 4s ease-in-out infinite",
+                  }}
+                />
+                {/* Orbiting particles */}
+                {[0, 1, 2].map((i) => {
+                  const colors = [SDAIA.teal, SDAIA.purple, "#FFD700"];
+                  return (
+                    <div
+                      key={i}
+                      className="absolute w-2 h-2 rounded-full"
+                      style={{
+                        background: colors[i],
+                        boxShadow: `0 0 8px ${colors[i]}80`,
+                        animation: `orbit-particle ${6 + i * 2}s linear infinite`,
+                        animationDelay: `${i * -2}s`,
+                        top: "50%",
+                        left: "50%",
+                      }}
+                    />
+                  );
+                })}
+                <img
+                  src={RASID_CHARACTER}
+                  alt="راصد"
+                  className="w-72 h-72 object-contain relative z-[1]"
+                  style={{
+                    filter: "brightness(1.02) drop-shadow(0 0 40px rgba(61,177,172,0.12))",
+                    animation: "character-float 6s ease-in-out infinite",
+                  }}
+                />
+              </div>
+
+              {/* Tagline */}
+              <div className="relative z-10 text-center max-w-xs">
+                <p
+                  className="text-lg font-semibold leading-relaxed"
+                  style={{ color: "rgba(255,255,255,0.9)" }}
+                >
+                  منصة ذكية بُنيت من أجلك
+                </p>
+                <p
+                  className="text-sm mt-2 leading-relaxed"
+                  style={{ color: "rgba(255,255,255,0.5)" }}
+                >
+                  ومن أجل الحفاظ على بياناتك الشخصية
+                </p>
+              </div>
+            </div>
           </div>
 
-          {/* Animated Character — left side */}
-          <div className="hidden lg:flex flex-1 items-center justify-center">
-            <AnimatedCharacter isDark={isDark} />
-          </div>
+          {/* Footer */}
+          <p className="text-center text-xs mt-6" style={{ color: isDark ? "rgba(225,222,245,0.25)" : "#94a3b8" }}>
+            مكتب إدارة البيانات الوطنية — منصة راصد
+          </p>
         </div>
       </div>
     </>

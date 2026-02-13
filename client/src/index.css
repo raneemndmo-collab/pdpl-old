@@ -1421,3 +1421,151 @@ select {
 .stagger-10 { animation-delay: 0.5s; }
 .stagger-11 { animation-delay: 0.55s; }
 .stagger-12 { animation-delay: 0.6s; }
+
+
+/* ═══════════════════════════════════════════
+   SIDEBAR HOVER EFFECTS — design.rasid.vip 1:1
+   ═══════════════════════════════════════════ */
+
+/* Sidebar item hover - light mode */
+.sidebar-nav-item {
+  position: relative;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.sidebar-nav-item::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 0;
+  height: 60%;
+  background: linear-gradient(180deg, #1e3a8a, #273470);
+  border-radius: 4px 0 0 4px;
+  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.sidebar-nav-item:hover::after {
+  width: 3px;
+}
+
+.sidebar-nav-item:hover {
+  padding-right: 16px;
+  background: rgba(39, 52, 112, 0.05);
+  color: #1c2833;
+}
+
+.sidebar-nav-item:hover .sidebar-nav-icon {
+  filter: drop-shadow(0 0 6px rgba(30, 58, 138, 0.3));
+  transform: scale(1.15) rotate(-8deg);
+  color: #1e3a8a;
+}
+
+.sidebar-nav-icon {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Sidebar active item - light mode */
+.sidebar-nav-item-active {
+  background: rgba(39, 52, 112, 0.08) !important;
+  color: #1e3a8a !important;
+}
+
+.sidebar-nav-item-active::after {
+  width: 3px !important;
+  background: linear-gradient(180deg, #1e3a8a, #3DB1AC) !important;
+}
+
+.sidebar-nav-item-active .sidebar-nav-icon {
+  color: #1e3a8a !important;
+  filter: drop-shadow(0 0 4px rgba(30, 58, 138, 0.2));
+}
+
+/* Sidebar group header hover - light mode */
+.sidebar-group-header {
+  position: relative;
+  transition: all 0.3s ease;
+}
+
+.sidebar-group-header::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 0;
+  height: 0%;
+  background: linear-gradient(180deg, rgba(30, 58, 138, 0.15), transparent);
+  border-radius: 0 4px 4px 0;
+  transition: all 0.3s ease;
+}
+
+.sidebar-group-header:hover {
+  background: rgba(61, 177, 172, 0.04);
+}
+
+.sidebar-group-header:hover::before {
+  width: 2px;
+  height: 50%;
+}
+
+/* Dark mode sidebar hover overrides */
+.dark .sidebar-nav-item::after {
+  background: linear-gradient(180deg, #3DB1AC, #6459A7);
+}
+
+.dark .sidebar-nav-item:hover {
+  background: rgba(61, 177, 172, 0.06);
+  color: #E1DEF5;
+}
+
+.dark .sidebar-nav-item:hover .sidebar-nav-icon {
+  filter: drop-shadow(0 0 6px rgba(61, 177, 172, 0.4));
+  color: #3DB1AC;
+}
+
+.dark .sidebar-nav-item-active {
+  background: rgba(61, 177, 172, 0.12) !important;
+  color: #3DB1AC !important;
+}
+
+.dark .sidebar-nav-item-active::after {
+  background: linear-gradient(180deg, #3DB1AC, #6459A7) !important;
+}
+
+.dark .sidebar-nav-item-active .sidebar-nav-icon {
+  color: #3DB1AC !important;
+  filter: drop-shadow(0 0 4px rgba(61, 177, 172, 0.3));
+}
+
+.dark .sidebar-group-header:hover {
+  background: rgba(61, 177, 172, 0.06);
+}
+
+.dark .sidebar-group-header:hover::before {
+  background: linear-gradient(180deg, rgba(61, 177, 172, 0.3), transparent);
+}
+
+/* Sidebar item count badge pulse */
+@keyframes badge-pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+}
+
+.sidebar-badge-pulse {
+  animation: badge-pulse 2s ease-in-out infinite;
+}
+
+/* Sidebar tooltip enhancement */
+.sidebar-tooltip {
+  opacity: 0;
+  transform: translateX(8px);
+  transition: all 0.2s ease;
+  pointer-events: none;
+}
+
+.sidebar-nav-item:hover .sidebar-tooltip {
+  opacity: 1;
+  transform: translateX(0);
+}

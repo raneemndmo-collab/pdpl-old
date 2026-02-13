@@ -1014,3 +1014,33 @@
 - [x] Update all other pages for consistency (Leaks, ScheduledReports, AnimatedCard)
 - [x] Verify visual match with screenshots - confirmed matching
 - [x] Run all 225 tests - all passing (12 test files)
+
+## Phase 77: Sidebar Hover Effects, Login Page Redesign, Auto Theme Mode
+
+### A. Advanced Sidebar Hover Effects (Light Mode)
+- [x] Add smooth blue gradient hover effect on sidebar nav items (sidebar-nav-item CSS class)
+- [x] Add subtle scale/translate animation on hover (translateX(-2px), icon scale 1.15)
+- [x] Add left border indicator on hover (3px blue accent, active = 4px)
+- [x] Ensure hover effects are smooth with CSS transitions (0.25s cubic-bezier)
+- [x] Preserve existing dark mode hover effects (dark: teal glow)
+
+### B. Login Page Redesign (Match design.rasid.vip)
+- [x] Visit design.rasid.vip to capture exact login page design (console CSS extraction)
+- [x] Redesign light mode login page: two-column card (form right, character left)
+- [x] Update colors: white form panel, dark blue character panel (#162A54)
+- [x] Add Rasid character with floating animation + glow effect
+- [x] Add ParticleBackground, scan-line, and premium shadows
+- [x] Responsive: stacks vertically on mobile, side-by-side on desktop
+
+### C. Auto Theme Mode (System Preference)
+- [x] Add "system/auto" option to theme toggle (3 modes: light → dark → auto → light)
+- [x] Implement prefers-color-scheme media query detection (getSystemTheme/resolveTheme)
+- [x] Auto-switch theme when OS preference changes (addEventListener on mediaQuery)
+- [x] Persist user's theme choice in localStorage (themeMode key, backward compatible)
+- [x] Update theme toggle UI: Sun (light), Moon (dark), Monitor (auto) + green dot indicator
+- [x] Updated in DashboardLayout, PlatformLogin, and ComponentShowcase
+
+### D. Testing & Delivery
+- [x] Write vitest tests for Phase 77 (23 tests in phase77.test.ts)
+- [x] Run all 248 tests across 13 files - all passing
+- [x] Checkpoint and deliver
